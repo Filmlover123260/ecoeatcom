@@ -1,0 +1,6 @@
+{
+  "name": "EcoEat",
+  "description": "EcoEat - Sustainable campus dining, food waste tracking, AI meal detection, and gamified student eco-challenges for school campuses.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
