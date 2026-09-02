@@ -150,16 +150,29 @@ function AppContent() {
   const handleTipLearned = (tip: DailyTipItem) => {
     const gainedXp = tip.bonusXp || 20;
     setUser((prev) => {
-      const newXp = prev.xp + gainedXp;
-      const newLevel = Math.floor(newXp / 100) + 1;
+      let newCurrentXp = prev.currentXp + gainedXp;
+      let newLevel = prev.level;
+      let newNextXp = prev.nextLevelXp;
+
+      if (newCurrentXp >= newNextXp) {
+        newLevel += 1;
+        newCurrentXp = newCurrentXp - newNextXp;
+        newNextXp = Math.round(newNextXp * 1.2);
+        const earnedTitle = getLevelTitle(newLevel);
+        showToast(`🎉 Level Up! You reached Level ${newLevel} (${earnedTitle})!`);
+      } else {
+        showToast(`✨ Mastered "${tip.title}"! +${gainedXp} XP added`);
+      }
+
       return {
         ...prev,
-        xp: newXp,
+        currentXp: newCurrentXp,
+        nextLevelXp: newNextXp,
+        totalXp: prev.totalXp + gainedXp,
         level: newLevel,
+        title: getLevelTitle(newLevel),
       };
     });
-    setToastMessage(`✨ Mastered "${tip.title}"! +${gainedXp} XP added`);
-    setTimeout(() => setToastMessage(null), 3200);
   };
 
   // Sync to local storage and Cloud Firestore
