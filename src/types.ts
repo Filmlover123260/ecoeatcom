@@ -15,6 +15,8 @@ export interface UserProfile {
   foodSavedKg: number;
   foodSavedWeekKg: number;
   grade: string;
+  section?: string;
+  homeroom?: string;
   school: string;
   avatarUrl: string;
   greetingColor: string;
@@ -105,9 +107,29 @@ export interface LeaderboardUser {
   xpFormatted: string;
   avatar: string;
   grade: string;
+  section?: string;
+  homeroom?: string;
+  foodSavedKg?: number;
+  streakDays?: number;
   title?: string;
   level?: number;
   isCurrentUser?: boolean;
+}
+
+export interface ClassRankingItem {
+  rank: number;
+  className: string;
+  grade: string;
+  section: string;
+  totalXp: number;
+  xpFormatted: string;
+  foodSavedKg: number;
+  studentsCount: number;
+  avgXpPerStudent: number;
+  isUserClass?: boolean;
+  topContributorName?: string;
+  topContributorAvatar?: string;
+  topContributorTitle?: string;
 }
 
 export interface DailyTipItem {

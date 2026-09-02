@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   PortionSize,
   TabType,
@@ -19,6 +20,13 @@ import {
   defaultSettings,
   getLevelTitle,
 } from './data/mockData';
+import { evaluateBadgeUnlock, BadgeEvaluationContext, ExtendedBadgeItem } from './data/badgesData';
+import {
+  syncUserProfileToCloud,
+  logMealToCloud,
+  subscribeToCampusStats,
+  getOrCreateUserId,
+} from './lib/leaderboardService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Navigation } from './components/Navigation';
@@ -154,10 +162,21 @@ function AppContent() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  // Sync to local storage
+  // Sync to local storage and Cloud Firestore
   useEffect(() => {
     localStorage.setItem('ecoeat_user', JSON.stringify(user));
-  }, [user]);
+    if (isAuthenticated) {
+      syncUserProfileToCloud(user);
+    }
+  }, [user, isAuthenticated]);
+
+  // Subscribe to live campus challenge stats from Firestore
+  useEffect(() => {
+    const unsubChallenge = subscribeToCampusStats(campusChallenge, (liveChallenge) => {
+      setChallenge(liveChallenge);
+    });
+    return () => unsubChallenge();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ecoeat_meals', JSON.stringify(meals));
@@ -227,66 +246,48 @@ function AppContent() {
       };
     });
 
-    // Auto-evaluate badge milestones across all 12 badges
+    // Auto-evaluate badge milestones across all 300 badges
     const updatedMeals = [newMeal, ...meals];
     const cleanMealsCount = updatedMeals.filter((m) => m.cleanPlate !== false && m.xp > 0).length;
     const totalCarbonSaved = updatedMeals.reduce((sum, m) => sum + (m.carbonSavedKg || 0), 0);
+    const totalWaterSaved = updatedMeals.reduce((sum, m) => sum + (m.waterSavedLiters || 0), 0);
     const dayOfWeek = new Date().getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const currentHour = new Date().getHours();
+    const isMorning = currentHour < 11;
+    const projectedTotalSavedKg = Number((user.foodSavedKg + foodSavedKg).toFixed(2));
+    const projectedStreak = user.streakDays + 1;
+    const projectedLevel = (user.currentXp + xpEarned >= user.nextLevelXp) ? user.level + 1 : user.level;
+    const projectedTotalXp = user.totalXp + xpEarned;
+
+    const evalContext: BadgeEvaluationContext = {
+      cleanMealsCount,
+      totalMealsCount: updatedMeals.length,
+      foodSavedKg: projectedTotalSavedKg,
+      streakDays: projectedStreak,
+      level: projectedLevel,
+      totalXp: projectedTotalXp,
+      totalCarbonSavedKg: totalCarbonSaved,
+      totalWaterSavedLiters: totalWaterSaved,
+      allMeals: updatedMeals,
+      isWeekend,
+      isMorning,
+    };
 
     setBadges((prevBadges) => {
       let newlyUnlockedBadgeName: string | null = null;
+      let unlockedCountThisTurn = 0;
+
       const updated = prevBadges.map((b) => {
         if (b.unlocked) return b;
 
-        let shouldUnlock = false;
-        switch (b.id) {
-          case 'badge-1': // First Clean Plate
-            shouldUnlock = cleanMealsCount >= 1;
-            break;
-          case 'badge-2': // Clean Plate Master (5 meals)
-            shouldUnlock = cleanMealsCount >= 5;
-            break;
-          case 'badge-3': // Waste Zero Hero (1kg)
-            shouldUnlock = (user.foodSavedKg + foodSavedKg) >= 1.0;
-            break;
-          case 'badge-4': // Eco Scholar (5kg)
-            shouldUnlock = (user.foodSavedKg + foodSavedKg) >= 5.0;
-            break;
-          case 'badge-5': // 3-Day Flame
-            shouldUnlock = (user.streakDays + 1) >= 3;
-            break;
-          case 'badge-6': // Week Champion (7-day streak)
-            shouldUnlock = (user.streakDays + 1) >= 7;
-            break;
-          case 'badge-7': // Plant Pioneer
-            shouldUnlock = updatedMeals.some((m) =>
-              m.foodItems?.some((item) =>
-                /salad|veggie|broccoli|quinoa|greens|spinach|carrot|tofu|fruit|avocado|plant/i.test(item)
-              )
-            );
-            break;
-          case 'badge-8': // Carbon Cutter
-            shouldUnlock = totalCarbonSaved >= 2.5;
-            break;
-          case 'badge-9': // Compost King
-            shouldUnlock = cleanMealsCount >= 3;
-            break;
-          case 'badge-10': // Level 3 Explorer
-            shouldUnlock = (user.level >= 3) || ((user.currentXp + xpEarned >= user.nextLevelXp) && user.level + 1 >= 3);
-            break;
-          case 'badge-11': // Weekend Green
-            shouldUnlock = isWeekend && cleanMealsCount >= 1;
-            break;
-          case 'badge-12': // BBS PIK Eco Ambassador
-            shouldUnlock = user.level >= 5;
-            break;
-          default:
-            break;
-        }
+        const shouldUnlock = evaluateBadgeUnlock(b as ExtendedBadgeItem, evalContext);
 
         if (shouldUnlock) {
-          newlyUnlockedBadgeName = b.name;
+          unlockedCountThisTurn++;
+          if (!newlyUnlockedBadgeName) {
+            newlyUnlockedBadgeName = b.name;
+          }
           return {
             ...b,
             unlocked: true,
@@ -298,13 +299,20 @@ function AppContent() {
 
       if (newlyUnlockedBadgeName) {
         setTimeout(() => {
-          showToast(`🏆 Badge Unlocked: ${newlyUnlockedBadgeName}!`);
+          if (unlockedCountThisTurn > 1) {
+            showToast(`🏆 ${unlockedCountThisTurn} New Badges Unlocked! First: ${newlyUnlockedBadgeName}`);
+          } else {
+            showToast(`🏆 Badge Unlocked: ${newlyUnlockedBadgeName}!`);
+          }
         }, 1200);
       }
 
       localStorage.setItem('ecoeat_badges', JSON.stringify(updated));
       return updated;
     });
+
+    // Write real meal record and update global campus food waste counter in Cloud Firestore
+    logMealToCloud(newMeal, user, xpEarned, foodSavedKg);
 
     setCurrentTab('dashboard');
   };
@@ -313,12 +321,14 @@ function AppContent() {
     setUser((prev) => {
       const newCurrentXp = Math.max(0, prev.currentXp - penaltyAmount);
       const newTotalXp = Math.max(0, prev.totalXp - penaltyAmount);
-      return {
+      const updatedUser = {
         ...prev,
         currentXp: newCurrentXp,
         totalXp: newTotalXp,
         streakDays: 0,
       };
+      syncUserProfileToCloud(updatedUser);
+      return updatedUser;
     });
     showToast(`⚠️ Non-food item detected: -${penaltyAmount} XP penalty applied!`);
     setCurrentTab('dashboard');
@@ -469,86 +479,97 @@ function AppContent() {
         user={user}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1">
-        {currentTab === 'dashboard' && (
-          <Dashboard
-            user={user}
-            meals={meals}
-            tips={getDailyTipsForDate(new Date())}
-            challenge={challenge}
-            selectedPortion={selectedPortion}
-            onSelectPortion={setSelectedPortion}
-            onStartNewMeal={() => setCurrentTab('capture')}
-            onOpenMealDetails={(meal) => setSelectedMealForDetails(meal)}
-            onOpenChallengeDetails={() => setIsChallengeModalOpen(true)}
-            onOpenRecentMealsList={() => setCurrentTab('profile')}
-            onOpenMealHallSpecial={() => setIsSpecialModalOpen(true)}
-            onRestartMeals={handleRestartMeals}
-            onOpenTipDetails={(tip) => setSelectedTipForDetails(tip)}
-            onOpenWeeklyImpact={handleOpenWeeklyImpact}
-          />
-        )}
+      {/* Main Content Area with Smooth Page Transition Animations */}
+      <main className="flex-1 overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentTab}
+            initial={{ opacity: 0, y: 10, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full"
+          >
+            {currentTab === 'dashboard' && (
+              <Dashboard
+                user={user}
+                meals={meals}
+                tips={getDailyTipsForDate(new Date())}
+                challenge={challenge}
+                selectedPortion={selectedPortion}
+                onSelectPortion={setSelectedPortion}
+                onStartNewMeal={() => setCurrentTab('capture')}
+                onOpenMealDetails={(meal) => setSelectedMealForDetails(meal)}
+                onOpenChallengeDetails={() => setIsChallengeModalOpen(true)}
+                onOpenRecentMealsList={() => setCurrentTab('profile')}
+                onOpenMealHallSpecial={() => setIsSpecialModalOpen(true)}
+                onRestartMeals={handleRestartMeals}
+                onOpenTipDetails={(tip) => setSelectedTipForDetails(tip)}
+                onOpenWeeklyImpact={handleOpenWeeklyImpact}
+              />
+            )}
 
-        {currentTab === 'capture' && (
-          <CaptureMeal
-            initialPortion={selectedPortion}
-            onCompleteMeal={handleCompleteMeal}
-            onApplyPenalty={handleApplyPenalty}
-            onCancel={() => setCurrentTab('dashboard')}
-            user={user}
-          />
-        )}
+            {currentTab === 'capture' && (
+              <CaptureMeal
+                initialPortion={selectedPortion}
+                onCompleteMeal={handleCompleteMeal}
+                onApplyPenalty={handleApplyPenalty}
+                onCancel={() => setCurrentTab('dashboard')}
+                user={user}
+              />
+            )}
 
-        {currentTab === 'leaderboard' && (
-          <Leaderboard user={user} challenge={challenge} />
-        )}
+            {currentTab === 'leaderboard' && (
+              <Leaderboard user={user} challenge={challenge} />
+            )}
 
-        {currentTab === 'profile' && (
-          <Profile
-            user={user}
-            badges={badges}
-            meals={meals}
-            onOpenEditProfile={() => setIsEditProfileOpen(true)}
-            onOpenBadgeDetails={(badge) => setSelectedBadgeForDetails(badge)}
-            onOpenBadgeGallery={() => setIsBadgeGalleryOpen(true)}
-          />
-        )}
+            {currentTab === 'profile' && (
+              <Profile
+                user={user}
+                badges={badges}
+                meals={meals}
+                onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                onOpenBadgeDetails={(badge) => setSelectedBadgeForDetails(badge)}
+                onOpenBadgeGallery={() => setIsBadgeGalleryOpen(true)}
+              />
+            )}
 
-        {currentTab === 'settings' && (
-          <SettingsView
-            settings={settings}
-            user={user}
-            onUpdateSettings={handleUpdateSettings}
-            onOpenEditProfile={() => setIsEditProfileOpen(true)}
-            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
-            onOpenGreetingCustomizer={() => setIsGreetingColorOpen(true)}
-            onOpenThemePicker={() => setIsThemePickerOpen(true)}
-            onRestartMeals={handleRestartMeals}
-            onOpenFAQ={() =>
-              setInfoModalData({
-                title: 'EcoEat Campus FAQ',
-                content:
-                  '1. How does meal scanning work?\nSnap a photo before eating to verify portions, then take a quick clean plate photo after dining to unlock bonus XP.\n\n2. What are the rewards?\nXP unlocks badges, campus leaderboards, and exclusive campus dining credits.\n\n3. Can I customize appearance?\nYes! Use the Palette icon to select themes like Eco Emerald, Ocean Teal, Solar Amber, Lavender Bloom, or Cyber Obsidian.',
-              })
-            }
-            onOpenContactUs={() =>
-              setInfoModalData({
-                title: 'Contact Campus Sustainability',
-                content:
-                  'Email: sustainability@bbs-campus.edu\nDining Hall Office: Building North, Room 104\nHelpline: +1 (800) 555-ECOS\nOffice Hours: Mon-Fri 8:00 AM - 5:00 PM',
-              })
-            }
-            onOpenPrivacyPolicy={() =>
-              setInfoModalData({
-                title: 'Student Privacy & Data Policy',
-                content:
-                  'EcoEat prioritizes student data security. Meal captures and logs are processed for campus sustainability tracking and verified locally. Personal identifiers remain strictly protected under campus privacy standards.',
-              })
-            }
-            onSignOut={handleSignOut}
-          />
-        )}
+            {currentTab === 'settings' && (
+              <SettingsView
+                settings={settings}
+                user={user}
+                onUpdateSettings={handleUpdateSettings}
+                onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+                onOpenGreetingCustomizer={() => setIsGreetingColorOpen(true)}
+                onOpenThemePicker={() => setIsThemePickerOpen(true)}
+                onRestartMeals={handleRestartMeals}
+                onOpenFAQ={() =>
+                  setInfoModalData({
+                    title: 'EcoEat Campus FAQ',
+                    content:
+                      '1. How does meal scanning work?\nSnap a photo before eating to verify portions, then take a quick clean plate photo after dining to unlock bonus XP.\n\n2. What are the rewards?\nXP unlocks badges, campus leaderboards, and exclusive campus dining credits.\n\n3. Can I customize appearance?\nYes! Use the Palette icon to select themes like Eco Emerald, Ocean Teal, Solar Amber, Lavender Bloom, or Cyber Obsidian.',
+                  })
+                }
+                onOpenContactUs={() =>
+                  setInfoModalData({
+                    title: 'Contact Campus Sustainability',
+                    content:
+                      'Email: sustainability@bbs-campus.edu\nDining Hall Office: Building North, Room 104\nHelpline: +1 (800) 555-ECOS\nOffice Hours: Mon-Fri 8:00 AM - 5:00 PM',
+                  })
+                }
+                onOpenPrivacyPolicy={() =>
+                  setInfoModalData({
+                    title: 'Student Privacy & Data Policy',
+                    content:
+                      'EcoEat prioritizes student data security. Meal captures and logs are processed for campus sustainability tracking and verified locally. Personal identifiers remain strictly protected under campus privacy standards.',
+                  })
+                }
+                onSignOut={handleSignOut}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Theme Picker Modal */}

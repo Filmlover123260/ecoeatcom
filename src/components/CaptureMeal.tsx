@@ -43,6 +43,43 @@ interface CaptureMealProps {
 
 type ScanMode = 'smart-macro' | 'quick-eco' | 'high-precision';
 
+// Ultra-fast client-side image downscaler to reduce payload from megabytes to ~40KB
+const compressImageForScan = async (rawSrc: string, maxDimension = 640, quality = 0.78): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!rawSrc) return resolve(rawSrc);
+    if (rawSrc.startsWith('http://') || rawSrc.startsWith('https://')) {
+      return resolve(rawSrc);
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      let width = img.width || 640;
+      let height = img.height || 480;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(rawSrc);
+      }
+    };
+    img.onerror = () => resolve(rawSrc);
+    img.src = rawSrc;
+  });
+};
+
 export const CaptureMeal: React.FC<CaptureMealProps> = ({
   initialPortion,
   onCompleteMeal,
@@ -185,8 +222,12 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     if (isCameraActive && videoRef.current && isLiveMode) {
       try {
         const video = videoRef.current;
-        const width = video.videoWidth || 640;
-        const height = video.videoHeight || 480;
+        const rawW = video.videoWidth || 640;
+        const rawH = video.videoHeight || 480;
+        const maxDim = 640;
+        const scale = Math.min(1, maxDim / Math.max(rawW, rawH));
+        const width = Math.round(rawW * scale);
+        const height = Math.round(rawH * scale);
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -194,7 +235,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(video, 0, 0, width, height);
-          base64Image = canvas.toDataURL('image/jpeg', 0.88);
+          base64Image = canvas.toDataURL('image/jpeg', 0.78);
         }
       } catch (snapErr) {
         console.error('Error capturing video frame:', snapErr);
@@ -212,35 +253,107 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     }
   };
 
-  // Upload custom photo from device
+  // Upload custom photo from device with instant client-side downscaling
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
+      reader.onloadend = async () => {
+        const rawString = reader.result as string;
+        const compressed = await compressImageForScan(rawString, 640, 0.78);
         setIsLiveMode(false);
         if (currentStep === 2) {
-          setCapturedBeforeImage(base64String);
-          analyzeImageWithGemini(base64String, 'before');
+          setCapturedBeforeImage(compressed);
+          analyzeImageWithGemini(compressed, 'before');
         } else {
-          setCapturedAfterImage(base64String);
-          analyzeImageWithGemini(base64String, 'after');
+          setCapturedAfterImage(compressed);
+          analyzeImageWithGemini(compressed, 'after');
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Choose preset sample meal
+  // Instant direct analyzer for preset dishes (sub-200ms snappy response)
+  const analyzePresetDirect = (preset: (typeof samplePresetMeals)[0], type: 'before' | 'after') => {
+    if (type === 'before') {
+      const isNotFood = preset.isFood === false;
+      const isSmall = portion === 'Small';
+      const isLarge = portion === 'Large';
+      const parsed = {
+        dishName: isNotFood ? 'Non-Food Object Detected' : preset.name || 'Sustainable Campus Meal',
+        isFood: !isNotFood,
+        nonFoodReason: isNotFood ? (preset.nonFoodReason || 'Stationery / non-food detected instead of dining meal.') : undefined,
+        isPenalty: isNotFood,
+        confidenceScore: isNotFood ? 99 : 98,
+        portionEstimatedGrams: isNotFood ? 0 : isSmall ? 240 : isLarge ? 480 : 340,
+        estimatedCalories: isNotFood ? 0 : preset.calories || (isSmall ? 320 : isLarge ? 620 : 440),
+        nutrition: isNotFood ? { protein: 0, carbs: 0, fat: 0, fiber: 0 } : preset.nutrition || {
+          protein: isSmall ? 14 : isLarge ? 28 : 20,
+          carbs: isSmall ? 38 : isLarge ? 76 : 55,
+          fat: isSmall ? 9 : isLarge ? 18 : 14,
+          fiber: isSmall ? 6 : isLarge ? 12 : 8,
+        },
+        foodItems: isNotFood ? ['Non-Food Object (Penalty: -20 XP)'] : (preset.items || ['Mixed Campus Greens', 'Organic Quinoa', 'Roasted Tofu']),
+        detectedZones: isNotFood ? [] : [
+          { label: 'Plant Protein & Tofu', category: 'protein', confidence: 96, estimatedGrams: isSmall ? 65 : isLarge ? 130 : 90 },
+          { label: 'Whole Grains & Rice', category: 'grain', confidence: 95, estimatedGrams: isSmall ? 85 : isLarge ? 170 : 120 },
+          { label: 'Fresh Campus Vegetables', category: 'vegetable', confidence: 98, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
+        ],
+        carbonSavingsKg: isNotFood ? 0 : isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
+        waterSavedLiters: isNotFood ? 0 : isSmall ? 420 : isLarge ? 860 : 590,
+        ecoScore: isNotFood ? 'N/A' : (preset.ecoScore || 'A+'),
+        dietaryTags: isNotFood ? ['Non-Food', 'Penalty -20 XP'] : (preset.tags || ['Plant-Rich', 'Low Carbon', 'High Fiber']),
+        sustainabilityFeedback: isNotFood
+          ? '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'
+          : 'Well-balanced plant-forward meal with zero food waste potential!',
+        xpEarned: isNotFood ? -20 : (isLarge ? 40 : 35),
+      };
+      setAnalysisResult(parsed);
+      setEditedDishName(parsed.dishName);
+      setEditedFoodItems([...parsed.foodItems]);
+    } else {
+      const isClean = preset.cleanPlateVerified !== false;
+      const wasteGrams = isClean ? 0 : (preset.wasteGrams || 160);
+      const parsedAfter = {
+        dishName: isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
+        cleanPlateVerified: isClean,
+        cleanPlateConfidence: 99,
+        confidenceScore: 99,
+        wasteGrams: wasteGrams,
+        remainingWasteGrams: wasteGrams,
+        foodSavedKg: isClean ? 0.35 : 0,
+        carbonSavingsKg: isClean ? 0.54 : -0.35,
+        waterSavedLiters: isClean ? 590 : 0,
+        bonusXp: isClean ? 30 : -25,
+        xpEarned: isClean ? 35 : -25,
+        isPenalty: !isClean,
+        congratulationsMessage: isClean
+          ? 'Clean plate 100% verified! Zero scraps sent to landfill.'
+          : '⚠️ Unfinished Food Detected! Leftovers sent to landfill produce methane.',
+        sustainabilityFeedback: isClean
+          ? 'Outstanding! You prevented food waste and claimed maximum clean plate streak multiplier.'
+          : 'Leftover food scraps waste valuable resources and emit landfill greenhouse gases. A -25 XP penalty has been applied.',
+      };
+      setAfterAnalysisResult(parsedAfter);
+    }
+    setIsAnalyzing(false);
+  };
+
+  // Choose preset sample meal with immediate snappy response
   const handleSelectPreset = (preset: (typeof samplePresetMeals)[0]) => {
     setIsLiveMode(false);
+    setIsAnalyzing(true);
     if (currentStep === 2) {
       setCapturedBeforeImage(preset.url);
-      analyzeImageWithGemini(preset.url, 'before', preset);
+      setTimeout(() => {
+        analyzePresetDirect(preset, 'before');
+      }, 160);
     } else {
       setCapturedAfterImage(preset.url);
-      analyzeImageWithGemini(preset.url, 'after', preset);
+      setTimeout(() => {
+        analyzePresetDirect(preset, 'after');
+      }, 160);
     }
   };
 

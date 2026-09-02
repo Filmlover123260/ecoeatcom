@@ -113,6 +113,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [grade, setGrade] = useState('Grade 9');
+  const [section, setSection] = useState('A');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -192,6 +193,8 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
         name: fullName.trim(),
         greetingName: greeting,
         grade,
+        section,
+        homeroom: `${grade}-${section}`,
         level: 1,
         currentXp: 0,
         totalXp: 0,
@@ -539,12 +542,20 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-theme-muted block">
-                        Campus
+                      <label className="text-xs font-bold text-theme-muted block" htmlFor="select-section">
+                        Section / Homeroom
                       </label>
-                      <div className="w-full bg-theme-card-subtle/60 border border-theme-card rounded-2xl py-3 px-3.5 text-xs font-bold text-theme-primary flex items-center">
-                        BBS PIK Campus
-                      </div>
+                      <select
+                        id="select-section"
+                        value={section}
+                        onChange={(e) => setSection(e.target.value)}
+                        className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 px-3.5 text-sm text-theme-main focus:outline-none focus:border-theme-primary transition-colors cursor-pointer"
+                      >
+                        <option value="A" className="bg-slate-900 text-white">Section A ({grade}-A)</option>
+                        <option value="B" className="bg-slate-900 text-white">Section B ({grade}-B)</option>
+                        <option value="C" className="bg-slate-900 text-white">Section C ({grade}-C)</option>
+                        <option value="D" className="bg-slate-900 text-white">Section D ({grade}-D)</option>
+                      </select>
                     </div>
                   </div>
 

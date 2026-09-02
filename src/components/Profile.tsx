@@ -17,7 +17,17 @@ import {
   Zap,
   Heart,
   ShieldCheck,
+  Shield,
   Calendar,
+  TreePine,
+  Crown,
+  Apple,
+  Sprout,
+  Droplets,
+  Droplet,
+  Sun,
+  Target,
+  Users,
 } from 'lucide-react';
 import { UserProfile, BadgeItem, MealRecord } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -148,8 +158,27 @@ export const Profile: React.FC<ProfileProps> = ({
       case 'heart':
         return <Heart className="w-5 h-5 text-rose-400" />;
       case 'shield':
+        return <Shield className="w-5 h-5 text-sky-400" />;
       case 'shield-check':
         return <ShieldCheck className="w-5 h-5 text-emerald-400" />;
+      case 'tree-pine':
+        return <TreePine className="w-5 h-5 text-emerald-500" />;
+      case 'crown':
+        return <Crown className="w-5 h-5 text-amber-400" />;
+      case 'apple':
+        return <Apple className="w-5 h-5 text-rose-400" />;
+      case 'sprout':
+        return <Sprout className="w-5 h-5 text-emerald-400" />;
+      case 'droplets':
+        return <Droplets className="w-5 h-5 text-cyan-400" />;
+      case 'droplet':
+        return <Droplet className="w-5 h-5 text-cyan-400" />;
+      case 'sun':
+        return <Sun className="w-5 h-5 text-amber-400" />;
+      case 'target':
+        return <Target className="w-5 h-5 text-emerald-400" />;
+      case 'users':
+        return <Users className="w-5 h-5 text-indigo-400" />;
       case 'lock':
         return <Lock className="w-5 h-5 text-theme-muted" />;
       default:
@@ -271,21 +300,21 @@ export const Profile: React.FC<ProfileProps> = ({
           </button>
         </div>
 
-        {/* Horizontal Badges Grid (Showing first 6) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {badges.slice(0, 6).map((badge) => (
+        {/* Badges Grid (Showing first 8) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
+          {badges.slice(0, 8).map((badge) => (
             <div
               key={badge.id}
               onClick={() => onOpenBadgeDetails(badge)}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center justify-between space-y-2.5 ${
+              className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center justify-between space-y-2 card-hover-tap ${
                 badge.unlocked
-                  ? 'bg-theme-card-subtle border-theme-card hover:border-theme-primary shadow-sm hover:scale-[1.02]'
+                  ? 'bg-theme-card-subtle border-theme-card hover:border-theme-primary shadow-sm'
                   : 'bg-theme-card border-theme-card opacity-45 hover:opacity-60'
               }`}
             >
               <div className="relative">
                 <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center border ${
                     badge.unlocked
                       ? 'bg-theme-primary-bg border-theme-primary-border shadow-md'
                       : 'bg-theme-card border-theme-card'
@@ -301,8 +330,8 @@ export const Profile: React.FC<ProfileProps> = ({
                 )}
               </div>
 
-              <div>
-                <h4 className="text-[11px] font-bold text-theme-main leading-tight line-clamp-1">{badge.name}</h4>
+              <div className="w-full">
+                <h4 className="text-[11px] font-bold text-theme-main leading-tight truncate">{badge.name}</h4>
                 <p className="text-[9px] font-semibold text-theme-muted mt-0.5">
                   {badge.unlocked ? t('unlocked', 'Unlocked') : `${badge.xpReward} XP`}
                 </p>

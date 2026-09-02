@@ -1,4 +1,5 @@
 import { UserProfile, MealRecord, BadgeItem, LeaderboardUser, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
+import { allBadgesList } from './badgesData';
 
 export const LEVEL_TITLES: { [level: number]: string } = {
   1: 'Eco Novice',
@@ -35,6 +36,8 @@ export const initialUserProfile: UserProfile = {
   foodSavedKg: 0,
   foodSavedWeekKg: 0,
   grade: 'Grade 9',
+  section: 'A',
+  homeroom: 'Grade 9-A',
   school: 'BBS PIK',
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
   greetingColor: 'auto',
@@ -577,116 +580,7 @@ export function getDailyTipsForDate(date: Date = new Date()): DailyTipItem[] {
 
 export const dailyTips: DailyTipItem[] = getDailyTipsForDate(new Date());
 
-export const initialBadges: BadgeItem[] = [
-  {
-    id: 'badge-1',
-    name: 'First Clean Plate',
-    icon: 'utensils',
-    unlocked: false,
-    description: 'Log and verify your first campus dining meal with zero leftover food waste.',
-    category: 'Zero Waste',
-    xpReward: 100,
-  },
-  {
-    id: 'badge-2',
-    name: 'Clean Plate Master',
-    icon: 'sparkles',
-    unlocked: false,
-    description: 'Complete 5 campus meals with 100% clean plates and zero edible waste.',
-    category: 'Zero Waste',
-    xpReward: 150,
-  },
-  {
-    id: 'badge-3',
-    name: 'Waste Zero Hero',
-    icon: 'recycle',
-    unlocked: false,
-    description: 'Divert more than 1.0 kg of food from campus landfill bins.',
-    category: 'Impact',
-    xpReward: 150,
-  },
-  {
-    id: 'badge-4',
-    name: 'Eco Scholar',
-    icon: 'leaf',
-    unlocked: false,
-    description: 'Divert over 5.0 kg of edible food waste across campus dining.',
-    category: 'Impact',
-    xpReward: 250,
-  },
-  {
-    id: 'badge-5',
-    name: '3-Day Flame',
-    icon: 'flame',
-    unlocked: false,
-    description: 'Maintain a 3-day consecutive clean plate dining streak.',
-    category: 'Consistency',
-    xpReward: 120,
-  },
-  {
-    id: 'badge-6',
-    name: 'Week Champion',
-    icon: 'trophy',
-    unlocked: false,
-    description: 'Achieve a 7-day clean plate streak with zero waste.',
-    category: 'Consistency',
-    xpReward: 250,
-  },
-  {
-    id: 'badge-7',
-    name: 'Plant Pioneer',
-    icon: 'leaf',
-    unlocked: false,
-    description: 'Scan and finish a nutritious plant-forward or veggie bowl.',
-    category: 'Healthy Diet',
-    xpReward: 100,
-  },
-  {
-    id: 'badge-8',
-    name: 'Carbon Cutter',
-    icon: 'globe',
-    unlocked: false,
-    description: 'Prevent over 2.5 kg of greenhouse carbon dioxide equivalent emissions.',
-    category: 'Climate',
-    xpReward: 180,
-  },
-  {
-    id: 'badge-9',
-    name: 'Compost King',
-    icon: 'recycle',
-    unlocked: false,
-    description: 'Sort and divert organic scraps at campus recycling stations.',
-    category: 'Campus Action',
-    xpReward: 200,
-  },
-  {
-    id: 'badge-10',
-    name: 'Level 3 Explorer',
-    icon: 'zap',
-    unlocked: false,
-    description: 'Advance your student sustainability ranking to Level 3.',
-    category: 'Milestones',
-    xpReward: 200,
-  },
-  {
-    id: 'badge-11',
-    name: 'Weekend Green',
-    icon: 'heart',
-    unlocked: false,
-    description: 'Log a conscious zero-waste meal over the weekend.',
-    category: 'Lifestyle',
-    xpReward: 140,
-  },
-  {
-    id: 'badge-12',
-    name: 'BBS PIK Eco Ambassador',
-    icon: 'shield-check',
-    unlocked: false,
-    description: 'Reach Level 5 and inspire campus peers to eliminate dining food waste.',
-    category: 'Leadership',
-    xpReward: 500,
-  },
-];
+export const initialBadges: BadgeItem[] = allBadgesList;
 
 export const AVAILABLE_GRADES = [
   'Grade 3',

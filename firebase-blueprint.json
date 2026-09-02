@@ -1,0 +1,51 @@
+{
+  "rules": "firestore.rules",
+  "collections": {
+    "users": {
+      "description": "Registered students participating in the campus dining sustainability leaderboard",
+      "fields": {
+        "uid": { "type": "string", "description": "User identifier" },
+        "name": { "type": "string", "description": "Student full name" },
+        "greetingName": { "type": "string", "description": "First name for greetings" },
+        "grade": { "type": "string", "description": "Grade level e.g. Grade 9" },
+        "section": { "type": "string", "description": "Class section e.g. A, B, C" },
+        "homeroom": { "type": "string", "description": "Class homeroom label e.g. Grade 9-A" },
+        "school": { "type": "string", "description": "School name e.g. BBS PIK" },
+        "avatarUrl": { "type": "string", "description": "Avatar image URL" },
+        "totalXp": { "type": "number", "description": "Cumulative total XP earned" },
+        "level": { "type": "number", "description": "Current Eco level" },
+        "title": { "type": "string", "description": "Earned Eco title" },
+        "streakDays": { "type": "number", "description": "Current consecutive clean plate streak" },
+        "foodSavedKg": { "type": "number", "description": "Total kg of food diverted" },
+        "lastActiveAt": { "type": "string", "description": "Timestamp of last action" }
+      }
+    },
+    "meals": {
+      "description": "Real student meal logs and clean plate AI scans",
+      "fields": {
+        "userId": { "type": "string", "description": "Author user ID" },
+        "userName": { "type": "string", "description": "Author student name" },
+        "userGrade": { "type": "string", "description": "Author student grade" },
+        "title": { "type": "string", "description": "Dish name" },
+        "time": { "type": "string", "description": "Time of meal log" },
+        "date": { "type": "string", "description": "Date ISO string" },
+        "portion": { "type": "string", "description": "Small, Regular, or Large" },
+        "xp": { "type": "number", "description": "XP gained from meal" },
+        "foodSavedKg": { "type": "number", "description": "Kg of food saved" },
+        "carbonSavedKg": { "type": "number", "description": "Kg of CO2 saved" },
+        "cleanPlate": { "type": "boolean", "description": "Whether plate was verified clean" },
+        "imageUrl": { "type": "string", "description": "Before meal image" },
+        "afterImageUrl": { "type": "string", "description": "After meal image" }
+      }
+    },
+    "campusStats": {
+      "description": "Global aggregated campus stats for BBS PIK challenges",
+      "fields": {
+        "totalFoodDivertedKg": { "type": "number", "description": "Total kg food diverted campus-wide" },
+        "totalMealsLogged": { "type": "number", "description": "Total verified meals" },
+        "activeStudentsCount": { "type": "number", "description": "Number of unique student participants" },
+        "totalCarbonSavedKg": { "type": "number", "description": "Total carbon kg diverted" }
+      }
+    }
+  }
+}

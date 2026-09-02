@@ -11,6 +11,7 @@ import {
   Mail,
   HelpCircle,
   ShieldCheck,
+  Shield,
   TrendingUp,
   KeyRound,
   Upload,
@@ -24,12 +25,21 @@ import {
   Zap,
   Heart,
   Droplets,
+  Droplet,
   BookOpen,
   ShoppingBag,
   Clock,
   CheckCircle2,
   Lightbulb,
   Info,
+  TreePine,
+  Crown,
+  Apple,
+  Sprout,
+  Sun,
+  Target,
+  Users,
+  Search,
 } from 'lucide-react';
 import { UserProfile, MealRecord, BadgeItem, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
 import { initialBadges, GRADE_DIVISIONS } from '../data/mockData';
@@ -51,6 +61,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [name, setName] = useState(user.name);
   const [greetingName, setGreetingName] = useState(user.greetingName);
   const [grade, setGrade] = useState(user.grade);
+  const [section, setSection] = useState(user.section || 'A');
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -331,27 +342,48 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             />
           </div>
 
-          <div>
-            <label className="text-xs uppercase font-bold text-theme-muted block mb-1">Grade</label>
-            <select
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              className="w-full bg-theme-card-subtle border border-theme-card rounded-xl px-4 py-2.5 text-sm text-theme-main font-medium focus:outline-none focus:border-theme-primary cursor-pointer"
-            >
-              {GRADE_DIVISIONS.map((division) => (
-                <optgroup
-                  key={division.name}
-                  label={division.label}
-                  className="bg-slate-900 text-white font-bold"
-                >
-                  {division.grades.map((g) => (
-                    <option key={g} value={g} className="bg-slate-900 text-white font-medium">
-                      {g}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs uppercase font-bold text-theme-muted block mb-1">Grade</label>
+              <select
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className="w-full bg-theme-card-subtle border border-theme-card rounded-xl px-4 py-2.5 text-sm text-theme-main font-medium focus:outline-none focus:border-theme-primary cursor-pointer"
+              >
+                {GRADE_DIVISIONS.map((division) => (
+                  <optgroup
+                    key={division.name}
+                    label={division.label}
+                    className="bg-slate-900 text-white font-bold"
+                  >
+                    {division.grades.map((g) => (
+                      <option key={g} value={g} className="bg-slate-900 text-white font-medium">
+                        {g}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs uppercase font-bold text-theme-muted block mb-1">Class Section</label>
+              <select
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                className="w-full bg-theme-card-subtle border border-theme-card rounded-xl px-4 py-2.5 text-sm text-theme-main font-medium focus:outline-none focus:border-theme-primary cursor-pointer"
+              >
+                <option value="A" className="bg-slate-900 text-white font-medium">Section A</option>
+                <option value="B" className="bg-slate-900 text-white font-medium">Section B</option>
+                <option value="C" className="bg-slate-900 text-white font-medium">Section C</option>
+                <option value="D" className="bg-slate-900 text-white font-medium">Section D</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="bg-theme-card-subtle border border-theme-card p-3 rounded-xl flex items-center justify-between text-xs">
+            <span className="font-semibold text-theme-muted">Assigned Homeroom:</span>
+            <span className="font-extrabold text-theme-primary">{grade}-{section}</span>
           </div>
         </div>
 
@@ -364,7 +396,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </button>
           <button
             onClick={() => {
-              onSave({ name, greetingName, grade, avatarUrl });
+              onSave({
+                name,
+                greetingName,
+                grade,
+                section,
+                homeroom: `${grade}-${section}`,
+                avatarUrl,
+              });
               onClose();
             }}
             className="flex-1 py-3 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 shadow-md shadow-theme-glow cursor-pointer"
@@ -790,8 +829,27 @@ const renderModalBadgeIcon = (iconName: string, unlocked: boolean, className = '
     case 'heart':
       return <Heart className={`${className} text-rose-400`} />;
     case 'shield':
+      return <Shield className={`${className} text-sky-400`} />;
     case 'shield-check':
       return <ShieldCheck className={`${className} text-emerald-400`} />;
+    case 'tree-pine':
+      return <TreePine className={`${className} text-emerald-500`} />;
+    case 'crown':
+      return <Crown className={`${className} text-amber-400`} />;
+    case 'apple':
+      return <Apple className={`${className} text-rose-400`} />;
+    case 'sprout':
+      return <Sprout className={`${className} text-emerald-400`} />;
+    case 'droplets':
+      return <Droplets className={`${className} text-cyan-400`} />;
+    case 'droplet':
+      return <Droplet className={`${className} text-cyan-400`} />;
+    case 'sun':
+      return <Sun className={`${className} text-amber-400`} />;
+    case 'target':
+      return <Target className={`${className} text-emerald-400`} />;
+    case 'users':
+      return <Users className={`${className} text-indigo-400`} />;
     default:
       return <Award className={`${className} text-theme-primary`} />;
   }
@@ -863,78 +921,198 @@ export const BadgeGalleryModal: React.FC<{
   onSelectBadge: (b: BadgeItem) => void;
 }> = ({ isOpen, onClose, badges, onSelectBadge }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   if (!isOpen) return null;
 
   const categories = ['All', ...Array.from(new Set(badges.map((b) => b.category)))];
-  const filteredBadges =
-    selectedCategory === 'All' ? badges : badges.filter((b) => b.category === selectedCategory);
-  const unlockedCount = badges.filter((b) => b.unlocked).length;
+  
+  const unlockedBadges = badges.filter((b) => b.unlocked);
+  const unlockedCount = unlockedBadges.length;
+  const totalBadgeXpEarned = unlockedBadges.reduce((sum, b) => sum + b.xpReward, 0);
+  const totalBadgeXpPossible = badges.reduce((sum, b) => sum + b.xpReward, 0);
+  const completionPercent = Math.round((unlockedCount / badges.length) * 100);
+
+  const filteredBadges = badges.filter((b) => {
+    // Category match
+    if (selectedCategory !== 'All' && b.category !== selectedCategory) return false;
+    // Status match
+    if (statusFilter === 'unlocked' && !b.unlocked) return false;
+    if (statusFilter === 'locked' && b.unlocked) return false;
+    // Search query match
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = b.name.toLowerCase().includes(q);
+      const descMatch = b.description.toLowerCase().includes(q);
+      const catMatch = b.category.toLowerCase().includes(q);
+      if (!nameMatch && !descMatch && !catMatch) return false;
+    }
+    return true;
+  });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-theme-card border-t sm:border border-theme-card rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[88vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
-        <div className="w-12 h-1.5 bg-theme-muted/40 rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="w-6 h-6 text-theme-primary" />
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-theme-card border-0 sm:border border-theme-card rounded-none sm:rounded-3xl max-w-3xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] p-4 sm:p-6 shadow-2xl flex flex-col space-y-3.5 sm:space-y-4 overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary shadow-sm shrink-0">
+              <Award className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="text-lg font-extrabold text-theme-main">Campus Badges Gallery</h3>
+              <h3 className="text-lg sm:text-xl font-extrabold text-theme-main">Campus Badges Gallery</h3>
               <p className="text-xs text-theme-muted">
-                {unlockedCount} of {badges.length} unlocked
+                {unlockedCount} of {badges.length} Unlocked ({completionPercent}%) • +{totalBadgeXpEarned} / {totalBadgeXpPossible} XP
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full text-theme-muted hover:text-theme-main cursor-pointer">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle cursor-pointer transition-colors"
+            aria-label="Close Badges Gallery"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-theme-primary text-black shadow-sm'
-                  : 'bg-theme-card-subtle text-theme-muted hover:text-theme-main border border-theme-card'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* Collection Progress Bar */}
+        <div className="bg-theme-card-subtle border border-theme-card p-3 rounded-2xl space-y-1.5 shrink-0">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-theme-muted">Collection Progress</span>
+            <span className="text-theme-primary">{unlockedCount} of {badges.length} Badges ({completionPercent}%)</span>
+          </div>
+          <div className="w-full bg-slate-900/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-theme-card">
+            <div
+              className="bg-theme-primary h-full rounded-full transition-all duration-500 shadow-sm"
+              style={{ width: `${completionPercent}%` }}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {filteredBadges.map((b) => (
-            <div
-              key={b.id}
-              onClick={() => onSelectBadge(b)}
-              className={`p-3.5 rounded-2xl border flex flex-col items-center text-center space-y-2 cursor-pointer transition-all hover:scale-[1.02] ${
-                b.unlocked
-                  ? 'bg-theme-card-subtle border-theme-card hover:border-theme-primary shadow-sm'
-                  : 'bg-theme-card border-theme-card opacity-50 hover:opacity-75'
+        {/* Search & Status Filters */}
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-theme-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search badges by title, description, category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl pl-10 pr-4 py-2 text-xs text-theme-main placeholder:text-theme-muted focus:outline-none focus:border-theme-primary transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme-main text-xs font-bold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 bg-theme-card-subtle p-1 rounded-2xl border border-theme-card shrink-0">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                statusFilter === 'all'
+                  ? 'bg-theme-primary text-black shadow-sm'
+                  : 'text-theme-muted hover:text-theme-main'
               }`}
             >
-              <div className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
-                b.unlocked
-                  ? 'bg-theme-primary-bg border-theme-primary-border shadow-sm'
-                  : 'bg-theme-card border-theme-card'
-              }`}>
-                {renderModalBadgeIcon(b.icon, b.unlocked, 'w-6 h-6')}
-              </div>
-              <div className="w-full">
-                <h4 className="text-xs font-bold text-theme-main truncate">{b.name}</h4>
-                <p className="text-[10px] text-theme-muted truncate">{b.category}</p>
-              </div>
-              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                b.unlocked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-theme-card text-theme-muted'
-              }`}>
-                {b.unlocked ? 'Unlocked' : `+${b.xpReward} XP`}
-              </span>
+              All ({badges.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('unlocked')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                statusFilter === 'unlocked'
+                  ? 'bg-theme-primary text-black shadow-sm'
+                  : 'text-theme-muted hover:text-theme-main'
+              }`}
+            >
+              Unlocked ({unlockedCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('locked')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                statusFilter === 'locked'
+                  ? 'bg-theme-primary text-black shadow-sm'
+                  : 'text-theme-muted hover:text-theme-main'
+              }`}
+            >
+              Locked ({badges.length - unlockedCount})
+            </button>
+          </div>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 shrink-0 no-scrollbar">
+          {categories.map((cat) => {
+            const countInCat = cat === 'All' ? badges.length : badges.filter((b) => b.category === cat).length;
+            const unlockedInCat = cat === 'All' ? unlockedCount : badges.filter((b) => b.category === cat && b.unlocked).length;
+
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  selectedCategory === cat
+                    ? 'bg-theme-primary text-black shadow-sm'
+                    : 'bg-theme-card-subtle text-theme-muted hover:text-theme-main border border-theme-card'
+                }`}
+              >
+                <span>{cat}</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                  selectedCategory === cat ? 'bg-black/20 text-black' : 'bg-theme-card text-theme-muted'
+                }`}>
+                  {unlockedInCat}/{countInCat}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Badges Grid (Scrollable) */}
+        <div className="flex-1 overflow-y-auto min-h-0 pr-0.5 pb-2">
+          {filteredBadges.length === 0 ? (
+            <div className="text-center py-12 space-y-2 bg-theme-card-subtle rounded-2xl border border-theme-card my-auto">
+              <Award className="w-8 h-8 text-theme-muted mx-auto opacity-50" />
+              <p className="text-sm font-bold text-theme-main">No badges match your filter</p>
+              <p className="text-xs text-theme-muted">Try clearing your search query or selecting "All" category</p>
             </div>
-          ))}
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
+              {filteredBadges.map((b) => (
+                <div
+                  key={b.id}
+                  onClick={() => onSelectBadge(b)}
+                  className={`p-3 sm:p-3.5 rounded-2xl border flex flex-col items-center text-center justify-between space-y-2 cursor-pointer transition-all card-hover-tap ${
+                    b.unlocked
+                      ? 'bg-theme-card-subtle border-theme-card hover:border-theme-primary shadow-sm'
+                      : 'bg-theme-card border-theme-card opacity-50 hover:opacity-75'
+                  }`}
+                >
+                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl border flex items-center justify-center ${
+                    b.unlocked
+                      ? 'bg-theme-primary-bg border-theme-primary-border shadow-sm'
+                      : 'bg-theme-card border-theme-card'
+                  }`}>
+                    {renderModalBadgeIcon(b.icon, b.unlocked, 'w-5 h-5 sm:w-6 sm:h-6')}
+                  </div>
+                  <div className="w-full">
+                    <h4 className="text-xs font-bold text-theme-main truncate">{b.name}</h4>
+                    <p className="text-[10px] text-theme-muted truncate mt-0.5">{b.category}</p>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                    b.unlocked ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-theme-card text-theme-muted border border-theme-card'
+                  }`}>
+                    {b.unlocked ? 'Unlocked' : `+${b.xpReward} XP`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 
@@ -257,38 +257,34 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
       }
     }
 
-    const modelsToTry = ['gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.7-flash'];
+    const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash'];
     let response: any = null;
     let lastError: any = null;
 
     for (const modelName of modelsToTry) {
-      // Try up to 2 attempts per model with exponential backoff for 503/429 spikes
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          response = await ai.models.generateContent({
-            model: modelName,
-            contents: { parts },
-            config: {
-              responseMimeType: 'application/json',
-            },
-          });
-          if (response && response.text) {
-            break;
-          }
-        } catch (modelErr: any) {
-          lastError = modelErr;
-          const status = modelErr?.status || modelErr?.code;
-          const isTransient = status === 503 || status === 429 || modelErr?.message?.includes('high demand') || modelErr?.message?.includes('UNAVAILABLE');
-          
-          if (isTransient && attempt === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 400));
-            continue;
-          }
+      try {
+        const generatePromise = ai.models.generateContent({
+          model: modelName,
+          contents: { parts },
+          config: {
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        });
+
+        // Add 3.8s timeout per attempt so user never suffers long stalls
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Model timeout')), 3800)
+        );
+
+        response = await Promise.race([generatePromise, timeoutPromise]);
+        if (response && response.text) {
           break;
         }
-      }
-      if (response && response.text) {
-        break;
+      } catch (modelErr: any) {
+        lastError = modelErr;
+        // Move to next lightweight model or fallback immediately
+        continue;
       }
     }
 

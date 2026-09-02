@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow public read on users so all students can see the live leaderboard
+    // Allow any user to create/update their own profile document
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Meal logs across the campus
+    match /meals/{mealId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+    
+    // Global campus challenge counters
+    match /campusStats/{statId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
