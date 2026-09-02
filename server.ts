@@ -7,8 +7,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentFilePath = typeof import.meta !== 'undefined' && import.meta.url ? fileURLToPath(import.meta.url) : (typeof __filename !== 'undefined' ? __filename : '');
+const currentDirPath = currentFilePath ? path.dirname(currentFilePath) : (typeof __dirname !== 'undefined' ? __dirname : process.cwd());
 
 async function startServer() {
   const app = express();
