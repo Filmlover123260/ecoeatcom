@@ -8,12 +8,12 @@ import {
   GraduationCap,
   Leaf,
   Wifi,
-  RefreshCw,
   Flame,
   Award,
   ChevronRight,
   ShieldCheck,
   TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { UserProfile, CampusChallengeInfo, LeaderboardUser, ClassRankingItem } from '../types';
 import {
@@ -24,6 +24,8 @@ import {
 } from '../data/mockData';
 import {
   subscribeToLiveLeaderboard,
+  subscribeToLiveCampusMeals,
+  LiveCampusActivity,
   computeLiveGradeClassesRankings,
   getOrCreateUserId,
   seedInitialCommunityIfEmpty,
@@ -48,6 +50,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
     user.homeroom || `${user.grade || 'Grade 9'}-${user.section || 'A'}`
   );
   const [liveUsers, setLiveUsers] = useState<LeaderboardUser[]>([]);
+  const [liveActivities, setLiveActivities] = useState<LiveCampusActivity[]>([]);
   const [isLiveOnline, setIsLiveOnline] = useState<boolean>(true);
   const { darkMode } = useTheme();
   const { t } = useLanguage();
@@ -62,27 +65,42 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
     }
   }, [userHomeroom]);
 
-  // Subscribe to real-time online updates from Firestore
+  // Subscribe to real-time online leaderboard from Firestore
   useEffect(() => {
-    seedInitialCommunityIfEmpty();
-
-    const unsubscribe = subscribeToLiveLeaderboard(currentUserId, (users) => {
-      if (users && users.length > 0) {
-        setLiveUsers(users);
+    const unsubscribe = subscribeToLiveLeaderboard(
+      currentUserId,
+      (users) => {
+        setLiveUsers(users || []);
         setIsLiveOnline(true);
+      },
+      () => {
+        setIsLiveOnline(false);
       }
-    });
+    );
 
     return () => {
       unsubscribe();
     };
-  }, [currentUserId, user.totalXp, user.foodSavedKg]);
+  }, [currentUserId]);
 
-  // Merge live users with current active student data to guarantee real-time reflection
-  const baseUsersList: LeaderboardUser[] = liveUsers.length > 0 ? liveUsers : fallbackLeaderboardUsers;
+  // Subscribe to real-time live meal and clean plate broadcasts across all students
+  useEffect(() => {
+    const unsubscribeMeals = subscribeToLiveCampusMeals((activities) => {
+      setLiveActivities(activities);
+    });
 
-  // Make sure current user is always included with real-time XP and sorted accurately
-  const activeCurrentUserInList = baseUsersList.find((u) => u.isCurrentUser || u.name === user.name);
+    return () => {
+      unsubscribeMeals();
+    };
+  }, []);
+
+  // Real-time student list directly from Firestore
+  const baseUsersList: LeaderboardUser[] = liveUsers;
+
+  // Make sure current user is always included with accurate real-time values
+  const activeCurrentUserInList = baseUsersList.find(
+    (u) => u.isCurrentUser || (u.uid && u.uid === currentUserId)
+  );
 
   let mergedRankedUsers: LeaderboardUser[] = [];
   if (!activeCurrentUserInList) {
@@ -90,7 +108,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
       ...baseUsersList,
       {
         rank: 0,
-        name: user.name,
+        uid: currentUserId,
+        name: `${user.name}`,
         shortName: user.greetingName || user.name.split(' ')[0],
         xp: user.totalXp,
         xpFormatted:
@@ -108,36 +127,44 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
         title: user.title || getLevelTitle(user.level),
         level: user.level,
         isCurrentUser: true,
+        isOnline: true,
       },
     ];
   } else {
     mergedRankedUsers = baseUsersList.map((u) => {
-      if (u.isCurrentUser || u.name === user.name) {
+      const isThisStudent = Boolean(u.isCurrentUser || (u.uid && u.uid === currentUserId));
+      if (isThisStudent) {
+        const liveXp = Math.max(u.xp, user.totalXp);
         return {
           ...u,
           name: user.name,
           grade: user.grade,
           section: user.section || 'A',
           homeroom: userHomeroom,
-          xp: user.totalXp,
+          xp: liveXp,
           xpFormatted:
-            user.totalXp >= 1000
-              ? `${(user.totalXp / 1000).toFixed(1)}k XP`
-              : `${user.totalXp.toLocaleString()} XP`,
+            liveXp >= 1000
+              ? `${(liveXp / 1000).toFixed(1)}k XP`
+              : `${liveXp.toLocaleString()} XP`,
           level: user.level,
           title: user.title || getLevelTitle(user.level),
           avatar: user.avatarUrl || u.avatar,
-          foodSavedKg: user.foodSavedKg || u.foodSavedKg || 0,
-          streakDays: user.streakDays || u.streakDays || 0,
+          foodSavedKg: Math.max(u.foodSavedKg || 0, user.foodSavedKg || 0),
+          streakDays: Math.max(u.streakDays || 0, user.streakDays || 0),
           isCurrentUser: true,
+          isOnline: true,
         };
       }
       return u;
     });
   }
 
-  // Sort strictly by XP descending and recalculate campus ranks
-  mergedRankedUsers.sort((a, b) => b.xp - a.xp);
+  // Sort strictly by XP descending with tie-break rules for restarted season
+  mergedRankedUsers.sort((a, b) => {
+    if (b.xp !== a.xp) return b.xp - a.xp;
+    if (b.foodSavedKg !== a.foodSavedKg) return b.foodSavedKg - a.foodSavedKg;
+    return a.name.localeCompare(b.name);
+  });
   const campusRankedUsers = mergedRankedUsers.map((item, idx) => ({
     ...item,
     rank: idx + 1,
@@ -219,22 +246,54 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-6 space-y-6 pb-24 sm:pb-16 animate-in fade-in duration-300">
-      {/* Real-time Online Sync Indicator Banner */}
-      <div className="flex items-center justify-between bg-theme-card-subtle border border-theme-card px-4 py-2 rounded-2xl">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
+      {/* Real-time Online Sync & Leaderboard Competition Controls */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-theme-card-subtle border border-theme-card p-3.5 rounded-2xl">
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
           </span>
-          <span className="text-xs font-bold text-theme-main">
-            Live Multi-Student Cloud Leaderboard
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-theme-primary">
-          <Wifi className="w-3.5 h-3.5" />
-          <span>Real-time Sync Active</span>
+          <div>
+            <div className="text-xs font-bold text-theme-main flex items-center gap-1.5 flex-wrap">
+              <span>BBS PIK Campus Leaderboard</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>
+                  {Math.max(1, campusRankedUsers.filter((u) => u.isOnline).length)}{' '}
+                  {Math.max(1, campusRankedUsers.filter((u) => u.isOnline).length) === 1
+                    ? 'Student'
+                    : 'Students'}{' '}
+                  Online Now
+                </span>
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-theme-primary/20 text-theme-primary border border-theme-primary-border">
+                {campusRankedUsers.length} In Competition
+              </span>
+            </div>
+            <div className="text-[11px] text-theme-muted flex items-center gap-1 mt-0.5">
+              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              <span>Real-time Live Online Network • Instant Multi-User Sync</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Live Campus Meal & Activity Ticker */}
+      {liveActivities.length > 0 && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-200 shadow-sm animate-in fade-in">
+          <span className="flex h-2 w-2 relative shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+          </span>
+          <span className="font-extrabold text-emerald-400 shrink-0 text-[11px] uppercase tracking-wider flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5" />
+            <span>Live Network Activity:</span>
+          </span>
+          <span className="truncate text-xs">
+            <strong className="text-white font-bold">{liveActivities[0].userName}</strong> ({liveActivities[0].userGrade}) {liveActivities[0].title} • <span className="font-extrabold text-emerald-400">+{liveActivities[0].xp} XP</span> ({liveActivities[0].timeAgo})
+          </span>
+        </div>
+      )}
 
       {/* Sub-tabs */}
       <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
@@ -385,8 +444,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
                   </div>
                 </div>
                 <div className="text-center space-y-0.5">
-                  <h4 className="text-sm font-bold text-theme-main leading-tight">
-                    {campusRank2.name} {campusRank2.isCurrentUser ? '(You)' : ''}
+                  <h4 className="text-sm font-bold text-theme-main leading-tight flex items-center justify-center gap-1 flex-wrap">
+                    <span>{campusRank2.name} {campusRank2.isCurrentUser ? '(You)' : ''}</span>
+                    {campusRank2.isOnline && (
+                      <span className="text-[9px] font-extrabold px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Online</span>
+                      </span>
+                    )}
                   </h4>
                   <p className="text-[11px] font-semibold text-theme-primary">
                     {campusRank2.title || getLevelTitle(campusRank2.level || 2)}
@@ -417,8 +482,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
                   </div>
                 </div>
                 <div className="text-center space-y-0.5">
-                  <h4 className="text-base font-extrabold text-theme-main leading-tight">
-                    {campusRank1.name} {campusRank1.isCurrentUser ? '(You)' : ''}
+                  <h4 className="text-base font-extrabold text-theme-main leading-tight flex items-center justify-center gap-1 flex-wrap">
+                    <span>{campusRank1.name} {campusRank1.isCurrentUser ? '(You)' : ''}</span>
+                    {campusRank1.isOnline && (
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Online</span>
+                      </span>
+                    )}
                   </h4>
                   <p className="text-xs font-bold text-theme-primary">
                     {campusRank1.title || getLevelTitle(campusRank1.level || 10)}
@@ -446,8 +517,14 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
                   </div>
                 </div>
                 <div className="text-center space-y-0.5">
-                  <h4 className="text-sm font-bold text-theme-main leading-tight">
-                    {campusRank3.name} {campusRank3.isCurrentUser ? '(You)' : ''}
+                  <h4 className="text-sm font-bold text-theme-main leading-tight flex items-center justify-center gap-1 flex-wrap">
+                    <span>{campusRank3.name} {campusRank3.isCurrentUser ? '(You)' : ''}</span>
+                    {campusRank3.isOnline && (
+                      <span className="text-[9px] font-extrabold px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Online</span>
+                      </span>
+                    )}
                   </h4>
                   <p className="text-[11px] font-semibold text-theme-primary">
                     {campusRank3.title || getLevelTitle(campusRank3.level || 3)}
@@ -464,7 +541,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
           {/* Ranked List below */}
           <div className="space-y-3 pt-2">
             {campusOtherUsers.map((u) => {
-              const isCurrentUser = u.isCurrentUser || u.name === user.name;
+              const isCurrentUser = Boolean(u.isCurrentUser || (u.uid && u.uid === currentUserId));
 
               if (isCurrentUser) {
                 return (
@@ -492,6 +569,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
                           <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-theme-primary text-black">
                             YOU
                           </span>
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>Online</span>
+                          </span>
                         </h4>
                         <p className="text-xs font-bold text-theme-primary">
                           {user.title || getLevelTitle(user.level)}
@@ -511,21 +592,34 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
 
               return (
                 <div
-                  key={`user-${u.rank}-${u.name}`}
+                  key={`user-${u.rank}-${u.uid || u.name}`}
                   className="w-full bg-theme-card border border-theme-card rounded-2xl p-3 sm:p-4 flex items-center justify-between hover:border-theme-primary transition-colors shadow-md"
                 >
                   <div className="flex items-center gap-3.5">
                     <span className="font-bold text-sm text-theme-muted w-6 text-center">
                       #{u.rank}
                     </span>
-                    <img
-                      src={u.avatar}
-                      alt={u.name}
-                      className="w-11 h-11 rounded-full object-cover border border-theme-card"
-                      referrerPolicy="no-referrer"
-                    />
+                    <div className="relative">
+                      <img
+                        src={u.avatar}
+                        alt={u.name}
+                        className="w-11 h-11 rounded-full object-cover border border-theme-card"
+                        referrerPolicy="no-referrer"
+                      />
+                      {u.isOnline && (
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-theme-card" />
+                      )}
+                    </div>
                     <div>
-                      <h4 className="text-sm font-bold text-theme-main leading-tight">{u.name}</h4>
+                      <h4 className="text-sm font-bold text-theme-main leading-tight flex items-center gap-1.5 flex-wrap">
+                        <span>{u.name}</span>
+                        {u.isOnline && (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>Online</span>
+                          </span>
+                        )}
+                      </h4>
                       <p className="text-xs font-semibold text-theme-primary">
                         {u.title || getLevelTitle(u.level || Math.max(1, Math.floor(u.xp / 500)))}
                       </p>
@@ -995,10 +1089,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
                   </div>
                 ) : (
                   activeClassRoster.map((u) => {
-                    const isMe = u.isCurrentUser || u.name === user.name;
+                    const isMe = Boolean(u.isCurrentUser || (u.uid && u.uid === currentUserId));
                     return (
                       <div
-                        key={`roster-${u.name}-${u.classRank}`}
+                        key={`roster-${u.uid || u.name}-${u.classRank}`}
                         className={`w-full rounded-2xl p-3.5 flex items-center justify-between transition-all ${
                           isMe
                             ? 'bg-theme-card border-2 border-theme-primary text-theme-main shadow-lg scale-[1.01]'
@@ -1013,18 +1107,29 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
                           >
                             #{u.classRank}
                           </span>
-                          <img
-                            src={isMe ? (user.avatarUrl || u.avatar) : u.avatar}
-                            alt={u.name}
-                            className="w-10 h-10 rounded-full object-cover border border-theme-card"
-                            referrerPolicy="no-referrer"
-                          />
+                          <div className="relative">
+                            <img
+                              src={isMe ? (user.avatarUrl || u.avatar) : u.avatar}
+                              alt={u.name}
+                              className="w-10 h-10 rounded-full object-cover border border-theme-card"
+                              referrerPolicy="no-referrer"
+                            />
+                            {u.isOnline && (
+                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-theme-card" />
+                            )}
+                          </div>
                           <div>
-                            <h4 className="text-sm font-bold leading-tight text-theme-main flex items-center gap-1.5">
+                            <h4 className="text-sm font-bold leading-tight text-theme-main flex items-center gap-1.5 flex-wrap">
                               <span>{isMe ? `${user.name}` : u.name}</span>
                               {isMe && (
                                 <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-theme-primary text-black">
                                   YOU
+                                </span>
+                              )}
+                              {u.isOnline && (
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span>Online</span>
                                 </span>
                               )}
                             </h4>

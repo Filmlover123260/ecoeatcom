@@ -10,6 +10,7 @@ import {
   onSnapshot,
   increment,
   updateDoc,
+  deleteDoc,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -18,13 +19,21 @@ import { getLevelTitle } from '../data/mockData';
 
 // Generate or retrieve persistent unique User ID for this browser / student session
 export function getOrCreateUserId(currentUser?: UserProfile): string {
+  if (currentUser?.id && currentUser.id.trim()) {
+    localStorage.setItem('ecoeat_user_uid', currentUser.id);
+    return currentUser.id;
+  }
+  if (currentUser?.email && currentUser.email.trim()) {
+    const uid = 'stu_' + currentUser.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    localStorage.setItem('ecoeat_user_uid', uid);
+    return uid;
+  }
   const storedId = localStorage.getItem('ecoeat_user_uid');
-  if (storedId) {
+  if (storedId && storedId !== 'stu_guest') {
     return storedId;
   }
-  // Generate deterministic or random ID
-  const cleanName = (currentUser?.name || 'student').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const newUid = `${cleanName}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+  // Generate a distinct unique session ID for this browser client so every connected user has their own live identity
+  const newUid = `stu_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   localStorage.setItem('ecoeat_user_uid', newUid);
   return newUid;
 }
@@ -59,6 +68,7 @@ export async function syncUserProfileToCloud(user: UserProfile, uid?: string): P
         title: user.title || getLevelTitle(user.level || 1),
         streakDays: Number(user.streakDays) || 0,
         foodSavedKg: Number(user.foodSavedKg) || 0,
+        isOnline: true,
         lastActiveAt: new Date().toISOString(),
       },
       { merge: true }
@@ -69,14 +79,72 @@ export async function syncUserProfileToCloud(user: UserProfile, uid?: string): P
 }
 
 /**
+ * Keeps the active user marked online in Firestore with an ongoing heartbeat
+ */
+export function startOnlinePresenceHeartbeat(user: UserProfile): () => void {
+  const userId = getOrCreateUserId(user);
+  const userRef = doc(db, 'users', userId);
+
+  // Set online on start
+  setDoc(
+    userRef,
+    {
+      uid: userId,
+      name: user.name || 'Student',
+      greetingName: user.greetingName || user.name?.split(' ')[0] || 'Student',
+      grade: user.grade || 'Grade 9',
+      section: user.section || 'A',
+      homeroom: user.homeroom || `${user.grade || 'Grade 9'}-${user.section || 'A'}`,
+      isOnline: true,
+      lastActiveAt: new Date().toISOString(),
+    },
+    { merge: true }
+  ).catch(() => {});
+
+  // Send periodic heartbeat every 20 seconds
+  const timer = setInterval(() => {
+    updateDoc(userRef, {
+      isOnline: true,
+      lastActiveAt: new Date().toISOString(),
+    }).catch(() => {});
+  }, 20000);
+
+  const handleUnload = () => {
+    updateDoc(userRef, {
+      isOnline: false,
+      lastActiveAt: new Date().toISOString(),
+    }).catch(() => {});
+  };
+
+  window.addEventListener('beforeunload', handleUnload);
+
+  return () => {
+    clearInterval(timer);
+    window.removeEventListener('beforeunload', handleUnload);
+    updateDoc(userRef, {
+      isOnline: false,
+    }).catch(() => {});
+  };
+}
+
+/**
  * Record a new meal and update the global campus food waste counter in real-time
  */
 export async function logMealToCloud(
-  meal: MealRecord,
-  user: UserProfile,
+  arg1: any,
+  arg2: any,
   xpEarned: number,
   foodSavedKg: number
 ): Promise<void> {
+  // Support both argument orders (meal, user) and (user, meal)
+  const user: UserProfile = arg1 && 'currentXp' in arg1 ? arg1 : arg2;
+  const meal: Partial<MealRecord> = arg1 && 'portion' in arg1 ? arg1 : arg2;
+
+  if (!user || !meal) {
+    console.error('Invalid parameters passed to logMealToCloud');
+    return;
+  }
+
   const userId = getOrCreateUserId(user);
   const mealId = meal.id || `meal-${Date.now()}`;
   const mealRef = doc(db, 'meals', mealId);
@@ -89,7 +157,7 @@ export async function logMealToCloud(
     await setDoc(mealRef, {
       id: mealId,
       userId,
-      userName: user.name,
+      userName: user.name || 'Student',
       userGrade: grade,
       userSection: section,
       userHomeroom: homeroom,
@@ -134,13 +202,71 @@ export async function logMealToCloud(
   }
 }
 
+export interface LiveCampusActivity {
+  id: string;
+  userName: string;
+  userGrade: string;
+  userSection?: string;
+  title: string;
+  xp: number;
+  foodSavedKg: number;
+  timeAgo: string;
+  cleanPlate?: boolean;
+}
+
+/**
+ * Real-time listener for campus dining meal and clean-plate activity across all active students
+ */
+export function subscribeToLiveCampusMeals(
+  onMealsUpdate: (meals: LiveCampusActivity[]) => void
+): Unsubscribe {
+  const mealsRef = collection(db, 'meals');
+  const q = query(mealsRef, orderBy('createdAt', 'desc'), limit(8));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: LiveCampusActivity[] = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        const diffSec = d.createdAt
+          ? Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 1000))
+          : 0;
+        let timeAgo = 'Just now';
+        if (diffSec >= 45 && diffSec < 3600) {
+          timeAgo = `${Math.floor(diffSec / 60)}m ago`;
+        } else if (diffSec >= 3600 && diffSec < 86400) {
+          timeAgo = `${Math.floor(diffSec / 3600)}h ago`;
+        }
+
+        items.push({
+          id: docSnap.id,
+          userName: d.userName || 'BBS Student',
+          userGrade: d.userGrade || 'Grade 9',
+          userSection: d.userSection || 'A',
+          title: d.title || 'Clean Plate Verification',
+          xp: d.xp || 0,
+          foodSavedKg: d.foodSavedKg || 0,
+          timeAgo,
+          cleanPlate: d.cleanPlate,
+        });
+      });
+      onMealsUpdate(items);
+    },
+    (err) => {
+      console.warn('Live campus meals subscription note:', err.message);
+    }
+  );
+}
+
 /**
  * Real-time listener for the campus leaderboard.
  * Fetches all real registered students, ranks them by `totalXp` descending.
  */
 export function subscribeToLiveLeaderboard(
   currentUserId: string,
-  onUpdate: (users: LeaderboardUser[]) => void
+  onUpdate: (users: LeaderboardUser[]) => void,
+  onError?: (err: Error) => void
 ): Unsubscribe {
   const usersRef = collection(db, 'users');
   const q = query(usersRef, orderBy('totalXp', 'desc'), limit(150));
@@ -148,23 +274,44 @@ export function subscribeToLiveLeaderboard(
   return onSnapshot(
     q,
     (snapshot) => {
-      const liveList: LeaderboardUser[] = [];
-      let rank = 1;
+      const rawList: LeaderboardUser[] = [];
+      const seenUids = new Set<string>();
 
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
+        const rawName = (data.name || '').trim();
+        const docId = docSnap.id;
+        const uid = data.uid || docId;
+
+        // Skip truly blank identities
+        if (!rawName) {
+          return;
+        }
+
+        // Deduplicate only by unique student UID so all real students connect
+        if (seenUids.has(uid)) {
+          return;
+        }
+        seenUids.add(uid);
+
         const xp = Number(data.totalXp) || 0;
         const level = Number(data.level) || Math.max(1, Math.floor(xp / 200) + 1);
-        const name = data.name || 'Student';
         const grade = data.grade || 'Grade 9';
         const section = data.section || 'A';
         const homeroom = data.homeroom || `${grade}-${section}`;
-        const isCurrent = docSnap.id === currentUserId || data.uid === currentUserId;
+        const isCurrent = docId === currentUserId || uid === currentUserId;
 
-        liveList.push({
-          rank,
-          name: isCurrent ? `${name}` : name,
-          shortName: data.greetingName || name.split(' ')[0],
+        // Check if student is active right now (online flag or activity within 2.5 minutes)
+        const lastActiveTime = data.lastActiveAt ? new Date(data.lastActiveAt).getTime() : 0;
+        const isOnline = Boolean(
+          isCurrent || data.isOnline || (lastActiveTime > 0 && Date.now() - lastActiveTime < 150000)
+        );
+
+        rawList.push({
+          rank: 0,
+          uid,
+          name: isCurrent ? `${rawName}` : rawName,
+          shortName: data.greetingName || rawName.split(' ')[0],
           xp,
           xpFormatted: xp >= 1000 ? `${(xp / 1000).toFixed(1)}k XP` : `${xp.toLocaleString()} XP`,
           avatar:
@@ -178,14 +325,28 @@ export function subscribeToLiveLeaderboard(
           title: data.title || getLevelTitle(level),
           level,
           isCurrentUser: isCurrent,
+          isOnline,
+          lastActiveAt: data.lastActiveAt,
         });
-        rank++;
       });
 
-      onUpdate(liveList);
+      // Sort with deterministic tie-breaking for a pristine restarted leaderboard
+      rawList.sort((a, b) => {
+        if (b.xp !== a.xp) return b.xp - a.xp;
+        if (b.foodSavedKg !== a.foodSavedKg) return b.foodSavedKg - a.foodSavedKg;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Assign ranks starting at 1
+      rawList.forEach((u, idx) => {
+        u.rank = idx + 1;
+      });
+
+      onUpdate(rawList);
     },
     (err) => {
       console.warn('Live leaderboard subscription note:', err.message);
+      if (onError) onError(err);
     }
   );
 }
@@ -336,228 +497,56 @@ export function subscribeToCampusStats(
 }
 
 /**
- * Seed initial prominent student profiles distributed across diverse grades and class sections
- * if the collection is empty, creating a vibrant online school competition from day one.
+ * Clean community initializer: maintains empty starting state for fair student competition.
  */
 export async function seedInitialCommunityIfEmpty(): Promise<void> {
+  // Kept empty so all student accounts start authentically with 0 XP from their real meals.
+}
+
+/**
+ * Restarts the campus leaderboard for a brand new competition period.
+ * Resets all student scores to 0 XP, 0 food diverted, 0 streak, Level 1.
+ * Also zeros out the campus dining challenge aggregate.
+ */
+export async function restartLeaderboard(): Promise<{ success: boolean; resetCount: number }> {
   try {
     const usersRef = collection(db, 'users');
-    const existing = await getDocs(query(usersRef, limit(3)));
-    if (!existing.empty) {
-      return; // Already populated
+    const snapshot = await getDocs(usersRef);
+    let resetCount = 0;
+
+    for (const docSnap of snapshot.docs) {
+      if (docSnap.id.startsWith('student-') || docSnap.data().isBot) {
+        await deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
+        continue;
+      }
+      await updateDoc(doc(db, 'users', docSnap.id), {
+        totalXp: 0,
+        currentXp: 0,
+        foodSavedKg: 0,
+        streakDays: 0,
+        level: 1,
+        title: 'Eco Novice',
+        lastActiveAt: new Date().toISOString(),
+      });
+      resetCount++;
     }
 
-    const starterStudents = [
+    // Reset campus challenge aggregate
+    const campusDoc = doc(db, 'campusStats', 'bbs-pik-fall-challenge');
+    await setDoc(
+      campusDoc,
       {
-        uid: 'student-maya-tan',
-        name: 'Maya Tan',
-        greetingName: 'Maya',
-        grade: 'Grade 12',
-        section: 'A',
-        homeroom: 'Grade 12-A',
-        school: 'BBS PIK',
-        totalXp: 5800,
-        level: 12,
-        title: 'Eco Legend',
-        streakDays: 18,
-        foodSavedKg: 14.2,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
+        totalFoodDivertedKg: 0,
+        totalMealsLogged: 0,
+        totalCarbonSavedKg: 0,
+        lastUpdatedAt: new Date().toISOString(),
       },
-      {
-        uid: 'student-chloe-wijaya',
-        name: 'Chloe Wijaya',
-        greetingName: 'Chloe',
-        grade: 'Grade 5',
-        section: 'A',
-        homeroom: 'Grade 5-A',
-        school: 'BBS PIK',
-        totalXp: 5100,
-        level: 10,
-        title: 'Zero Waste Titan',
-        streakDays: 14,
-        foodSavedKg: 11.5,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-ethan-lim',
-        name: 'Ethan Lim',
-        greetingName: 'Ethan',
-        grade: 'Grade 9',
-        section: 'A',
-        homeroom: 'Grade 9-A',
-        school: 'BBS PIK',
-        totalXp: 4200,
-        level: 8,
-        title: 'Sustainability Pioneer',
-        streakDays: 10,
-        foodSavedKg: 9.8,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-taylor-rivera',
-        name: 'Taylor Rivera',
-        greetingName: 'Taylor',
-        grade: 'Grade 9',
-        section: 'A',
-        homeroom: 'Grade 9-A',
-        school: 'BBS PIK',
-        totalXp: 3450,
-        level: 5,
-        title: 'Eco Ambassador',
-        streakDays: 7,
-        foodSavedKg: 6.2,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-morgan-park',
-        name: 'Morgan Park',
-        greetingName: 'Morgan',
-        grade: 'Grade 9',
-        section: 'A',
-        homeroom: 'Grade 9-A',
-        school: 'BBS PIK',
-        totalXp: 2850,
-        level: 4,
-        title: 'Eco Warrior',
-        streakDays: 6,
-        foodSavedKg: 5.4,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-david-wang',
-        name: 'David Wang',
-        greetingName: 'David',
-        grade: 'Grade 9',
-        section: 'A',
-        homeroom: 'Grade 9-A',
-        school: 'BBS PIK',
-        totalXp: 2100,
-        level: 3,
-        title: 'Eco Apprentice',
-        streakDays: 5,
-        foodSavedKg: 4.1,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-jessica-soedirdja',
-        name: 'Jessica Soedirdja',
-        greetingName: 'Jessica',
-        grade: 'Grade 9',
-        section: 'B',
-        homeroom: 'Grade 9-B',
-        school: 'BBS PIK',
-        totalXp: 3800,
-        level: 6,
-        title: 'Waste Nemesis',
-        streakDays: 8,
-        foodSavedKg: 7.3,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-kevin-wijaya',
-        name: 'Kevin Wijaya',
-        greetingName: 'Kevin',
-        grade: 'Grade 9',
-        section: 'B',
-        homeroom: 'Grade 9-B',
-        school: 'BBS PIK',
-        totalXp: 3100,
-        level: 5,
-        title: 'Eco Ambassador',
-        streakDays: 7,
-        foodSavedKg: 6.0,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-leo-zhang',
-        name: 'Leo Zhang',
-        greetingName: 'Leo',
-        grade: 'Grade 3',
-        section: 'A',
-        homeroom: 'Grade 3-A',
-        school: 'BBS PIK',
-        totalXp: 3950,
-        level: 7,
-        title: 'Week Champion',
-        streakDays: 9,
-        foodSavedKg: 8.4,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-marcus-vance',
-        name: 'Marcus Vance',
-        greetingName: 'Marcus',
-        grade: 'Grade 7',
-        section: 'A',
-        homeroom: 'Grade 7-A',
-        school: 'BBS PIK',
-        totalXp: 3900,
-        level: 6,
-        title: 'Waste Nemesis',
-        streakDays: 8,
-        foodSavedKg: 7.9,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-casey-lim',
-        name: 'Casey Lim',
-        greetingName: 'Casey',
-        grade: 'Grade 10',
-        section: 'A',
-        homeroom: 'Grade 10-A',
-        school: 'BBS PIK',
-        totalXp: 3600,
-        level: 5,
-        title: 'Eco Ambassador',
-        streakDays: 7,
-        foodSavedKg: 7.1,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-      {
-        uid: 'student-olivia-hartanto',
-        name: 'Olivia Hartanto',
-        greetingName: 'Olivia',
-        grade: 'Grade 11',
-        section: 'A',
-        homeroom: 'Grade 11-A',
-        school: 'BBS PIK',
-        totalXp: 4100,
-        level: 7,
-        title: 'Green Defender',
-        streakDays: 9,
-        foodSavedKg: 8.7,
-        avatarUrl:
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-        lastActiveAt: new Date().toISOString(),
-      },
-    ];
+      { merge: true }
+    );
 
-    for (const student of starterStudents) {
-      await setDoc(doc(db, 'users', student.uid), student);
-    }
+    return { success: true, resetCount };
   } catch (err) {
-    console.warn('Initial seeding note:', err);
+    console.error('Error restarting leaderboard:', err);
+    throw err;
   }
 }

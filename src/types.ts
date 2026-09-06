@@ -3,6 +3,8 @@ export type PortionSize = 'Small' | 'Regular' | 'Large';
 export type TabType = 'dashboard' | 'capture' | 'leaderboard' | 'profile' | 'settings';
 
 export interface UserProfile {
+  id?: string;
+  email?: string;
   name: string;
   greetingName: string;
   title: string;
@@ -101,6 +103,7 @@ export interface BadgeItem {
 
 export interface LeaderboardUser {
   rank: number;
+  uid?: string;
   name: string;
   shortName: string;
   xp: number;
@@ -114,6 +117,8 @@ export interface LeaderboardUser {
   title?: string;
   level?: number;
   isCurrentUser?: boolean;
+  isOnline?: boolean;
+  lastActiveAt?: string;
 }
 
 export interface ClassRankingItem {

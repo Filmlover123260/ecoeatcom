@@ -25,94 +25,20 @@ import { useLanguage, SupportedLanguage } from '../context/LanguageContext';
 import { EcoEatLogo } from './EcoEatLogo';
 import { CAMPUS_LINKS } from '../utils/urlHelper';
 import { ExternalLink } from 'lucide-react';
+import { registerStudentAccount, authenticateStudentAccount } from '../lib/authService';
 
 interface SignInProps {
   onSignInSuccess: (userProfile: UserProfile) => void;
   onOpenThemePicker?: () => void;
 }
 
-const DEMO_PROFILES: (UserProfile & { email: string; tag: string; icon: string })[] = [
-  {
-    ...initialUserProfile,
-    name: 'Leo Zhang',
-    greetingName: 'Leo',
-    grade: 'Grade 3',
-    school: 'BBS PIK',
-    level: 1,
-    currentXp: 0,
-    totalXp: 0,
-    foodSavedKg: 0,
-    foodSavedWeekKg: 0,
-    streakDays: 0,
-    title: 'Eco Novice',
-    email: 'leo.zhang@bbs-pik.edu',
-    tag: 'Primary Eco-Star (Grade 3)',
-    icon: '🌱',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    ...initialUserProfile,
-    name: 'Chloe Wijaya',
-    greetingName: 'Chloe',
-    grade: 'Grade 5',
-    school: 'BBS PIK',
-    level: 1,
-    currentXp: 0,
-    totalXp: 0,
-    foodSavedKg: 0,
-    foodSavedWeekKg: 0,
-    streakDays: 0,
-    title: 'Eco Novice',
-    email: 'chloe.wijaya@bbs-pik.edu',
-    tag: 'Junior Plate Guardian (Grade 5)',
-    icon: '🍀',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    ...initialUserProfile,
-    name: 'Alex Mercer',
-    greetingName: 'Alex',
-    grade: 'Grade 9',
-    school: 'BBS PIK',
-    level: 1,
-    currentXp: 0,
-    totalXp: 0,
-    foodSavedKg: 0,
-    foodSavedWeekKg: 0,
-    streakDays: 0,
-    title: 'Eco Novice',
-    email: 'alex.mercer@bbs-pik.edu',
-    tag: 'Active Eco Student (Grade 9)',
-    icon: '🌟',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    ...initialUserProfile,
-    name: 'Taylor Rivera',
-    greetingName: 'Taylor',
-    grade: 'Grade 11',
-    school: 'BBS PIK',
-    level: 1,
-    currentXp: 0,
-    totalXp: 0,
-    foodSavedKg: 0,
-    foodSavedWeekKg: 0,
-    streakDays: 0,
-    title: 'Eco Novice',
-    email: 'taylor.rivera@bbs-pik.edu',
-    tag: 'Campus Green Captain (Grade 11)',
-    icon: '🏆',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-  },
-];
-
 export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePicker }) => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { language, setLanguage, supportedLanguages, t } = useLanguage();
 
-  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'demo'>('signin');
-  const [emailOrId, setEmailOrId] = useState('alex.mercer@bbs-pik.edu');
-  const [password, setPassword] = useState('ecowarrior2026');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [emailOrId, setEmailOrId] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [grade, setGrade] = useState('Grade 9');
@@ -120,13 +46,15 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
 
-  const handleSignInSubmit = (e: React.FormEvent) => {
+  const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     if (!emailOrId.trim()) {
       setErrorMessage('Please enter your BBS PIK Student Email or Student ID');
@@ -139,25 +67,8 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      // Construct student profile from input or match existing
-      const existing = DEMO_PROFILES.find(
-        (p) => p.email.toLowerCase() === emailOrId.toLowerCase().trim()
-      );
-
-      const resolvedUser: UserProfile = existing
-        ? existing
-        : {
-            ...initialUserProfile,
-            name: emailOrId.includes('@')
-              ? emailOrId.split('@')[0].replace('.', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
-              : emailOrId,
-            greetingName: emailOrId.includes('@')
-              ? emailOrId.split('@')[0].split('.')[0].replace(/\b\w/g, (l) => l.toUpperCase())
-              : emailOrId.slice(0, 8),
-            school: 'BBS PIK',
-          };
+    try {
+      const resolvedUser = await authenticateStudentAccount(emailOrId, password);
 
       if (rememberMe) {
         localStorage.setItem('ecoeat_saved_email', emailOrId);
@@ -166,12 +77,17 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
       }
 
       onSignInSuccess(resolvedUser);
-    }, 700);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to authenticate. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignUpSubmit = (e: React.FormEvent) => {
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     if (!fullName.trim()) {
       setErrorMessage('Please provide your full student name');
@@ -181,6 +97,10 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
       setErrorMessage('Please provide a valid BBS PIK student email');
       return;
     }
+    if (!emailOrId.includes('@')) {
+      setErrorMessage('Please provide a valid BBS PIK email (e.g. name@bbs-pik.edu)');
+      return;
+    }
     if (password.length < 6) {
       setErrorMessage('Password should be at least 6 characters');
       return;
@@ -188,37 +108,27 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      const greeting = fullName.trim().split(' ')[0];
-      const newUser: UserProfile = {
-        ...initialUserProfile,
-        name: fullName.trim(),
-        greetingName: greeting,
+    try {
+      const newUser = await registerStudentAccount({
+        fullName: fullName.trim(),
+        email: emailOrId.trim(),
+        password,
         grade,
         section,
-        homeroom: `${grade}-${section}`,
-        level: 1,
-        currentXp: 0,
-        totalXp: 0,
-        nextLevelXp: 100,
-        foodSavedKg: 0,
-        foodSavedWeekKg: 0,
-        streakDays: 0,
-        school: 'BBS PIK',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-      };
+      });
 
-      onSignInSuccess(newUser);
-    }, 750);
-  };
-
-  const handleQuickDemoLogin = (profile: UserProfile) => {
-    setLoading(true);
-    setTimeout(() => {
+      setSuccessMessage('Student account created successfully! Signing in...');
+      setTimeout(() => {
+        onSignInSuccess(newUser);
+      }, 600);
+    } catch (err: any) {
+      setErrorMessage(
+        err.message ||
+          'Account registration failed. Copying existing student accounts is prohibited.'
+      );
+    } finally {
       setLoading(false);
-      onSignInSuccess(profile);
-    }, 450);
+    }
   };
 
   return (
@@ -338,22 +248,23 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
           <div className="lg:col-span-7 w-full max-w-md mx-auto">
             <div className="bg-theme-card border border-theme-card rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xl">
               
-              {/* Card Mode Tabs */}
-              <div className="grid grid-cols-3 gap-1 p-1 bg-theme-card-subtle border border-theme-card rounded-2xl">
+              {/* Card Mode Tabs (Anti-Copy Enforced: Official Student Accounts Only) */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-theme-card-subtle border border-theme-card rounded-2xl">
                 <button
                   type="button"
                   id="tab-auth-signin"
                   onClick={() => {
                     setAuthMode('signin');
                     setErrorMessage(null);
+                    setSuccessMessage(null);
                   }}
-                  className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  className={`py-2.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
                     authMode === 'signin'
                       ? 'bg-theme-primary text-black shadow-sm font-black'
                       : 'text-theme-muted hover:text-theme-main'
                   }`}
                 >
-                  Sign In
+                  Student Sign In
                 </button>
 
                 <button
@@ -362,33 +273,33 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                   onClick={() => {
                     setAuthMode('signup');
                     setErrorMessage(null);
+                    setSuccessMessage(null);
                   }}
-                  className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  className={`py-2.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
                     authMode === 'signup'
                       ? 'bg-theme-primary text-black shadow-sm font-black'
                       : 'text-theme-muted hover:text-theme-main'
                   }`}
                 >
-                  Register
-                </button>
-
-                <button
-                  type="button"
-                  id="tab-auth-demo"
-                  onClick={() => {
-                    setAuthMode('demo');
-                    setErrorMessage(null);
-                  }}
-                  className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                    authMode === 'demo'
-                      ? 'bg-theme-primary text-black shadow-sm font-black'
-                      : 'text-theme-muted hover:text-theme-main'
-                  }`}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Demo</span>
+                  Create Account
                 </button>
               </div>
+
+              {/* Anti-Copy Protection Integrity Notice */}
+              <div className="p-2.5 rounded-xl bg-theme-card-subtle border border-theme-primary-border/40 flex items-center gap-2 text-[11px] text-theme-muted">
+                <ShieldCheck className="w-4 h-4 text-theme-primary shrink-0" />
+                <span>
+                  <strong className="text-theme-main">Account Verification:</strong> 1 official account per BBS PIK student. Account copying or duplicate registration is prohibited.
+                </span>
+              </div>
+
+              {/* Success Alert Message */}
+              {successMessage && (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
 
               {/* Error Alert Message */}
               {errorMessage && (
@@ -656,58 +567,6 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                     </p>
                   </div>
                 </form>
-              )}
-
-              {/* MODE 3: QUICK 1-CLICK DEMO PROFILES */}
-              {authMode === 'demo' && (
-                <div className="space-y-4 animate-in fade-in">
-                  <div className="text-center space-y-1">
-                    <h3 className="text-sm font-extrabold text-theme-main">Instant Student Demo Sign-In</h3>
-                    <p className="text-xs text-theme-muted">Select any student profile to jump straight into the application:</p>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {DEMO_PROFILES.map((profile, idx) => (
-                      <button
-                        key={idx}
-                        id={`btn-demo-user-${idx}`}
-                        onClick={() => handleQuickDemoLogin(profile)}
-                        disabled={loading}
-                        className="w-full p-3.5 rounded-2xl bg-theme-card-subtle hover:bg-theme-primary-bg/40 border border-theme-card hover:border-theme-primary transition-all flex items-center justify-between text-left group cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={profile.avatarUrl}
-                            alt={profile.name}
-                            className="w-10 h-10 rounded-full object-cover border-2 border-theme-primary"
-                          />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-bold text-theme-main group-hover:text-theme-primary transition-colors">
-                                {profile.name}
-                              </span>
-                              <span className="text-xs">{profile.icon}</span>
-                            </div>
-                            <p className="text-[11px] text-theme-muted">
-                              {profile.grade} • Lvl {profile.level} • {profile.totalXp.toLocaleString()} XP
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className="text-xs font-extrabold text-theme-primary group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-                          <span>Enter</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-theme-primary-bg/20 border border-theme-primary-border text-center">
-                    <p className="text-[11px] text-theme-muted">
-                      💡 Tip: You can switch profiles or sign out anytime from the Settings page.
-                    </p>
-                  </div>
-                </div>
               )}
             </div>
           </div>

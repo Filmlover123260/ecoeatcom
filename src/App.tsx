@@ -26,6 +26,7 @@ import {
   logMealToCloud,
   subscribeToCampusStats,
   getOrCreateUserId,
+  startOnlinePresenceHeartbeat,
 } from './lib/leaderboardService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -55,11 +56,8 @@ import { AppThemeId } from './theme/themeConfig';
 function AppContent() {
   const { setThemeId, setDarkMode } = useTheme();
 
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ecoeat_is_authenticated');
-    return saved === 'true';
-  });
+  // Authentication state - always start at the log-in page upon startup
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   // Tab state
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
@@ -182,6 +180,16 @@ function AppContent() {
       syncUserProfileToCloud(user);
     }
   }, [user, isAuthenticated]);
+
+  // Maintain real-time online presence heartbeat in Firestore
+  useEffect(() => {
+    if (isAuthenticated) {
+      const stopHeartbeat = startOnlinePresenceHeartbeat(user);
+      return () => {
+        stopHeartbeat();
+      };
+    }
+  }, [isAuthenticated, user.id, user.name]);
 
   // Subscribe to live campus challenge stats from Firestore
   useEffect(() => {
@@ -433,13 +441,11 @@ function AppContent() {
       fullName: signedInUser.name,
     }));
     setIsAuthenticated(true);
-    localStorage.setItem('ecoeat_is_authenticated', 'true');
     showToast(`👋 Welcome to BBS PIK EcoEat, ${signedInUser.greetingName}!`);
   };
 
   const handleSignOut = () => {
     setIsAuthenticated(false);
-    localStorage.setItem('ecoeat_is_authenticated', 'false');
     setIsDrawerOpen(false);
     setCurrentTab('dashboard');
     showToast('Signed out of BBS PIK EcoEat');
