@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 580" fill="none">
+  <!-- Outer Shield Clip & Border -->
+  <defs>
+    <!-- Outer Shield Shape -->
+    <clipPath id="shieldInner">
+      <path d="M 40 20 
+               L 460 20 
+               L 460 360 
+               C 460 450 360 515 250 545 
+               C 140 515 40 450 40 360 
+               Z" />
+    </clipPath>
+  </defs>
+
+  <!-- Shield Base Background / Teal Rim -->
+  <path d="M 20 10 
+           L 480 10 
+           L 480 365 
+           C 480 470 370 545 250 575 
+           C 130 545 20 470 20 365 
+           Z" 
+        fill="#009ca6" />
+
+  <!-- Inner White Field -->
+  <g clip-path="url(#shieldInner)">
+    <!-- White Background -->
+    <rect x="0" y="0" width="500" height="580" fill="#ffffff" />
+
+    <!-- Dark Navy Cross -->
+    <!-- Horizontal crossbar -->
+    <rect x="0" y="170" width="500" height="105" fill="#0d2847" />
+
+    <!-- Vertical crossbar -->
+    <path d="M 195 0 
+             L 305 0 
+             L 305 570 
+             L 250 580 
+             L 195 570 
+             Z" 
+          fill="#0d2847" />
+
+    <!-- Open Book in Upper Half -->
+    <g transform="translate(250, 245)">
+      <!-- Left Page Background (white) with navy border -->
+      <path d="M -8 -125 
+               L -125 -85 
+               C -128 -84 -130 -80 -130 -75 
+               L -130 40 
+               C -130 46 -125 50 -118 48 
+               L -8 10 
+               Z" 
+            fill="#ffffff" 
+            stroke="#0d2847" 
+            stroke-width="12" 
+            stroke-linejoin="round" />
+
+      <!-- Right Page Background (white) with navy border -->
+      <path d="M 8 -125 
+               L 125 -85 
+               C 128 -84 130 -80 130 -75 
+               L 130 40 
+               C 130 46 125 50 118 48 
+               L 8 10 
+               Z" 
+            fill="#ffffff" 
+            stroke="#0d2847" 
+            stroke-width="12" 
+            stroke-linejoin="round" />
+
+      <!-- Book Spine / Center Divider -->
+      <path d="M 0 -125 L 0 18" stroke="#0d2847" stroke-width="8" stroke-linecap="round" />
+
+      <!-- Chinese Characters: 培 (Left Page) & 民 (Right Page) -->
+      <text x="-68" y="-12" 
+            font-family="'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif" 
+            font-size="64" 
+            font-weight="900" 
+            fill="#0d2847" 
+            text-anchor="middle" 
+            dominant-baseline="central">培</text>
+
+      <text x="68" y="-12" 
+            font-family="'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif" 
+            font-size="64" 
+            font-weight="900" 
+            fill="#0d2847" 
+            text-anchor="middle" 
+            dominant-baseline="central">民</text>
+    </g>
+
+    <!-- BBS Letters in Lower Half -->
+    <!-- First 'B' (Left, Navy) -->
+    <text x="145" y="475" 
+          font-family="'Times New Roman', 'Georgia', 'Playfair Display', serif" 
+          font-size="126" 
+          font-weight="900" 
+          fill="#0d2847" 
+          text-anchor="middle">B</text>
+
+    <!-- Second 'B' (Middle, White on Navy) -->
+    <text x="250" y="475" 
+          font-family="'Times New Roman', 'Georgia', 'Playfair Display', serif" 
+          font-size="126" 
+          font-weight="900" 
+          fill="#ffffff" 
+          text-anchor="middle">B</text>
+
+    <!-- 'S' (Right, Navy) -->
+    <text x="355" y="475" 
+          font-family="'Times New Roman', 'Georgia', 'Playfair Display', serif" 
+          font-size="126" 
+          font-weight="900" 
+          fill="#0d2847" 
+          text-anchor="middle">S</text>
+  </g>
+</svg>

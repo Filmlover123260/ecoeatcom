@@ -171,6 +171,9 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute('playsinline', 'true');
+          videoRef.current.setAttribute('webkit-playsinline', 'true');
+          videoRef.current.muted = true;
           try {
             await videoRef.current.play();
           } catch (playErr) {
@@ -184,13 +187,14 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     } catch (err: any) {
       console.warn('Camera access failed or was denied:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Camera access was blocked. Please grant camera permission in your browser or click Enable Camera.');
+        setCameraError('Camera access was blocked by browser or system settings. Click "Enable / Retry Camera" below or select a photo.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraError('No camera hardware found on this device. You can upload an image or select a sample dish.');
+        setCameraError('No camera device detected. You can upload a photo from your gallery or choose a preset meal below.');
       } else {
-        setCameraError('Unable to start live camera preview. You can upload a photo or select a sample meal below.');
+        setCameraError('Unable to start live camera stream. Click "Enable / Retry Camera" or upload a dining photo.');
       }
       setIsCameraActive(false);
+      setIsLiveMode(false);
     } finally {
       setIsCameraLoading(false);
     }

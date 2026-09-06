@@ -40,9 +40,11 @@ import {
   Target,
   Users,
   Search,
+  ExternalLink,
 } from 'lucide-react';
 import { UserProfile, MealRecord, BadgeItem, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
 import { initialBadges, GRADE_DIVISIONS } from '../data/mockData';
+import { CAMPUS_LINKS } from '../utils/urlHelper';
 
 // 1. Edit Profile Modal
 interface EditProfileModalProps {
@@ -1192,6 +1194,53 @@ export const InfoContentModal: React.FC<{
 
         <div className="text-xs text-theme-muted leading-relaxed space-y-3 whitespace-pre-line max-h-72 overflow-y-auto">
           {content}
+        </div>
+
+        {/* Official Campus References with absolute https:// paths */}
+        <div className="pt-2 border-t border-theme-card/60 space-y-2">
+          <p className="text-[11px] font-bold text-theme-main">Official Campus Sustainability Links:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <a
+              id="modal-link-bbs-portal"
+              href={CAMPUS_LINKS.BBS_PIK_CAMPUS}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
+            >
+              <span>BBS PIK Portal</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+            <a
+              id="modal-link-charter"
+              href={CAMPUS_LINKS.SUSTAINABILITY_CHARTER}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
+            >
+              <span>Sustainability Charter</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+            <a
+              id="modal-link-privacy"
+              href={CAMPUS_LINKS.PRIVACY_POLICY}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
+            >
+              <span>Student Privacy</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+            <a
+              id="modal-link-terms"
+              href={CAMPUS_LINKS.TERMS_OF_SERVICE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
+            >
+              <span>Terms of Service</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          </div>
         </div>
 
         <button

@@ -15,6 +15,9 @@ import {
 import { TabType, UserProfile } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { EcoEatLogo } from './EcoEatLogo';
+import { toAbsoluteHttpsUrl, CAMPUS_LINKS } from '../utils/urlHelper';
+import { ExternalLink } from 'lucide-react';
 
 interface SidebarDrawerProps {
   isOpen: boolean;
@@ -59,14 +62,12 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
         {/* Drawer Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-theme-primary-bg flex items-center justify-center border border-theme-primary-border text-theme-primary">
-              <Leaf className="w-5 h-5 fill-current/20" />
-            </div>
+            <EcoEatLogo size="sm" />
             <div>
               <span className="text-lg sm:text-xl font-bold tracking-tight text-theme-main block leading-tight">
                 {t('app_name', 'EcoEat')}
               </span>
-              <span className="text-[11px] text-theme-muted sm:hidden">
+              <span className="text-[11px] text-theme-muted">
                 {t('drawer_student_hub', 'BBS PIK Student Hub & Options')}
               </span>
             </div>
@@ -98,13 +99,15 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
         {/* Navigation Links */}
         <div className="space-y-1 flex-1">
-          <button
+          <a
             id="drawer-link-dashboard"
-            onClick={() => {
+            href={toAbsoluteHttpsUrl('/dashboard')}
+            onClick={(e) => {
+              e.preventDefault();
               onSelectTab('dashboard');
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
               currentTab === 'dashboard'
                 ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
                 : 'text-theme-main hover:bg-theme-card-subtle'
@@ -112,15 +115,17 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <LayoutDashboard className="w-5 h-5" />
             <span>{t('nav_dashboard', 'Dashboard')}</span>
-          </button>
+          </a>
 
-          <button
+          <a
             id="drawer-link-capture"
-            onClick={() => {
+            href={toAbsoluteHttpsUrl('/capture')}
+            onClick={(e) => {
+              e.preventDefault();
               onSelectTab('capture');
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
               currentTab === 'capture'
                 ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
                 : 'text-theme-main hover:bg-theme-card-subtle'
@@ -128,15 +133,17 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <Camera className="w-5 h-5" />
             <span>{t('nav_capture', 'Scan Meal')}</span>
-          </button>
+          </a>
 
-          <button
+          <a
             id="drawer-link-leaderboard"
-            onClick={() => {
+            href={toAbsoluteHttpsUrl('/leaderboard')}
+            onClick={(e) => {
+              e.preventDefault();
               onSelectTab('leaderboard');
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
               currentTab === 'leaderboard'
                 ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
                 : 'text-theme-main hover:bg-theme-card-subtle'
@@ -144,15 +151,17 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <BarChart3 className="w-5 h-5" />
             <span>{t('nav_leaderboard', 'Leaderboard')}</span>
-          </button>
+          </a>
 
-          <button
+          <a
             id="drawer-link-profile"
-            onClick={() => {
+            href={toAbsoluteHttpsUrl('/profile')}
+            onClick={(e) => {
+              e.preventDefault();
               onSelectTab('profile');
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
               currentTab === 'profile'
                 ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
                 : 'text-theme-main hover:bg-theme-card-subtle'
@@ -160,15 +169,17 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <User className="w-5 h-5" />
             <span>{t('nav_profile', 'Profile')}</span>
-          </button>
+          </a>
 
-          <button
+          <a
             id="drawer-link-settings"
-            onClick={() => {
+            href={toAbsoluteHttpsUrl('/settings')}
+            onClick={(e) => {
+              e.preventDefault();
               onSelectTab('settings');
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
               currentTab === 'settings'
                 ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
                 : 'text-theme-main hover:bg-theme-card-subtle'
@@ -176,7 +187,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <Settings className="w-5 h-5" />
             <span>{t('nav_settings', 'Settings')}</span>
-          </button>
+          </a>
         </div>
 
         {/* Appearance & Themes Quick Switch Section in Drawer */}
@@ -231,9 +242,51 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           </button>
         )}
 
+        {/* Campus Portal & Sustainability Links - all explicit https:// */}
+        <div className="pt-2 border-t border-theme-card/60 space-y-1.5 text-[11px] text-theme-muted">
+          <div className="flex items-center justify-between px-1">
+            <span className="font-bold text-theme-main">BBS PIK Campus Hub</span>
+            <span className="text-[10px] text-theme-primary font-bold">2026</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <a
+              id="drawer-link-campus"
+              href={CAMPUS_LINKS.BBS_PIK_CAMPUS}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2 rounded-xl bg-theme-card-subtle hover:bg-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline border border-theme-card"
+            >
+              <span>Campus Site</span>
+              <ExternalLink className="w-3 h-3 shrink-0" />
+            </a>
+            <a
+              id="drawer-link-sustainability"
+              href={CAMPUS_LINKS.SUSTAINABILITY_CHARTER}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2 rounded-xl bg-theme-card-subtle hover:bg-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline border border-theme-card"
+            >
+              <span>Charter</span>
+              <ExternalLink className="w-3 h-3 shrink-0" />
+            </a>
+          </div>
+          <div className="text-center pt-2">
+            <a
+              id="drawer-link-privacy"
+              href={CAMPUS_LINKS.PRIVACY_POLICY}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-theme-muted hover:text-theme-main underline cursor-pointer inline-flex items-center gap-1"
+            >
+              <span>Student Privacy Guidelines</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </div>
+        </div>
+
         {/* Version Footer */}
         <div className="pt-1 text-center text-xs text-theme-muted">
-          EcoEat • BBS PIK
+          EcoEat • BBS PIK Campus Dining
         </div>
       </div>
     </div>

@@ -22,6 +22,9 @@ import { UserProfile } from '../types';
 import { initialUserProfile, AVAILABLE_GRADES, GRADE_DIVISIONS } from '../data/mockData';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage, SupportedLanguage } from '../context/LanguageContext';
+import { EcoEatLogo } from './EcoEatLogo';
+import { CAMPUS_LINKS } from '../utils/urlHelper';
+import { ExternalLink } from 'lucide-react';
 
 interface SignInProps {
   onSignInSuccess: (userProfile: UserProfile) => void;
@@ -222,10 +225,8 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
     <div className="min-h-screen page-theme-bg text-theme-main flex flex-col justify-between selection:bg-theme-primary/30 transition-colors duration-300">
       {/* Top Header Bar */}
       <header className="w-full max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-theme-primary flex items-center justify-center text-black shadow-md shadow-theme-glow">
-            <Leaf className="w-5 h-5 fill-current/20" />
-          </div>
+        <div className="flex items-center gap-3">
+          <EcoEatLogo size="md" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-black tracking-tight text-theme-main">EcoEat</span>
@@ -284,9 +285,15 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
           
           {/* Left Column: Campus Sustainability Brand & Value Pitch */}
           <div className="lg:col-span-5 space-y-6 text-left hidden md:block">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-theme-primary-bg border border-theme-primary-border text-theme-primary text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Official BBS PIK Student Portal</span>
+            <div className="flex items-center gap-3.5">
+              <EcoEatLogo size="lg" />
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-theme-primary-bg border border-theme-primary-border text-theme-primary text-xs font-extrabold">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Bina Bangsa School PIK</span>
+                </div>
+                <p className="text-[11px] text-theme-muted font-semibold mt-1">Official Campus Dining & Zero Waste Hub</p>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -616,7 +623,27 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                     )}
                   </button>
 
-                  <div className="pt-1 text-center">
+                  <div className="pt-1 text-center space-y-2">
+                    <p className="text-[11px] text-theme-muted">
+                      By registering, you agree to the{' '}
+                      <a
+                        href={CAMPUS_LINKS.SUSTAINABILITY_CHARTER}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-theme-primary hover:underline font-medium"
+                      >
+                        Sustainability Charter
+                      </a>{' '}
+                      and{' '}
+                      <a
+                        href={CAMPUS_LINKS.PRIVACY_POLICY}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-theme-primary hover:underline font-medium"
+                      >
+                        Privacy Policy
+                      </a>.
+                    </p>
                     <p className="text-xs text-theme-muted">
                       Already have an account?{' '}
                       <button
@@ -771,9 +798,63 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="w-full max-w-6xl mx-auto px-4 py-4 text-center text-xs text-theme-muted border-t border-theme-card/50">
-        <p>BBS PIK EcoEat • Campus Sustainability & Food Waste Diversion Program 2026</p>
+      {/* Footer with verified https:// anchor tags */}
+      <footer className="w-full max-w-6xl mx-auto px-4 py-6 text-center text-xs text-theme-muted border-t border-theme-card/50 space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs">
+          <a
+            id="signin-footer-bbs"
+            href={CAMPUS_LINKS.BBS_HOME}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
+          >
+            <span>Bina Bangsa School</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <a
+            id="signin-footer-pik"
+            href={CAMPUS_LINKS.BBS_PIK_CAMPUS}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
+          >
+            <span>PIK Campus</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <a
+            id="signin-footer-sustainability"
+            href={CAMPUS_LINKS.SUSTAINABILITY_CHARTER}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
+          >
+            <span>Sustainability Charter</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <a
+            id="signin-footer-privacy"
+            href={CAMPUS_LINKS.PRIVACY_POLICY}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
+          >
+            <span>Privacy Policy</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <a
+            id="signin-footer-terms"
+            href={CAMPUS_LINKS.TERMS_OF_SERVICE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
+          >
+            <span>Terms of Service</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+        <p className="text-[11px] text-theme-muted/80">
+          BBS PIK EcoEat • Campus Sustainability & Food Waste Diversion Program 2026
+        </p>
       </footer>
     </div>
   );

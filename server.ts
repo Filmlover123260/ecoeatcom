@@ -98,7 +98,14 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
       }
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      process.env.VITE_GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.AI_STUDIO_API_KEY;
+
+    if (!apiKey) {
       // Return rich, intelligent fallback analysis when API key is not configured
       if (stage === 'before') {
         return res.json({
@@ -155,7 +162,7 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
     }
 
     const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: apiKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -167,11 +174,29 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
     if (stage === 'before') {
       prompt = `You are EcoEat's expert campus nutrition and sustainable dining AI vision model.
 Analyze this meal photo (student selected portion: ${portionSize}).
-First, determine if the image contains actual edible FOOD or a meal.
-If it is NOT food (e.g. stationery, laptop, hand, shoes, room, empty table, pets, random objects):
-Set "isFood": false, "nonFoodReason": "description of non-food object", "isPenalty": true, "xpEarned": -20, "dishName": "Non-Food Object Detected".
 
-If it IS food:
+CRITICAL INSTRUCTION - FACE / HUMAN / NON-FOOD DETECTION:
+If the image shows a human face, selfie, person, skin, hand, clothing, room, wall, desk, computer, phone, stationery, pet, or any object that is NOT actual edible food:
+You MUST immediately classify:
+- "isFood": false
+- "nonFoodReason": "Human face, person, or non-food item detected"
+- "isPenalty": true
+- "xpEarned": -20
+- "dishName": "Non-Food Object Detected"
+- "confidenceScore": 98
+- "portionEstimatedGrams": 0
+- "estimatedCalories": 0
+- "nutrition": { "protein": 0, "carbs": 0, "fat": 0, "fiber": 0 }
+- "foodItems": []
+- "detectedZones": []
+- "carbonSavingsKg": 0
+- "waterSavedLiters": 0
+- "ecoScore": "N/A"
+- "dietaryTags": ["Not Food"]
+- "sustainabilityFeedback": "⚠️ Non-food item detected. Point your camera at a campus meal or plate to scan and log eco points."
+NEVER hallucinate or classify a human face, person, or everyday object as a salad, protein bowl, or meal.
+
+If it IS genuine food:
 Set "isFood": true, "isPenalty": false.
 Provide a precise, comprehensive breakdown of the meal.
 
@@ -209,9 +234,10 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
     } else {
       prompt = `You are EcoEat's clean plate verification AI vision model.
 Analyze this post-dining photo to verify whether the plate is clean (zero waste) OR if food is unfinished (leftovers/scraps).
-If the image is NOT food or plate: set "isFood": false, "isPenalty": true, "xpEarned": -20.
+If the image is NOT food, plate, or tray (e.g. human face, selfie, person, desk, random object):
+Set "isFood": false, "isPenalty": true, "xpEarned": -20, "congratulationsMessage": "⚠️ Non-dining image detected", "sustainabilityFeedback": "Please take a photo of your dining plate or tray."
 
-If it IS a plate:
+If it IS a dining plate/tray:
 - If clean (< 15g leftover scraps): "cleanPlateVerified": true, "wasteGrams": 0, "isPenalty": false, "bonusXp": 30, "xpEarned": 35.
 - If UNFINISHED (significant leftover food or scraps > 15g remaining):
   "cleanPlateVerified": false,
@@ -257,7 +283,7 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
       }
     }
 
-    const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.7-flash'];
+    const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
     let response: any = null;
     let lastError: any = null;
 

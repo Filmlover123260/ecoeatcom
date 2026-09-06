@@ -4,6 +4,8 @@ import { motion } from 'motion/react';
 import { TabType } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { EcoEatLogo } from './EcoEatLogo';
+import { toAbsoluteHttpsUrl } from '../utils/urlHelper';
 
 interface NavigationProps {
   currentTab: TabType;
@@ -63,20 +65,23 @@ export const Navigation: React.FC<NavigationProps> = ({
             </motion.button>
           )}
 
-          {/* Centered Brand / Title */}
-          <motion.div
-            className="flex items-center gap-2 cursor-pointer"
+          {/* Centered Brand / Title as Accessible Absolute HTTPS Anchor */}
+          <motion.a
+            href={toAbsoluteHttpsUrl('/dashboard')}
+            className="flex items-center gap-2.5 cursor-pointer no-underline"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => onSelectTab('dashboard')}
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab('dashboard');
+            }}
+            title="EcoEat Dashboard"
           >
-            <div className="w-8 h-8 rounded-lg bg-theme-primary-bg flex items-center justify-center border border-theme-primary-border text-theme-primary transition-transform">
-              <Leaf className="w-5 h-5 fill-current/20" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-theme-main">
+            <EcoEatLogo size="sm" />
+            <span className="text-xl font-extrabold tracking-tight text-theme-main">
               {titleOverride || t('app_name', 'EcoEat')}
             </span>
-          </motion.div>
+          </motion.a>
         </div>
 
         {/* Navigation Tabs Pill Container (Desktop) */}
@@ -85,12 +90,16 @@ export const Navigation: React.FC<NavigationProps> = ({
             const Icon = item.icon;
             const isActive = currentTab === item.id;
             return (
-              <motion.button
+              <motion.a
                 key={item.id}
                 id={`tab-btn-${item.id}`}
+                href={toAbsoluteHttpsUrl(`/${item.id}`)}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onSelectTab(item.id)}
-                className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer z-10 ${
+                onClick={(e) => {
+                  e.preventDefault();
+                  onSelectTab(item.id);
+                }}
+                className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer no-underline z-10 ${
                   isActive
                     ? 'text-black font-extrabold'
                     : 'text-theme-muted hover:text-theme-main'
@@ -105,7 +114,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 )}
                 <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
-              </motion.button>
+              </motion.a>
             );
           })}
         </nav>
@@ -146,23 +155,31 @@ export const Navigation: React.FC<NavigationProps> = ({
 
       {/* Mobile Floating Bottom Bar */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bottom-theme-bar-bg backdrop-blur-lg border-t border-theme-card px-2 py-1.5 flex items-center justify-around">
-        <motion.button
+        <motion.a
           id="mobile-tab-dashboard"
+          href={toAbsoluteHttpsUrl('/dashboard')}
           whileTap={{ scale: 0.88 }}
-          onClick={() => onSelectTab('dashboard')}
-          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectTab('dashboard');
+          }}
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer no-underline ${
             currentTab === 'dashboard' ? 'text-theme-primary font-bold' : 'text-theme-muted hover:text-theme-main'
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
           <span className="text-[11px] font-medium leading-none">{t('nav_dashboard', 'Dashboard')}</span>
-        </motion.button>
+        </motion.a>
 
-        <motion.button
+        <motion.a
           id="mobile-tab-capture"
+          href={toAbsoluteHttpsUrl('/capture')}
           whileTap={{ scale: 0.88 }}
-          onClick={() => onSelectTab('capture')}
-          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectTab('capture');
+          }}
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer no-underline ${
             currentTab === 'capture' ? 'text-theme-primary font-bold' : 'text-theme-muted hover:text-theme-main'
           }`}
         >
@@ -173,31 +190,39 @@ export const Navigation: React.FC<NavigationProps> = ({
             <Camera className="w-5 h-5" />
           </motion.div>
           <span className="text-[11px] font-medium leading-none">{t('nav_capture', 'Scan')}</span>
-        </motion.button>
+        </motion.a>
 
-        <motion.button
+        <motion.a
           id="mobile-tab-leaderboard"
+          href={toAbsoluteHttpsUrl('/leaderboard')}
           whileTap={{ scale: 0.88 }}
-          onClick={() => onSelectTab('leaderboard')}
-          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectTab('leaderboard');
+          }}
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer no-underline ${
             currentTab === 'leaderboard' ? 'text-theme-primary font-bold' : 'text-theme-muted hover:text-theme-main'
           }`}
         >
           <BarChart3 className="w-5 h-5" />
           <span className="text-[11px] font-medium leading-none">{t('nav_leaderboard', 'Rankings')}</span>
-        </motion.button>
+        </motion.a>
 
-        <motion.button
+        <motion.a
           id="mobile-tab-profile"
+          href={toAbsoluteHttpsUrl('/profile')}
           whileTap={{ scale: 0.88 }}
-          onClick={() => onSelectTab('profile')}
-          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectTab('profile');
+          }}
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer no-underline ${
             currentTab === 'profile' ? 'text-theme-primary font-bold' : 'text-theme-muted hover:text-theme-main'
           }`}
         >
           <User className="w-5 h-5" />
           <span className="text-[11px] font-medium leading-none">{t('nav_profile', 'Profile')}</span>
-        </motion.button>
+        </motion.a>
 
         <motion.button
           id="mobile-tab-menu"

@@ -6,10 +6,12 @@ import {
   LogOut,
   Globe,
   RotateCcw,
+  ExternalLink,
 } from 'lucide-react';
 import { AppSettings, UserProfile } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage, SUPPORTED_LANGUAGES, SupportedLanguage } from '../context/LanguageContext';
+import { CAMPUS_LINKS } from '../utils/urlHelper';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -384,6 +386,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <h4 className="text-sm font-bold text-theme-main">{t('settings_privacy', 'Privacy Policy')}</h4>
             <ChevronRight className="w-4 h-4 text-theme-muted" />
           </div>
+
+          <a
+            id="setting-campus-portal"
+            href={CAMPUS_LINKS.BBS_PIK_CAMPUS}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 sm:p-5 flex items-center justify-between hover:bg-theme-card-subtle transition-colors cursor-pointer no-underline"
+          >
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-theme-main">BBS PIK Campus Portal</h4>
+              <p className="text-xs text-theme-muted">Official school sustainability & student center</p>
+            </div>
+            <ExternalLink className="w-4 h-4 text-theme-primary" />
+          </a>
+
+          <a
+            id="setting-sustainability-charter"
+            href={CAMPUS_LINKS.SUSTAINABILITY_CHARTER}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 sm:p-5 flex items-center justify-between hover:bg-theme-card-subtle transition-colors cursor-pointer no-underline"
+          >
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-theme-main">Campus Sustainability Charter</h4>
+              <p className="text-xs text-theme-muted">Food waste reduction & diversion guidelines</p>
+            </div>
+            <ExternalLink className="w-4 h-4 text-theme-primary" />
+          </a>
         </div>
       </div>
 
