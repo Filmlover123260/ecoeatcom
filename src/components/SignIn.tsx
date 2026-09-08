@@ -51,17 +51,25 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
 
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
+    setLanguage(newLang);
+    setSuccessMessage(`${t('toast_language_changed', 'Language switched to')} ${newLang}`);
+    setTimeout(() => {
+      setSuccessMessage((prev) => (prev && prev.includes(newLang) ? null : prev));
+    }, 2200);
+  };
+
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
     if (!emailOrId.trim()) {
-      setErrorMessage('Please enter your BBS PIK Student Email or Student ID');
+      setErrorMessage(t('auth_err_email_id_required', 'Please enter your BBS PIK Student Email or Student ID'));
       return;
     }
     if (!password.trim()) {
-      setErrorMessage('Please enter your account password');
+      setErrorMessage(t('auth_err_password_required', 'Please enter your account password'));
       return;
     }
 
@@ -78,7 +86,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
       onSignInSuccess(resolvedUser);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to authenticate. Please check your credentials.');
+      setErrorMessage(err.message || t('auth_err_failed', 'Failed to authenticate. Please check your credentials.'));
     } finally {
       setLoading(false);
     }
@@ -90,19 +98,19 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
     setSuccessMessage(null);
 
     if (!fullName.trim()) {
-      setErrorMessage('Please provide your full student name');
+      setErrorMessage(t('auth_err_name_required', 'Please provide your full student name'));
       return;
     }
     if (!emailOrId.trim()) {
-      setErrorMessage('Please provide a valid BBS PIK student email');
+      setErrorMessage(t('auth_err_email_required', 'Please provide a valid BBS PIK student email'));
       return;
     }
     if (!emailOrId.includes('@')) {
-      setErrorMessage('Please provide a valid BBS PIK email (e.g. name@bbs-pik.edu)');
+      setErrorMessage(t('auth_err_email_invalid', 'Please provide a valid BBS PIK email (e.g. name@bbs-pik.edu)'));
       return;
     }
     if (password.length < 6) {
-      setErrorMessage('Password should be at least 6 characters');
+      setErrorMessage(t('auth_err_password_short', 'Password should be at least 6 characters'));
       return;
     }
 
@@ -117,14 +125,14 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
         section,
       });
 
-      setSuccessMessage('Student account created successfully! Signing in...');
+      setSuccessMessage(t('auth_success_signup', 'Student account created successfully! Signing in...'));
       setTimeout(() => {
         onSignInSuccess(newUser);
       }, 600);
     } catch (err: any) {
       setErrorMessage(
         err.message ||
-          'Account registration failed. Copying existing student accounts is prohibited.'
+          t('auth_err_registration_failed', 'Account registration failed. Copying existing student accounts is prohibited.')
       );
     } finally {
       setLoading(false);
@@ -144,7 +152,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                 BBS PIK
               </span>
             </div>
-            <p className="text-xs text-theme-muted hidden sm:block">Campus Sustainability & Nutrition Hub</p>
+            <p className="text-xs text-theme-muted hidden sm:block">{t('auth_header_subtitle', 'Campus Sustainability & Nutrition Hub')}</p>
           </div>
         </div>
 
@@ -153,13 +161,14 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
           {/* Language Selector */}
           <div className="relative flex items-center">
             <select
+              id="signin-language-select"
               value={language}
-              onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
-              aria-label="Select Language"
+              onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
+              aria-label={t('auth_select_language', 'Select Language')}
               className="appearance-none bg-theme-card border border-theme-card rounded-xl py-1.5 pl-7 pr-4 text-xs font-bold text-theme-main cursor-pointer hover:bg-theme-card-subtle focus:outline-none"
             >
               {supportedLanguages.map((lang) => (
-                <option key={lang.code} value={lang.name} className="bg-slate-900 text-white">
+                <option key={lang.code} value={lang.name} className="bg-theme-card text-theme-main font-medium">
                   {lang.flag} {lang.nativeName}
                 </option>
               ))}
@@ -202,16 +211,17 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Bina Bangsa School PIK</span>
                 </div>
-                <p className="text-[11px] text-theme-muted font-semibold mt-1">Official Campus Dining & Zero Waste Hub</p>
+                <p className="text-[11px] text-theme-muted font-semibold mt-1">{t('auth_pitch_badge', 'Official Campus Dining & Zero Waste Hub')}</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-theme-main leading-tight">
-                Turn Every Meal into <span className="text-theme-primary">Campus Eco-Impact</span>
+                {t('auth_pitch_title_1', 'Turn Every Meal into')}{' '}
+                <span className="text-theme-primary">{t('auth_pitch_title_2', 'Campus Eco-Impact')}</span>
               </h1>
               <p className="text-sm text-theme-muted leading-relaxed">
-                Scan your dining plate, minimize food waste, earn XP for your grade, and help BBS PIK achieve its 1,000kg zero-waste semester goal.
+                {t('auth_pitch_desc', 'Scan your dining plate, minimize food waste, earn XP for your grade, and help BBS PIK achieve its 1,000kg zero-waste semester goal.')}
               </p>
             </div>
 
@@ -219,11 +229,11 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             <div className="grid grid-cols-2 gap-3 pt-2">
               <div className="p-3.5 rounded-2xl bg-theme-card border border-theme-card space-y-1">
                 <span className="text-2xl font-black text-theme-primary">1,240+</span>
-                <p className="text-xs text-theme-muted font-medium">Active Students</p>
+                <p className="text-xs text-theme-muted font-medium">{t('auth_active_students', 'Active Students')}</p>
               </div>
               <div className="p-3.5 rounded-2xl bg-theme-card border border-theme-card space-y-1">
                 <span className="text-2xl font-black text-theme-primary">650 kg</span>
-                <p className="text-xs text-theme-muted font-medium">Food Diverted</p>
+                <p className="text-xs text-theme-muted font-medium">{t('auth_food_diverted', 'Food Diverted')}</p>
               </div>
             </div>
 
@@ -231,15 +241,15 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             <div className="space-y-2.5 pt-1 text-xs text-theme-muted">
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-theme-primary shrink-0" />
-                <span>Single Sign-On with BBS PIK Student ID & Email</span>
+                <span>{t('auth_feature_sso', 'Single Sign-On with BBS PIK Student ID & Email')}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-theme-primary shrink-0" />
-                <span>AI Vision camera for automated portion and clean-plate tracking</span>
+                <span>{t('auth_feature_ai', 'AI Vision camera for automated portion and clean-plate tracking')}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-theme-primary shrink-0" />
-                <span>Real-time Inter-Grade Rankings & Campus Dining Credits</span>
+                <span>{t('auth_feature_rankings', 'Real-time Inter-Grade Rankings & Campus Dining Credits')}</span>
               </div>
             </div>
           </div>
@@ -264,7 +274,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                       : 'text-theme-muted hover:text-theme-main'
                   }`}
                 >
-                  Student Sign In
+                  {t('auth_tab_signin', 'Student Sign In')}
                 </button>
 
                 <button
@@ -281,7 +291,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                       : 'text-theme-muted hover:text-theme-main'
                   }`}
                 >
-                  Create Account
+                  {t('auth_tab_signup', 'Create Account')}
                 </button>
               </div>
 
@@ -289,7 +299,8 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
               <div className="p-2.5 rounded-xl bg-theme-card-subtle border border-theme-primary-border/40 flex items-center gap-2 text-[11px] text-theme-muted">
                 <ShieldCheck className="w-4 h-4 text-theme-primary shrink-0" />
                 <span>
-                  <strong className="text-theme-main">Account Verification:</strong> 1 official account per BBS PIK student. Account copying or duplicate registration is prohibited.
+                  <strong className="text-theme-main">{t('auth_verification_title', 'Account Verification:')}</strong>{' '}
+                  {t('auth_verification_desc', '1 official account per BBS PIK student. Account copying or duplicate registration is prohibited.')}
                 </span>
               </div>
 
@@ -314,7 +325,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                 <form onSubmit={handleSignInSubmit} className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-theme-muted block" htmlFor="input-email-id">
-                      BBS PIK Student Email or ID
+                      {t('auth_label_email_or_id', 'BBS PIK Student Email or ID')}
                     </label>
                     <div className="relative flex items-center">
                       <Mail className="w-4 h-4 text-theme-muted absolute left-3.5 pointer-events-none" />
@@ -323,7 +334,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         type="text"
                         value={emailOrId}
                         onChange={(e) => setEmailOrId(e.target.value)}
-                        placeholder="e.g. student.name@bbs-pik.edu"
+                        placeholder={t('auth_placeholder_email_or_id', 'e.g. student.name@bbs-pik.edu')}
                         className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 pl-10 pr-4 text-sm text-theme-main placeholder:text-theme-muted/50 focus:outline-none focus:border-theme-primary transition-colors"
                       />
                     </div>
@@ -332,7 +343,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-theme-muted block" htmlFor="input-password">
-                        Password
+                        {t('auth_label_password', 'Password')}
                       </label>
                       <button
                         type="button"
@@ -342,7 +353,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         }}
                         className="text-[11px] font-bold text-theme-primary hover:underline cursor-pointer"
                       >
-                        Forgot?
+                        {t('auth_forgot_password', 'Forgot?')}
                       </button>
                     </div>
                     <div className="relative flex items-center">
@@ -359,7 +370,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 p-1 text-theme-muted hover:text-theme-main transition-colors cursor-pointer"
-                        title={showPassword ? 'Hide password' : 'Show password'}
+                        title={showPassword ? t('auth_hide_password', 'Hide password') : t('auth_show_password', 'Show password')}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -374,7 +385,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         onChange={(e) => setRememberMe(e.target.checked)}
                         className="w-4 h-4 rounded accent-theme-primary cursor-pointer"
                       />
-                      <span>Remember my student login</span>
+                      <span>{t('auth_remember_me', 'Remember my student login')}</span>
                     </label>
                   </div>
 
@@ -388,7 +399,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                       <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>Sign In to Campus Hub</span>
+                        <span>{t('auth_btn_signin', 'Sign In to Campus Hub')}</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -396,13 +407,13 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
                   <div className="pt-2 text-center">
                     <p className="text-xs text-theme-muted">
-                      New to BBS PIK EcoEat?{' '}
+                      {t('auth_new_to_ecoeat', 'New to BBS PIK EcoEat?')}{' '}
                       <button
                         type="button"
                         onClick={() => setAuthMode('signup')}
                         className="font-bold text-theme-primary hover:underline cursor-pointer"
                       >
-                        Create Student Account
+                        {t('auth_link_create_account', 'Create Student Account')}
                       </button>
                     </p>
                   </div>
@@ -414,7 +425,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                 <form onSubmit={handleSignUpSubmit} className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-theme-muted block" htmlFor="input-signup-name">
-                      Full Student Name
+                      {t('auth_label_fullname', 'Full Student Name')}
                     </label>
                     <div className="relative flex items-center">
                       <User className="w-4 h-4 text-theme-muted absolute left-3.5 pointer-events-none" />
@@ -423,7 +434,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Maya Lin"
+                        placeholder={t('auth_placeholder_fullname', 'e.g. Maya Lin')}
                         className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 pl-10 pr-4 text-sm text-theme-main placeholder:text-theme-muted/50 focus:outline-none focus:border-theme-primary transition-colors"
                       />
                     </div>
@@ -432,7 +443,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-theme-muted block" htmlFor="select-grade">
-                        Grade
+                        {t('auth_label_grade', 'Grade')}
                       </label>
                       <div className="relative flex items-center">
                         <GraduationCap className="w-4 h-4 text-theme-muted absolute left-3.5 pointer-events-none" />
@@ -446,10 +457,10 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                             <optgroup
                               key={division.name}
                               label={division.label}
-                              className="bg-slate-900 text-white font-bold"
+                              className="bg-theme-card text-theme-main font-bold"
                             >
                               {division.grades.map((g) => (
-                                <option key={g} value={g} className="bg-slate-900 text-white font-medium">
+                                <option key={g} value={g} className="bg-theme-card text-theme-main font-medium">
                                   {g}
                                 </option>
                               ))}
@@ -461,7 +472,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-theme-muted block" htmlFor="select-section">
-                        Section / Homeroom
+                        {t('auth_label_section', 'Section / Homeroom')}
                       </label>
                       <select
                         id="select-section"
@@ -469,17 +480,17 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         onChange={(e) => setSection(e.target.value)}
                         className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 px-3.5 text-sm text-theme-main focus:outline-none focus:border-theme-primary transition-colors cursor-pointer"
                       >
-                        <option value="A" className="bg-slate-900 text-white">Section A ({grade}-A)</option>
-                        <option value="B" className="bg-slate-900 text-white">Section B ({grade}-B)</option>
-                        <option value="C" className="bg-slate-900 text-white">Section C ({grade}-C)</option>
-                        <option value="D" className="bg-slate-900 text-white">Section D ({grade}-D)</option>
+                        <option value="A" className="bg-theme-card text-theme-main">{t('auth_section_a', 'Section A')} ({grade}-A)</option>
+                        <option value="B" className="bg-theme-card text-theme-main">{t('auth_section_b', 'Section B')} ({grade}-B)</option>
+                        <option value="C" className="bg-theme-card text-theme-main">{t('auth_section_c', 'Section C')} ({grade}-C)</option>
+                        <option value="D" className="bg-theme-card text-theme-main">{t('auth_section_d', 'Section D')} ({grade}-D)</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-theme-muted block" htmlFor="input-signup-email">
-                      School Email
+                      {t('auth_label_school_email', 'School Email')}
                     </label>
                     <div className="relative flex items-center">
                       <Mail className="w-4 h-4 text-theme-muted absolute left-3.5 pointer-events-none" />
@@ -488,7 +499,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         type="email"
                         value={emailOrId}
                         onChange={(e) => setEmailOrId(e.target.value)}
-                        placeholder="student@bbs-pik.edu"
+                        placeholder={t('auth_placeholder_school_email', 'student@bbs-pik.edu')}
                         className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 pl-10 pr-4 text-sm text-theme-main placeholder:text-theme-muted/50 focus:outline-none focus:border-theme-primary transition-colors"
                       />
                     </div>
@@ -496,7 +507,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-theme-muted block" htmlFor="input-signup-password">
-                      Create Password
+                      {t('auth_label_create_password', 'Create Password')}
                     </label>
                     <div className="relative flex items-center">
                       <Lock className="w-4 h-4 text-theme-muted absolute left-3.5 pointer-events-none" />
@@ -505,7 +516,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="At least 6 characters"
+                        placeholder={t('auth_placeholder_password_len', 'At least 6 characters')}
                         className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 pl-10 pr-11 text-sm text-theme-main placeholder:text-theme-muted/50 focus:outline-none focus:border-theme-primary transition-colors"
                       />
                       <button
@@ -528,7 +539,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                       <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>Join Campus Eco Program (+50 XP)</span>
+                        <span>{t('auth_btn_signup', 'Join Campus Eco Program (+50 XP)')}</span>
                         <Sparkles className="w-4 h-4" />
                       </>
                     )}
@@ -536,33 +547,33 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
 
                   <div className="pt-1 text-center space-y-2">
                     <p className="text-[11px] text-theme-muted">
-                      By registering, you agree to the{' '}
+                      {t('auth_terms_agreement', 'By registering, you agree to the')}{' '}
                       <a
                         href={CAMPUS_LINKS.SUSTAINABILITY_CHARTER}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-theme-primary hover:underline font-medium"
                       >
-                        Sustainability Charter
+                        {t('auth_sustainability_charter', 'Sustainability Charter')}
                       </a>{' '}
-                      and{' '}
+                      {t('auth_and', 'and')}{' '}
                       <a
                         href={CAMPUS_LINKS.PRIVACY_POLICY}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-theme-primary hover:underline font-medium"
                       >
-                        Privacy Policy
+                        {t('settings_privacy', 'Privacy Policy')}
                       </a>.
                     </p>
                     <p className="text-xs text-theme-muted">
-                      Already have an account?{' '}
+                      {t('auth_already_have_account', 'Already have an account?')}{' '}
                       <button
                         type="button"
                         onClick={() => setAuthMode('signin')}
                         className="font-bold text-theme-primary hover:underline cursor-pointer"
                       >
-                        Sign In
+                        {t('auth_link_signin', 'Sign In')}
                       </button>
                     </p>
                   </div>
@@ -581,7 +592,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-theme-primary" />
-                <h3 className="text-base font-extrabold text-theme-main">Reset Student Password</h3>
+                <h3 className="text-base font-extrabold text-theme-main">{t('auth_reset_pw_title', 'Reset Student Password')}</h3>
               </div>
               <button
                 onClick={() => {
@@ -597,9 +608,11 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             {forgotPasswordSent ? (
               <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs space-y-2 text-center">
                 <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-                <p className="font-bold text-sm">Password Reset Link Dispatched!</p>
+                <p className="font-bold text-sm">{t('auth_reset_sent_title', 'Password Reset Link Dispatched!')}</p>
                 <p className="text-theme-muted text-xs">
-                  We sent instructions to <span className="font-semibold text-theme-main">{forgotEmail || 'your email'}</span>. Follow the campus link to choose a new password.
+                  {t('auth_reset_sent_desc_prefix', 'We sent instructions to')}{' '}
+                  <span className="font-semibold text-theme-main">{forgotEmail || 'your email'}</span>
+                  {t('auth_reset_sent_desc_suffix', '. Follow the campus link to choose a new password.')}
                 </p>
                 <button
                   type="button"
@@ -609,22 +622,22 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                   }}
                   className="mt-3 w-full py-2.5 rounded-xl bg-theme-primary text-black font-extrabold text-xs cursor-pointer"
                 >
-                  Return to Sign In
+                  {t('auth_btn_return_signin', 'Return to Sign In')}
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-theme-muted leading-relaxed">
-                  Enter your registered BBS PIK student email address. We will send a secure one-time reset code to your school inbox.
+                  {t('auth_reset_pw_desc', 'Enter your registered BBS PIK student email address. We will send a secure one-time reset code to your school inbox.')}
                 </p>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-muted">Student Email</label>
+                  <label className="text-xs font-bold text-theme-muted">{t('auth_label_school_email', 'Student Email')}</label>
                   <input
                     type="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="student@bbs-pik.edu"
+                    placeholder={t('auth_placeholder_school_email', 'student@bbs-pik.edu')}
                     className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl py-3 px-4 text-sm text-theme-main focus:outline-none focus:border-theme-primary"
                   />
                 </div>
@@ -635,20 +648,20 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                     onClick={() => setIsForgotModalOpen(false)}
                     className="flex-1 py-3 rounded-2xl bg-theme-card-subtle text-theme-main font-bold text-xs hover:bg-black/20 cursor-pointer"
                   >
-                    Cancel
+                    {t('cancel', 'Cancel')}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       if (!forgotEmail.trim()) {
-                        alert('Please enter your student email');
+                        setErrorMessage(t('auth_err_email_required', 'Please provide a valid BBS PIK student email'));
                         return;
                       }
                       setForgotPasswordSent(true);
                     }}
                     className="flex-1 py-3 rounded-2xl bg-theme-primary text-black font-extrabold text-xs shadow-md cursor-pointer"
                   >
-                    Send Reset Link
+                    {t('auth_btn_send_reset', 'Send Reset Link')}
                   </button>
                 </div>
               </div>
@@ -667,7 +680,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             rel="noopener noreferrer"
             className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
           >
-            <span>Bina Bangsa School</span>
+            <span>{t('auth_footer_bbs', 'Bina Bangsa School')}</span>
             <ExternalLink className="w-3 h-3" />
           </a>
           <a
@@ -677,7 +690,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             rel="noopener noreferrer"
             className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
           >
-            <span>PIK Campus</span>
+            <span>{t('auth_footer_pik', 'PIK Campus')}</span>
             <ExternalLink className="w-3 h-3" />
           </a>
           <a
@@ -687,7 +700,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             rel="noopener noreferrer"
             className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
           >
-            <span>Sustainability Charter</span>
+            <span>{t('auth_sustainability_charter', 'Sustainability Charter')}</span>
             <ExternalLink className="w-3 h-3" />
           </a>
           <a
@@ -697,7 +710,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             rel="noopener noreferrer"
             className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
           >
-            <span>Privacy Policy</span>
+            <span>{t('settings_privacy', 'Privacy Policy')}</span>
             <ExternalLink className="w-3 h-3" />
           </a>
           <a
@@ -707,12 +720,12 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             rel="noopener noreferrer"
             className="hover:text-theme-primary transition-colors inline-flex items-center gap-1"
           >
-            <span>Terms of Service</span>
+            <span>{t('auth_terms_of_service', 'Terms of Service')}</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
         <p className="text-[11px] text-theme-muted/80">
-          BBS PIK EcoEat • Campus Sustainability & Food Waste Diversion Program 2026
+          {t('auth_footer_tagline', 'BBS PIK EcoEat • Campus Sustainability & Food Waste Diversion Program 2026')}
         </p>
       </footer>
     </div>
