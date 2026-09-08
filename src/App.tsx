@@ -9,6 +9,7 @@ import {
   DailyTipItem,
   CampusChallengeInfo,
   AppSettings,
+  StickerItem,
 } from './types';
 import {
   initialUserProfile,
@@ -20,6 +21,7 @@ import {
   defaultSettings,
   getLevelTitle,
 } from './data/mockData';
+import { getStickerById } from './data/stickersData';
 import { evaluateBadgeUnlock, BadgeEvaluationContext, ExtendedBadgeItem } from './data/badgesData';
 import {
   syncUserProfileToCloud,
@@ -37,6 +39,7 @@ import { CaptureMeal } from './components/CaptureMeal';
 import { Leaderboard } from './components/Leaderboard';
 import { Profile } from './components/Profile';
 import { SettingsView } from './components/SettingsView';
+import { StickerShop } from './components/StickerShop';
 import { ThemePickerModal } from './components/ThemePickerModal';
 import { SignIn } from './components/SignIn';
 import {
@@ -417,6 +420,8 @@ function AppContent() {
       foodSavedKg: signedInUser.foodSavedKg ?? 0,
       foodSavedWeekKg: signedInUser.foodSavedWeekKg ?? 0,
       streakDays: signedInUser.streakDays ?? 0,
+      purchasedStickers: signedInUser.purchasedStickers || [],
+      showcaseStickerId: signedInUser.showcaseStickerId || '',
     };
     setUser(freshUser);
     localStorage.setItem('ecoeat_user', JSON.stringify(freshUser));
@@ -442,6 +447,53 @@ function AppContent() {
     }));
     setIsAuthenticated(true);
     showToast(`👋 Welcome to BBS PIK EcoEat, ${signedInUser.greetingName}!`);
+  };
+
+  const handleBuySticker = (sticker: StickerItem) => {
+    if (user.currentXp < sticker.cost) {
+      showToast(`⚠️ Insufficient XP! You need ${(sticker.cost - user.currentXp).toLocaleString()} more XP.`);
+      return;
+    }
+    const currentPurchased = user.purchasedStickers || [];
+    if (currentPurchased.includes(sticker.id)) {
+      showToast(`You already own "${sticker.name}"!`);
+      return;
+    }
+
+    setUser((prev) => {
+      const updatedPurchased = [...(prev.purchasedStickers || []), sticker.id];
+      const newCurrentXp = prev.currentXp - sticker.cost;
+      const updatedUser: UserProfile = {
+        ...prev,
+        currentXp: newCurrentXp,
+        purchasedStickers: updatedPurchased,
+      };
+
+      localStorage.setItem('ecoeat_user', JSON.stringify(updatedUser));
+      syncUserProfileToCloud(updatedUser);
+      return updatedUser;
+    });
+
+    showToast(`🎉 You purchased "${sticker.name}" for ${sticker.cost.toLocaleString()} XP!`);
+  };
+
+  const handleEquipSticker = (stickerId: string | null) => {
+    setUser((prev) => {
+      const updatedUser: UserProfile = {
+        ...prev,
+        showcaseStickerId: stickerId || undefined,
+      };
+      localStorage.setItem('ecoeat_user', JSON.stringify(updatedUser));
+      syncUserProfileToCloud(updatedUser);
+      return updatedUser;
+    });
+
+    if (stickerId) {
+      const sticker = getStickerById(stickerId);
+      showToast(`✨ Equipped "${sticker?.name || 'Sticker'}" as profile showcase!`);
+    } else {
+      showToast('Unequipped showcase sticker.');
+    }
   };
 
   const handleSignOut = () => {
@@ -525,6 +577,7 @@ function AppContent() {
                 onRestartMeals={handleRestartMeals}
                 onOpenTipDetails={(tip) => setSelectedTipForDetails(tip)}
                 onOpenWeeklyImpact={handleOpenWeeklyImpact}
+                onNavigateToShop={() => setCurrentTab('shop')}
               />
             )}
 
@@ -542,6 +595,15 @@ function AppContent() {
               <Leaderboard user={user} challenge={challenge} />
             )}
 
+            {currentTab === 'shop' && (
+              <StickerShop
+                user={user}
+                onBuySticker={handleBuySticker}
+                onEquipSticker={handleEquipSticker}
+                onNavigateToCapture={() => setCurrentTab('capture')}
+              />
+            )}
+
             {currentTab === 'profile' && (
               <Profile
                 user={user}
@@ -550,6 +612,7 @@ function AppContent() {
                 onOpenEditProfile={() => setIsEditProfileOpen(true)}
                 onOpenBadgeDetails={(badge) => setSelectedBadgeForDetails(badge)}
                 onOpenBadgeGallery={() => setIsBadgeGalleryOpen(true)}
+                onNavigateToShop={() => setCurrentTab('shop')}
               />
             )}
 

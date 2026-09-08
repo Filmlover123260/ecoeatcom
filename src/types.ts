@@ -1,6 +1,33 @@
 export type PortionSize = 'Small' | 'Regular' | 'Large';
 
-export type TabType = 'dashboard' | 'capture' | 'leaderboard' | 'profile' | 'settings';
+export type TabType = 'dashboard' | 'capture' | 'leaderboard' | 'shop' | 'profile' | 'settings';
+
+export type StickerRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export type StickerCategory =
+  | 'all'
+  | 'clean_plate'
+  | 'campus_pride'
+  | 'zero_waste'
+  | 'nature_planet'
+  | 'culinary';
+
+export interface StickerItem {
+  id: string;
+  name: string;
+  category: StickerCategory;
+  rarity: StickerRarity;
+  cost: number; // XP price
+  emoji: string;
+  iconType?: string;
+  description: string;
+  unlockedWith: string;
+  visualBg: string;
+  borderColor: string;
+  accentColor: string;
+  purchasedDate?: string;
+  isEquipped?: boolean;
+}
 
 export interface UserProfile {
   id?: string;
@@ -22,6 +49,8 @@ export interface UserProfile {
   school: string;
   avatarUrl: string;
   greetingColor: string;
+  purchasedStickers?: string[];
+  showcaseStickerId?: string;
 }
 
 export interface MealNutrition {

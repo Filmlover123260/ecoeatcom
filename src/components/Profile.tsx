@@ -28,8 +28,10 @@ import {
   Sun,
   Target,
   Users,
+  ShoppingBag,
 } from 'lucide-react';
-import { UserProfile, BadgeItem, MealRecord } from '../types';
+import { UserProfile, BadgeItem, MealRecord, StickerItem } from '../types';
+import { getStickerById } from '../data/stickersData';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -40,6 +42,7 @@ interface ProfileProps {
   onOpenEditProfile: () => void;
   onOpenBadgeDetails: (badge: BadgeItem) => void;
   onOpenBadgeGallery: () => void;
+  onNavigateToShop?: () => void;
 }
 
 export const Profile: React.FC<ProfileProps> = ({
@@ -49,6 +52,7 @@ export const Profile: React.FC<ProfileProps> = ({
   onOpenEditProfile,
   onOpenBadgeDetails,
   onOpenBadgeGallery,
+  onNavigateToShop,
 }) => {
   const { darkMode } = useTheme();
   const { t } = useLanguage();
@@ -226,6 +230,22 @@ export const Profile: React.FC<ProfileProps> = ({
                   <Leaf className="w-3.5 h-3.5" />
                   <span>{user.title}</span>
                 </div>
+                {user.showcaseStickerId && (
+                  (() => {
+                    const showcase = getStickerById(user.showcaseStickerId);
+                    if (!showcase) return null;
+                    return (
+                      <div
+                        onClick={onNavigateToShop}
+                        title={`Active Showcase Sticker: ${showcase.name}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-theme-card-subtle border border-theme-primary/40 text-xs font-extrabold text-theme-main shadow-xs cursor-pointer hover:border-theme-primary"
+                      >
+                        <span className="text-sm">{showcase.emoji}</span>
+                        <span className="text-[11px]">{showcase.name}</span>
+                      </div>
+                    );
+                  })()
+                )}
                 <div
                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                     user.streakDays === 0
@@ -339,6 +359,116 @@ export const Profile: React.FC<ProfileProps> = ({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Eco Stickers Showcase Section */}
+      <div className="bg-theme-card border border-theme-card rounded-3xl p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary">
+              <ShoppingBag className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-theme-main tracking-tight">
+                {t('profile_stickers_title', 'Campus Eco Stickers')}
+              </h3>
+              <p className="text-xs text-theme-muted">
+                {t('profile_stickers_desc', 'Purchased with clean dining & zero food waste XP')}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onNavigateToShop}
+            className="text-xs font-bold text-theme-primary hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{t('profile_btn_visit_shop', 'Sticker Store')}</span>
+            <Sparkles className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Stickers Display Grid */}
+        {user.purchasedStickers && user.purchasedStickers.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            {user.purchasedStickers.slice(0, 12).map((stickerId) => {
+              const sticker = getStickerById(stickerId);
+              if (!sticker) return null;
+              const isEquipped = user.showcaseStickerId === sticker.id;
+
+              return (
+                <div
+                  key={sticker.id}
+                  onClick={onNavigateToShop}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center justify-between space-y-2 relative group ${
+                    isEquipped
+                      ? 'bg-theme-card-subtle border-theme-primary shadow-sm shadow-theme-glow ring-1 ring-theme-primary/30'
+                      : 'bg-theme-card-subtle border-theme-card hover:border-theme-primary/50'
+                  }`}
+                >
+                  {isEquipped && (
+                    <span className="absolute top-1.5 right-1.5 text-[8px] font-black uppercase tracking-wider bg-theme-primary text-black px-1.5 py-0.2 rounded-full shadow-xs">
+                      Active
+                    </span>
+                  )}
+
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-md transition-transform group-hover:scale-110"
+                    style={{
+                      border: `2px solid ${sticker.accentColor}`,
+                      backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                    }}
+                  >
+                    <span>{sticker.emoji}</span>
+                  </div>
+
+                  <div className="w-full">
+                    <h4 className="text-[11px] font-bold text-theme-main truncate">{sticker.name}</h4>
+                    <span className="text-[9px] font-semibold text-emerald-400 capitalize block">
+                      {sticker.rarity}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {user.purchasedStickers.length > 12 && (
+              <div
+                onClick={onNavigateToShop}
+                className="p-3 rounded-2xl border border-dashed border-theme-card hover:border-theme-primary/60 bg-theme-card-subtle/50 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-1 group"
+              >
+                <span className="text-base font-black text-theme-primary group-hover:scale-110 transition-transform">
+                  +{user.purchasedStickers.length - 12}
+                </span>
+                <span className="text-[10px] font-bold text-theme-muted group-hover:text-theme-main">
+                  More in Album
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 rounded-2xl bg-theme-card-subtle border border-theme-card text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-theme-card flex items-center justify-center mx-auto text-2xl">
+              🎨
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-theme-main">
+                {t('profile_no_stickers_title', 'No Stickers in Your Collection Yet')}
+              </h4>
+              <p className="text-[11px] text-theme-muted max-w-sm mx-auto">
+                {t(
+                  'profile_no_stickers_desc',
+                  'Exchange your clean plate dining XP for cool BBS campus stickers in the Sticker Shop!'
+                )}
+              </p>
+            </div>
+            <button
+              onClick={onNavigateToShop}
+              className="py-2 px-4 rounded-xl bg-theme-primary text-black font-extrabold text-xs shadow-sm cursor-pointer"
+            >
+              {t('profile_btn_browse_stickers', 'Browse Sticker Shop')}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Weekly Impact Section - Based on what day it is today */}

@@ -18,6 +18,8 @@ export interface StoredStudentAccount {
   currentXp: number;
   foodSavedKg: number;
   streakDays: number;
+  purchasedStickers?: string[];
+  showcaseStickerId?: string;
   createdAt: string;
   lastActiveAt: string;
 }
@@ -144,10 +146,12 @@ export async function registerStudentAccount(params: {
     avatarUrl:
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
     level: 1,
-    totalXp: 0,
-    currentXp: 0,
+    totalXp: 50,
+    currentXp: 50,
     foodSavedKg: 0,
     streakDays: 0,
+    purchasedStickers: [],
+    showcaseStickerId: '',
     createdAt: new Date().toISOString(),
     lastActiveAt: new Date().toISOString(),
   };
@@ -171,9 +175,12 @@ export async function registerStudentAccount(params: {
       school: 'BBS PIK',
       avatarUrl: newAccount.avatarUrl,
       level: 1,
-      totalXp: 0,
+      totalXp: 50,
+      currentXp: 50,
       foodSavedKg: 0,
       streakDays: 0,
+      purchasedStickers: [],
+      showcaseStickerId: '',
       title: 'Eco Novice',
       passwordHash: newAccount.passwordHash,
       createdAt: newAccount.createdAt,
@@ -194,14 +201,16 @@ export async function registerStudentAccount(params: {
     homeroom,
     school: 'BBS PIK',
     level: 1,
-    totalXp: 0,
-    currentXp: 0,
+    totalXp: 50,
+    currentXp: 50,
     nextLevelXp: 100,
     foodSavedKg: 0,
     foodSavedWeekKg: 0,
     streakDays: 0,
     title: 'Eco Novice',
     avatarUrl: newAccount.avatarUrl,
+    purchasedStickers: [],
+    showcaseStickerId: '',
   };
 
   return profile;
@@ -242,8 +251,11 @@ export async function authenticateStudentAccount(
       school: 'BBS PIK',
       level: localMatch.level || 1,
       totalXp: localMatch.totalXp || 0,
+      currentXp: localMatch.currentXp ?? localMatch.totalXp ?? 0,
       foodSavedKg: localMatch.foodSavedKg || 0,
       streakDays: localMatch.streakDays || 0,
+      purchasedStickers: localMatch.purchasedStickers || [],
+      showcaseStickerId: localMatch.showcaseStickerId || '',
       title: getLevelTitle(localMatch.level || 1),
       avatarUrl: localMatch.avatarUrl,
     };
@@ -273,8 +285,11 @@ export async function authenticateStudentAccount(
         school: 'BBS PIK',
         level: Number(data.level) || 1,
         totalXp: Number(data.totalXp) || 0,
+        currentXp: Number(data.currentXp ?? data.totalXp ?? 0),
         foodSavedKg: Number(data.foodSavedKg) || 0,
         streakDays: Number(data.streakDays) || 0,
+        purchasedStickers: data.purchasedStickers || [],
+        showcaseStickerId: data.showcaseStickerId || '',
         title: data.title || getLevelTitle(Number(data.level) || 1),
         avatarUrl: data.avatarUrl || initialUserProfile.avatarUrl,
       };
@@ -295,6 +310,8 @@ export async function authenticateStudentAccount(
         currentXp: profile.currentXp,
         foodSavedKg: profile.foodSavedKg,
         streakDays: profile.streakDays,
+        purchasedStickers: profile.purchasedStickers,
+        showcaseStickerId: profile.showcaseStickerId,
         createdAt: data.createdAt || new Date().toISOString(),
         lastActiveAt: new Date().toISOString(),
       });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Camera, BarChart3, User, Menu, Leaf, ArrowLeft, Moon, Sun, Palette } from 'lucide-react';
+import { LayoutDashboard, Camera, BarChart3, User, Menu, Leaf, ArrowLeft, Moon, Sun, Palette, ShoppingBag } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TabType } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -33,6 +33,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'dashboard', label: t('nav_dashboard', 'Dashboard'), icon: LayoutDashboard },
     { id: 'capture', label: t('nav_capture', 'Scan Meal'), icon: Camera },
     { id: 'leaderboard', label: t('nav_leaderboard', 'Leaderboard'), icon: BarChart3 },
+    { id: 'shop', label: t('nav_shop', 'Sticker Shop'), icon: ShoppingBag },
     { id: 'profile', label: t('nav_profile', 'Profile'), icon: User },
   ];
 
@@ -206,6 +207,22 @@ export const Navigation: React.FC<NavigationProps> = ({
         >
           <BarChart3 className="w-5 h-5" />
           <span className="text-[11px] font-medium leading-none">{t('nav_leaderboard', 'Rankings')}</span>
+        </motion.a>
+
+        <motion.a
+          id="mobile-tab-shop"
+          href={toAbsoluteHttpsUrl('/shop')}
+          whileTap={{ scale: 0.88 }}
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectTab('shop');
+          }}
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl transition-colors cursor-pointer no-underline ${
+            currentTab === 'shop' ? 'text-theme-primary font-bold' : 'text-theme-muted hover:text-theme-main'
+          }`}
+        >
+          <ShoppingBag className="w-5 h-5" />
+          <span className="text-[11px] font-medium leading-none">{t('nav_shop', 'Shop')}</span>
         </motion.a>
 
         <motion.a

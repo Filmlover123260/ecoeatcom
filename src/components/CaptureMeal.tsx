@@ -32,6 +32,7 @@ import { PortionSize, MealRecord, UserProfile, DetectedFoodZone, MealNutrition }
 import { samplePresetMeals } from '../data/mockData';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { calculateStickerMealModifiers, rarityConfigs } from '../data/stickersData';
 
 interface CaptureMealProps {
   initialPortion: PortionSize;

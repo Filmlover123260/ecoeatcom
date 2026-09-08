@@ -68,6 +68,8 @@ export async function syncUserProfileToCloud(user: UserProfile, uid?: string): P
         title: user.title || getLevelTitle(user.level || 1),
         streakDays: Number(user.streakDays) || 0,
         foodSavedKg: Number(user.foodSavedKg) || 0,
+        purchasedStickers: user.purchasedStickers || [],
+        showcaseStickerId: user.showcaseStickerId || '',
         isOnline: true,
         lastActiveAt: new Date().toISOString(),
       },

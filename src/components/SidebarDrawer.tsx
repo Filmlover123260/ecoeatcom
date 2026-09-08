@@ -11,6 +11,7 @@ import {
   Sun,
   Palette,
   LogOut,
+  ShoppingBag,
 } from 'lucide-react';
 import { TabType, UserProfile } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -151,6 +152,24 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <BarChart3 className="w-5 h-5" />
             <span>{t('nav_leaderboard', 'Leaderboard')}</span>
+          </a>
+
+          <a
+            id="drawer-link-shop"
+            href={toAbsoluteHttpsUrl('/shop')}
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab('shop');
+              onClose();
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
+              currentTab === 'shop'
+                ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
+                : 'text-theme-main hover:bg-theme-card-subtle'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span>{t('nav_shop', 'Sticker Shop')}</span>
           </a>
 
           <a

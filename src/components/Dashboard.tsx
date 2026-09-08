@@ -24,6 +24,7 @@ import {
 import { PortionSize, UserProfile, MealRecord, DailyTipItem, CampusChallengeInfo } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { allWeeklyTips } from '../data/mockData';
+import { getStickerById } from '../data/stickersData';
 
 interface DashboardProps {
   user: UserProfile;
@@ -40,6 +41,7 @@ interface DashboardProps {
   onOpenTipDetails: (tip: DailyTipItem) => void;
   onOpenWeeklyImpact?: () => void;
   onRestartMeals?: () => void;
+  onNavigateToShop?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -57,6 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenTipDetails,
   onOpenWeeklyImpact,
   onRestartMeals,
+  onNavigateToShop,
 }) => {
   const { t } = useLanguage();
 
@@ -387,6 +390,58 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="bg-theme-card-subtle border border-theme-card rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs text-theme-muted">
             <Leaf className="w-3.5 h-3.5 text-theme-primary shrink-0" />
             <span className="leading-snug text-[11px]">{streakInfo.levelTip}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Campus Eco Sticker Shop Banner */}
+      <div
+        id="dashboard-sticker-shop-banner"
+        onClick={onNavigateToShop}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onNavigateToShop?.();
+          }
+        }}
+        className="bg-theme-card border border-theme-card hover:border-theme-primary/60 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer transition-all duration-300 group"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition-transform">
+            🛍️
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-theme-main group-hover:text-theme-primary transition-colors">
+                {t('dashboard_sticker_shop_title', 'Campus Eco Sticker Store')}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-theme-primary-bg text-theme-primary border border-theme-primary-border">
+                1,000 Stickers
+              </span>
+            </div>
+            <p className="text-xs text-theme-muted mt-0.5">
+              {t(
+                'dashboard_sticker_shop_desc',
+                'Collect from 1,000 campus eco stickers & badges with your zero-waste clean plate XP!'
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-2 bg-theme-card-subtle border border-theme-card px-3 py-1.5 rounded-xl text-xs">
+            <span className="text-theme-muted font-medium">Balance:</span>
+            <span className="font-extrabold text-theme-primary flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              {user.currentXp} XP
+            </span>
+          </div>
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-theme-primary text-black font-extrabold text-xs shadow-sm flex items-center gap-1.5 whitespace-nowrap group-hover:opacity-90">
+            <span>Shop</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </div>

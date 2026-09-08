@@ -29,9 +29,9 @@ export const initialUserProfile: UserProfile = {
   greetingName: 'Student',
   title: 'Eco Novice',
   level: 1,
-  currentXp: 0,
+  currentXp: 85,
   nextLevelXp: 100,
-  totalXp: 0,
+  totalXp: 85,
   profileGoalXp: 500,
   streakDays: 0,
   foodSavedKg: 0,
@@ -42,6 +42,8 @@ export const initialUserProfile: UserProfile = {
   school: 'BBS PIK',
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
   greetingColor: 'auto',
+  purchasedStickers: [],
+  showcaseStickerId: '',
 };
 
 export const initialMeals: MealRecord[] = [];
