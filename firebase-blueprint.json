@@ -46,6 +46,20 @@
         "activeStudentsCount": { "type": "number", "description": "Number of unique student participants" },
         "totalCarbonSavedKg": { "type": "number", "description": "Total carbon kg diverted" }
       }
+    },
+    "challengeParticipants": {
+      "description": "Real-time records of students who joined the campus challenge",
+      "fields": {
+        "id": { "type": "string", "description": "Challenge participant record ID" },
+        "academicYear": { "type": "string", "description": "Academic year slug e.g. 2026-2027" },
+        "userId": { "type": "string", "description": "Student user ID" },
+        "userName": { "type": "string", "description": "Student full name" },
+        "userGrade": { "type": "string", "description": "Student grade" },
+        "userSection": { "type": "string", "description": "Class section" },
+        "userHomeroom": { "type": "string", "description": "Homeroom label" },
+        "avatarUrl": { "type": "string", "description": "Avatar image URL" },
+        "joinedAt": { "type": "string", "description": "ISO timestamp when student joined the challenge" }
+      }
     }
   }
 }

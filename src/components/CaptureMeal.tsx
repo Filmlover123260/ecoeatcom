@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Camera,
   RotateCcw,
@@ -19,7 +19,7 @@ import {
   Activity,
   Droplet,
   Award,
-  Sliders,
+  Pencil,
   Plus,
   Trash2,
   Info,
@@ -35,7 +35,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { calculateStickerMealModifiers, rarityConfigs } from '../data/stickersData';
 
 interface CaptureMealProps {
-  initialPortion: PortionSize;
+  initialPortion?: PortionSize;
   onCompleteMeal: (newMeal: MealRecord, xpEarned: number, foodSavedKg: number) => void;
   onApplyPenalty?: (reason: string, penaltyAmount: number) => void;
   onCancel: () => void;
@@ -115,6 +115,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
   const [newIngredientInput, setNewIngredientInput] = useState('');
   const [studentNotes, setStudentNotes] = useState('');
   const [showMacroBreakdown, setShowMacroBreakdown] = useState(true);
+
+  // Calculate sticker modifiers: Rarer stickers yield higher clean plate XP, but amplify waste penalty
+  const stickerModifiers = useMemo(() => {
+    return calculateStickerMealModifiers(user?.purchasedStickers || [], user?.showcaseStickerId);
+  }, [user?.purchasedStickers, user?.showcaseStickerId]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -566,9 +571,13 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     const dishTitle = editedDishName || analysisResult?.dishName || (isClean ? 'Healthy Campus Meal' : 'Unfinished Campus Meal');
     const finalFoodItems = editedFoodItems.length > 0 ? editedFoodItems : analysisResult?.foodItems;
 
-    const totalXp = isClean
-      ? (analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30)
-      : -25;
+    const baseCleanXp = (analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30);
+    const baseWastePenalty = 25;
+
+    const totalCleanReward = baseCleanXp + stickerModifiers.bonusCleanXp;
+    const totalWasteDeduction = baseWastePenalty + stickerModifiers.bonusWastePenalty;
+
+    const totalXp = isClean ? totalCleanReward : -totalWasteDeduction;
 
     const newRecord: MealRecord = {
       id: `meal-${Date.now()}`,
@@ -587,8 +596,12 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       foodItems: finalFoodItems,
       detectedZones: analysisResult?.detectedZones,
       sustainabilityFeedback: isClean
-        ? (analysisResult?.sustainabilityFeedback || 'Great job finishing your plate and preventing waste!')
-        : 'Leftover food scraps generate landfill methane. Clean your plate or choose smaller portions.',
+        ? (stickerModifiers.hasStickers
+            ? `Zero food waste achieved! Your ${stickerModifiers.highestRarity.toUpperCase()} sticker tier awarded an extra +${stickerModifiers.bonusCleanXp.toLocaleString()} XP clean plate bonus!`
+            : (analysisResult?.sustainabilityFeedback || 'Great job finishing your plate and preventing waste!'))
+        : (stickerModifiers.hasStickers
+            ? `Food waste detected (${afterAnalysisResult?.wasteGrams || 160}g). Higher stakes applied: -${totalWasteDeduction.toLocaleString()} XP deducted because you own ${stickerModifiers.highestRarity.toUpperCase()} stickers!`
+            : 'Leftover food scraps generate landfill methane. Clean your plate or choose smaller portions.'),
       studentNotes: studentNotes || undefined,
       cleanPlate: isClean,
       wasteGrams: isClean ? 0 : (afterAnalysisResult?.wasteGrams || 160),
@@ -684,30 +697,6 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
               currentStep >= 3 ? 'bg-theme-primary shadow-sm shadow-theme-glow' : 'bg-theme-card-subtle'
             }`}
           />
-        </div>
-      </div>
-
-      {/* Smart Portion Calibrator Selector */}
-      <div className="bg-theme-card border border-theme-card rounded-2xl p-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-theme-primary" />
-          <span className="text-xs font-bold text-theme-main">Serving Size:</span>
-        </div>
-        <div className="flex items-center gap-1 bg-theme-card-subtle p-1 rounded-xl border border-theme-card">
-          {(['Small', 'Regular', 'Large'] as PortionSize[]).map((p) => (
-            <button
-              key={p}
-              id={`btn-select-portion-${p.toLowerCase()}`}
-              onClick={() => handlePortionChange(p)}
-              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                portion === p
-                  ? 'bg-theme-primary text-black shadow-sm'
-                  : 'text-theme-muted hover:text-theme-main'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -1053,7 +1042,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                       className="p-1 text-theme-muted hover:text-theme-primary text-xs cursor-pointer"
                       title="Edit Dish Name"
                     >
-                      <Sliders className="w-3.5 h-3.5" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
@@ -1174,6 +1163,36 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
               </div>
             </div>
 
+            {/* Active Sticker Stakes Banner */}
+            <div className="p-3.5 rounded-2xl bg-theme-card-subtle border border-theme-card space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-extrabold text-theme-main flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sticker Dining Multiplier ({stickerModifiers.totalStickersCount} Collected)</span>
+                </span>
+                {stickerModifiers.highestRarity !== 'none' && (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-theme-primary/20 text-theme-primary border border-theme-primary/30">
+                    {stickerModifiers.highestRarity} tier active
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="bg-emerald-500/10 border border-emerald-500/25 p-2 rounded-xl">
+                  <span className="text-[10px] font-bold text-emerald-400 block">Clean Plate Reward</span>
+                  <span className="text-sm font-black text-emerald-400">+{stickerModifiers.bonusCleanXp.toLocaleString()} XP</span>
+                </div>
+                <div className="bg-rose-500/10 border border-rose-500/25 p-2 rounded-xl">
+                  <span className="text-[10px] font-bold text-rose-400 block">Waste Penalty Risk</span>
+                  <span className="text-sm font-black text-rose-400">-{stickerModifiers.bonusWastePenalty.toLocaleString()} XP</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-theme-muted text-center leading-tight">
+                {stickerModifiers.hasStickers
+                  ? '⚡ The rarer the sticker you buy, the higher your reward for a clean plate, but the higher the deduction if you waste food!'
+                  : '💡 Buy rare stickers from the Eco Shop to multiply your clean plate points!'}
+              </p>
+            </div>
+
             {/* Action button to proceed to Step 3 */}
             <button
               id="btn-proceed-to-step3"
@@ -1249,7 +1268,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
 
             <p className="text-xs text-amber-200/90 leading-relaxed">
               {afterAnalysisResult?.sustainabilityFeedback ||
-                'Discarded cafeteria food generates methane emissions in municipal landfills. To motivate clean plate habits, unfinished meals deduct 25 XP and reset your streak.'}
+                'Discarded cafeteria food generates methane emissions in municipal landfills. To motivate clean plate habits, unfinished meals incur deductions and reset your streak.'}
             </p>
 
             {/* Penalty Summary Card */}
@@ -1259,14 +1278,33 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                   <AlertTriangle className="w-5 h-5 text-amber-400" />
                   <div>
                     <p className="text-xs font-bold text-white">Leftover Waste: {afterAnalysisResult?.wasteGrams || 160} grams</p>
-                    <p className="text-[10px] text-amber-300/80">Creates greenhouse gas emissions</p>
+                    <p className="text-[10px] text-amber-300/80">Landfill organic waste emissions</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-extrabold text-rose-400">-25 XP</p>
-                  <p className="text-[10px] text-theme-muted font-semibold">Waste Penalty</p>
+                  <p className="text-xl font-extrabold text-rose-400">
+                    -{(25 + stickerModifiers.bonusWastePenalty).toLocaleString()} XP
+                  </p>
+                  <p className="text-[10px] text-theme-muted font-semibold">Total Waste Penalty</p>
                 </div>
               </div>
+
+              {/* Rarity breakdown */}
+              {stickerModifiers.hasStickers && (
+                <div className="pt-2 border-t border-amber-500/20 text-[11px] space-y-1">
+                  <div className="flex justify-between text-amber-200/80">
+                    <span>Base Cafeteria Waste Penalty</span>
+                    <span>-25 XP</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-rose-400">
+                    <span>⚠️ {stickerModifiers.highestRarity.toUpperCase()} Sticker Waste Risk ({stickerModifiers.totalStickersCount} Stickers)</span>
+                    <span>-{stickerModifiers.bonusWastePenalty.toLocaleString()} XP</span>
+                  </div>
+                  <p className="text-[10px] text-amber-300/70 pt-0.5">
+                    Notice: The rarer the stickers you collect, the larger the deduction if food is wasted!
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -1275,7 +1313,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                 onClick={handleFinishCleanPlate}
                 className="flex-1 py-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
               >
-                <span>Log Waste & Deduct -25 XP</span>
+                <span>Log Waste & Deduct -{(25 + stickerModifiers.bonusWastePenalty).toLocaleString()} XP</span>
               </button>
               <button
                 id="btn-return-finish-meal"
@@ -1361,10 +1399,28 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-extrabold text-theme-primary">+{(analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30)} XP</p>
-                  <p className="text-[10px] text-theme-muted font-semibold">Total Reward</p>
+                  <p className="text-xl font-black text-theme-primary">
+                    +{((analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30) + stickerModifiers.bonusCleanXp).toLocaleString()} XP
+                  </p>
+                  <p className="text-[10px] text-theme-muted font-semibold">Total Clean Plate Reward</p>
                 </div>
               </div>
+
+              {/* Reward breakdown */}
+              {stickerModifiers.hasStickers && (
+                <div className="pt-2 border-t border-theme-card text-[11px] space-y-1">
+                  <div className="flex justify-between text-theme-muted">
+                    <span>Base Dining & Clean Plate XP</span>
+                    <span>+{((analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30)).toLocaleString()} XP</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-theme-primary">
+                    <span className="flex items-center gap-1">
+                      <span>✨ {stickerModifiers.highestRarity.toUpperCase()} Sticker Yield ({stickerModifiers.totalStickersCount} Stickers)</span>
+                    </span>
+                    <span>+{stickerModifiers.bonusCleanXp.toLocaleString()} XP</span>
+                  </div>
+                </div>
+              )}
 
               {/* Optional student notes */}
               <div className="pt-2 border-t border-theme-card">
@@ -1384,7 +1440,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
               className="w-full py-4 rounded-full bg-theme-primary text-black font-extrabold text-base flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.99] shadow-lg shadow-theme-glow cursor-pointer"
             >
               <Sparkles className="w-5 h-5 fill-current" />
-              <span>{t('capture_btn_finish', 'Claim XP & Log Sustainable Meal')}</span>
+              <span>
+                {stickerModifiers.hasStickers
+                  ? `Claim +${((analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30) + stickerModifiers.bonusCleanXp).toLocaleString()} XP & Log Meal`
+                  : t('capture_btn_finish', 'Claim XP & Log Sustainable Meal')}
+              </span>
             </button>
           </div>
         )

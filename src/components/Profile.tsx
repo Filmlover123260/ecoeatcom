@@ -31,7 +31,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { UserProfile, BadgeItem, MealRecord, StickerItem } from '../types';
-import { getStickerById } from '../data/stickersData';
+import { getStickerById, calculateStickerMealModifiers } from '../data/stickersData';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -62,6 +62,9 @@ export const Profile: React.FC<ProfileProps> = ({
     100,
     Math.round((user.totalXp / user.profileGoalXp) * 100)
   );
+
+  // Active sticker modifiers
+  const stickerModifiers = calculateStickerMealModifiers(user.purchasedStickers || [], user.showcaseStickerId);
 
   // Dynamic Weekly Impact calculation based on what day it is today
   const today = new Date();
@@ -295,6 +298,45 @@ export const Profile: React.FC<ProfileProps> = ({
               className="bg-theme-primary h-full rounded-full transition-all duration-700 shadow-sm"
               style={{ width: `${profileProgressPercent}%` }}
             />
+          </div>
+
+          {/* Active Sticker Stakes Multiplier Card */}
+          <div className="pt-2">
+            <div className="p-3.5 rounded-2xl bg-theme-card-subtle border border-theme-card space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-extrabold text-theme-main flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Meal Sticker Stakes ({stickerModifiers.totalStickersCount} Stickers)</span>
+                </span>
+                {stickerModifiers.highestRarity !== 'none' ? (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-theme-primary/20 text-theme-primary border border-theme-primary/30">
+                    {stickerModifiers.highestRarity} tier
+                  </span>
+                ) : (
+                  <button
+                    onClick={onNavigateToShop}
+                    className="text-[10px] font-bold text-theme-primary hover:underline cursor-pointer"
+                  >
+                    Get Stickers
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl">
+                  <span className="text-[10px] font-bold text-emerald-400 block">Clean Plate Reward</span>
+                  <span className="text-sm font-black text-emerald-400">+{stickerModifiers.bonusCleanXp.toLocaleString()} XP</span>
+                </div>
+                <div className="bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl">
+                  <span className="text-[10px] font-bold text-rose-400 block">Waste Penalty Risk</span>
+                  <span className="text-sm font-black text-rose-400">-{stickerModifiers.bonusWastePenalty.toLocaleString()} XP</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-theme-muted text-center leading-tight">
+                {stickerModifiers.hasStickers
+                  ? '⚡ The rarer the stickers in your collection, the more XP you earn for clean plates — and the more points deducted if food is wasted.'
+                  : 'Collect rare stickers from the Eco Shop to multiply your clean plate XP gains!'}
+              </p>
+            </div>
           </div>
         </div>
       </div>

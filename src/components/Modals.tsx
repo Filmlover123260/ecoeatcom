@@ -39,12 +39,15 @@ import {
   Sun,
   Target,
   Users,
+  UserPlus,
   Search,
   ExternalLink,
+  Calendar,
 } from 'lucide-react';
 import { UserProfile, MealRecord, BadgeItem, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
 import { initialBadges, GRADE_DIVISIONS } from '../data/mockData';
 import { CAMPUS_LINKS } from '../utils/urlHelper';
+import { getAcademicYearChallengeList, getAcademicYearPeriod } from '../data/academicYearChallenge';
 
 // 1. Edit Profile Modal
 interface EditProfileModalProps {
@@ -738,23 +741,46 @@ interface ChallengeModalProps {
   isOpen: boolean;
   onClose: () => void;
   challenge: CampusChallengeInfo;
+  onJoinChallenge?: () => void;
 }
 
-export const ChallengeModal: React.FC<ChallengeModalProps> = ({ isOpen, onClose, challenge }) => {
+export const ChallengeModal: React.FC<ChallengeModalProps> = ({
+  isOpen,
+  onClose,
+  challenge,
+  onJoinChallenge,
+}) => {
+  const allYearChallenges = getAcademicYearChallengeList();
+  const currentPeriod = getAcademicYearPeriod();
+  const [selectedYearCode, setSelectedYearCode] = useState<string>(challenge.academicYear || currentPeriod.code);
+
   if (!isOpen) return null;
+
+  // Selected challenge or fallback to active challenge
+  const activeChallenge =
+    selectedYearCode === challenge.academicYear
+      ? challenge
+      : allYearChallenges.find((c) => c.academicYear === selectedYearCode) || challenge;
+
+  const isCurrentYear = activeChallenge.academicYear === currentPeriod.code;
+  const isPastYear = (activeChallenge.daysLeft ?? 0) === 0 && !isCurrentYear;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-theme-card border-t sm:border border-theme-card rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[88vh] sm:max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+      <div className="bg-theme-card border-t sm:border border-theme-card rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         <div className="w-12 h-1.5 bg-theme-muted/40 rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
-        <div className="flex items-center justify-between">
+        
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary">
+            <div className="w-11 h-11 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary shrink-0">
               <Trophy className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-bold text-theme-primary">{challenge.title}</p>
-              <h3 className="text-lg font-extrabold text-theme-main">{challenge.subtitle}</h3>
+              <p className="text-[10px] uppercase font-bold text-theme-primary tracking-wider">
+                {activeChallenge.title}
+              </p>
+              <h3 className="text-lg font-extrabold text-theme-main">{activeChallenge.subtitle}</h3>
             </div>
           </div>
           <button
@@ -765,27 +791,158 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ isOpen, onClose,
           </button>
         </div>
 
-        <p className="text-xs text-theme-muted leading-relaxed">{challenge.description}</p>
+        {/* Academic Year Switcher Bar */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] font-bold text-theme-muted">
+            <span className="flex items-center gap-1">
+              <Trophy className="w-3.5 h-3.5 text-theme-primary" />
+              <span>BBS Academic Year Challenges</span>
+            </span>
+            <span className="text-[10px] uppercase text-theme-primary font-black">
+              {isCurrentYear ? 'Current' : isPastYear ? 'Archived' : 'Upcoming'}
+            </span>
+          </div>
 
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {allYearChallenges.map((item) => {
+              const isSelected = item.academicYear === activeChallenge.academicYear;
+              const isCurrent = item.academicYear === currentPeriod.code;
+              return (
+                <button
+                  key={item.academicYear}
+                  onClick={() => setSelectedYearCode(item.academicYear)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                    isSelected
+                      ? 'bg-theme-primary text-black border-theme-primary shadow-sm shadow-theme-glow'
+                      : 'bg-theme-card-subtle text-theme-muted border-theme-card hover:text-theme-main hover:border-theme-primary/40'
+                  }`}
+                >
+                  AY {item.academicYear} {isCurrent && '★'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Academic Year Challenge Status Badge */}
+        <div className="p-3 rounded-2xl bg-theme-primary/10 border border-theme-primary/20 flex items-center justify-between text-xs font-bold">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-theme-primary shrink-0" />
+            <span className="text-theme-main">
+              Academic Year {activeChallenge.academicYear} Goal
+            </span>
+          </div>
+          <span className="text-theme-primary text-[11px] font-extrabold flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            {isCurrentYear ? 'Active Goal' : isPastYear ? 'Archived' : 'Upcoming Goal'}
+          </span>
+        </div>
+
+        {/* Description */}
+        <p className="text-xs text-theme-muted leading-relaxed">{activeChallenge.description}</p>
+
+        {/* Progress Bar Card */}
         <div className="space-y-2 bg-theme-card-subtle p-4 rounded-2xl border border-theme-card">
           <div className="flex justify-between text-xs font-bold text-theme-main">
-            <span>Progress: {challenge.progressPercentage}%</span>
-            <span className="text-theme-muted">{challenge.currentKg} / {challenge.targetKg} kg</span>
+            <span>
+              Progress: {activeChallenge.progressPercentage}%
+            </span>
+            <span className="text-theme-muted">
+              {activeChallenge.currentKg} / {activeChallenge.targetKg} kg Target
+            </span>
           </div>
           <div className="w-full progress-theme-track h-3 rounded-full overflow-hidden p-0.5 border border-theme-card">
             <div
-              className="bg-theme-primary h-full rounded-full"
-              style={{ width: `${challenge.progressPercentage}%` }}
+              className="bg-theme-primary h-full rounded-full transition-all duration-700"
+              style={{ width: `${activeChallenge.progressPercentage}%` }}
             />
           </div>
         </div>
 
+        {/* Real-Time Student Participants Section */}
+        <div className="space-y-3 bg-theme-card-subtle p-4 rounded-2xl border border-theme-card">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <h4 className="text-xs uppercase tracking-wider font-bold text-theme-muted flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-theme-primary" />
+                <span>Real-Time Student Participants</span>
+              </h4>
+            </div>
+            <span className="text-xs font-black text-theme-main">
+              {activeChallenge.studentsParticipating} {activeChallenge.studentsParticipating === 1 ? 'student' : 'students'}
+            </span>
+          </div>
+
+          {/* Join action banner if current year */}
+          {isCurrentYear && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-theme-card border border-theme-card">
+              {activeChallenge.hasJoined ? (
+                <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>You are actively participating in this challenge!</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full gap-3">
+                  <div className="text-xs text-theme-muted">
+                    Join this challenge to divert food waste and earn XP!
+                  </div>
+                  {onJoinChallenge && (
+                    <button
+                      onClick={onJoinChallenge}
+                      className="px-4 py-2 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer shadow-sm shadow-theme-glow flex items-center gap-1.5 shrink-0"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Join (+50 XP)</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Real Participants List or empty state */}
+          {activeChallenge.participantsList && activeChallenge.participantsList.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold text-theme-muted">Students participating in AY {activeChallenge.academicYear}:</p>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                {activeChallenge.participantsList.map((p) => (
+                  <div
+                    key={p.id || p.userId}
+                    className="inline-flex items-center gap-1.5 bg-theme-card border border-theme-card px-2.5 py-1 rounded-full text-[11px] text-theme-main"
+                  >
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-theme-primary/20 text-theme-primary text-[9px] font-bold flex items-center justify-center">
+                        {p.userName ? p.userName.charAt(0).toUpperCase() : 'S'}
+                      </div>
+                    )}
+                    <span className="font-semibold">{p.userName}</span>
+                    <span className="text-[9px] text-theme-muted">({p.userGrade})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-[11px] text-theme-muted italic">
+              {activeChallenge.studentsParticipating === 0
+                ? "0 students have joined yet. Be the first to join this academic year challenge!"
+                : `${activeChallenge.studentsParticipating} students joined.`}
+            </p>
+          )}
+        </div>
+
+        {/* Community Rewards List */}
         <div className="space-y-2">
           <h4 className="text-xs uppercase tracking-wider font-bold text-theme-muted">
-            School Community Rewards:
+            School Community Rewards for AY {activeChallenge.academicYear}:
           </h4>
           <div className="space-y-2">
-            {challenge.rewards.map((reward, i) => (
+            {activeChallenge.rewards.map((reward, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 bg-theme-card-subtle border border-theme-card p-3 rounded-xl text-xs font-semibold text-theme-main"
@@ -797,11 +954,30 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ isOpen, onClose,
           </div>
         </div>
 
+        {/* How BBS Challenges Work */}
+        <div className="p-3.5 rounded-2xl bg-theme-card-subtle border border-theme-card space-y-2 text-xs">
+          <div className="flex items-center gap-1.5 font-bold text-theme-main text-[11px]">
+            <Info className="w-3.5 h-3.5 text-theme-primary" />
+            <span>How the Campus Challenge Works</span>
+          </div>
+          <div className="space-y-1.5 text-[11px] text-theme-muted leading-relaxed">
+            <p>
+              • <strong>Eat Clean Plates</strong>: Finish your meals and log meal cards in the app to prevent food waste.
+            </p>
+            <p>
+              • <strong>Divert Food Scraps</strong>: Every gram of unavoidable food waste composted or diverted adds to the campus total.
+            </p>
+            <p>
+              • <strong>Unlock Community Rewards</strong>: Diverting food waste collectively unlocks new student amenities across the campus!
+            </p>
+          </div>
+        </div>
+
         <button
           onClick={onClose}
-          className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 shadow-md shadow-theme-glow"
+          className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 shadow-md shadow-theme-glow cursor-pointer"
         >
-          Got It, Let's Save Food!
+          {isCurrentYear ? "Got It, Let's Save Food!" : "Back to Active Challenge"}
         </button>
       </div>
     </div>

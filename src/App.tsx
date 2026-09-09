@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  PortionSize,
   TabType,
   UserProfile,
   MealRecord,
@@ -27,6 +26,7 @@ import {
   syncUserProfileToCloud,
   logMealToCloud,
   subscribeToCampusStats,
+  joinCampusChallenge,
   getOrCreateUserId,
   startOnlinePresenceHeartbeat,
 } from './lib/leaderboardService';
@@ -49,7 +49,6 @@ import {
   ChallengeModal,
   BadgeDetailsModal,
   BadgeGalleryModal,
-  MealHallSpecialModal,
   ChangePasswordModal,
   InfoContentModal,
   DailyTipDetailsModal,
@@ -66,7 +65,6 @@ function AppContent() {
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
-  const [selectedPortion, setSelectedPortion] = useState<PortionSize>('Regular');
 
   // App Data with local persistence
   const [user, setUser] = useState<UserProfile>(() => {
@@ -144,7 +142,6 @@ function AppContent() {
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [selectedBadgeForDetails, setSelectedBadgeForDetails] = useState<BadgeItem | null>(null);
   const [selectedTipForDetails, setSelectedTipForDetails] = useState<DailyTipItem | null>(null);
-  const [isSpecialModalOpen, setIsSpecialModalOpen] = useState(false);
   const [infoModalData, setInfoModalData] = useState<{ title: string; content: string } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -194,13 +191,17 @@ function AppContent() {
     }
   }, [isAuthenticated, user.id, user.name]);
 
-  // Subscribe to live campus challenge stats from Firestore
+  // Subscribe to live campus challenge stats and real participants from Firestore
   useEffect(() => {
-    const unsubChallenge = subscribeToCampusStats(campusChallenge, (liveChallenge) => {
-      setChallenge(liveChallenge);
-    });
+    const unsubChallenge = subscribeToCampusStats(
+      campusChallenge,
+      (liveChallenge) => {
+        setChallenge(liveChallenge);
+      },
+      user
+    );
     return () => unsubChallenge();
-  }, []);
+  }, [user.id, user.name]);
 
   useEffect(() => {
     localStorage.setItem('ecoeat_meals', JSON.stringify(meals));
@@ -221,6 +222,36 @@ function AppContent() {
     }, 3500);
   };
 
+  // Join the campus challenge in real-time
+  const handleJoinChallenge = async () => {
+    try {
+      const res = await joinCampusChallenge(user, challenge.academicYear);
+      if (res.success) {
+        if (res.isFirstTime) {
+          setUser((prev) => {
+            const newCurrentXp = prev.currentXp + 50;
+            const newTotalXp = prev.totalXp + 50;
+            const newLevel = Math.max(1, Math.floor(newTotalXp / 150) + 1);
+            return {
+              ...prev,
+              currentXp: newCurrentXp,
+              totalXp: newTotalXp,
+              level: newLevel,
+              title: getLevelTitle(newLevel),
+            };
+          });
+          showToast('🎉 You joined the BBS Campus Challenge! (+50 XP)');
+        } else {
+          showToast('✓ You are an active participant in this challenge!');
+        }
+      } else {
+        showToast('Could not join challenge. Please try again.');
+      }
+    } catch (err) {
+      showToast('Could not join challenge. Please try again.');
+    }
+  };
+
   // Handle meal completion from camera scan / clean plate verification or waste penalty
   const handleCompleteMeal = (newMeal: MealRecord, xpEarned: number, foodSavedKg: number) => {
     setMeals((prev) => [newMeal, ...prev]);
@@ -233,7 +264,7 @@ function AppContent() {
         const penaltyAmount = Math.abs(xpEarned);
         const newCurrentXp = Math.max(0, prev.currentXp - penaltyAmount);
         const newTotalXp = Math.max(0, prev.totalXp - penaltyAmount);
-        showToast(`⚠️ Waste penalty: -${penaltyAmount} XP deducted! Clean plate streak reset.`);
+        showToast(`⚠️ Food waste penalty: -${penaltyAmount.toLocaleString()} XP deducted! Clean plate streak reset to 0.`);
         return {
           ...prev,
           currentXp: newCurrentXp,
@@ -254,7 +285,7 @@ function AppContent() {
         const earnedTitle = getLevelTitle(newLevel);
         showToast(`🎉 Level Up! You are now Level ${newLevel} (${earnedTitle})! Streak is now ${newStreak} days! 🔥`);
       } else {
-        showToast(`✨ Clean plate verified! +${xpEarned} XP • Streak increased to ${newStreak} days! 🔥`);
+        showToast(`✨ Clean plate verified! +${xpEarned.toLocaleString()} XP • Streak increased to ${newStreak} days! 🔥`);
       }
 
       return {
@@ -567,23 +598,20 @@ function AppContent() {
                 meals={meals}
                 tips={getDailyTipsForDate(new Date())}
                 challenge={challenge}
-                selectedPortion={selectedPortion}
-                onSelectPortion={setSelectedPortion}
                 onStartNewMeal={() => setCurrentTab('capture')}
                 onOpenMealDetails={(meal) => setSelectedMealForDetails(meal)}
                 onOpenChallengeDetails={() => setIsChallengeModalOpen(true)}
                 onOpenRecentMealsList={() => setCurrentTab('profile')}
-                onOpenMealHallSpecial={() => setIsSpecialModalOpen(true)}
                 onRestartMeals={handleRestartMeals}
                 onOpenTipDetails={(tip) => setSelectedTipForDetails(tip)}
                 onOpenWeeklyImpact={handleOpenWeeklyImpact}
                 onNavigateToShop={() => setCurrentTab('shop')}
+                onJoinChallenge={handleJoinChallenge}
               />
             )}
 
             {currentTab === 'capture' && (
               <CaptureMeal
-                initialPortion={selectedPortion}
                 onCompleteMeal={handleCompleteMeal}
                 onApplyPenalty={handleApplyPenalty}
                 onCancel={() => setCurrentTab('dashboard')}
@@ -700,17 +728,13 @@ function AppContent() {
         isOpen={isChallengeModalOpen}
         onClose={() => setIsChallengeModalOpen(false)}
         challenge={challenge}
+        onJoinChallenge={handleJoinChallenge}
       />
 
       <BadgeDetailsModal
         isOpen={!!selectedBadgeForDetails}
         onClose={() => setSelectedBadgeForDetails(null)}
         badge={selectedBadgeForDetails}
-      />
-
-      <MealHallSpecialModal
-        isOpen={isSpecialModalOpen}
-        onClose={() => setIsSpecialModalOpen(false)}
       />
 
       <DailyTipDetailsModal

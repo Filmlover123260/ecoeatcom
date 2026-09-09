@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   query,
+  where,
   orderBy,
   limit,
   onSnapshot,
@@ -14,8 +15,17 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { UserProfile, MealRecord, LeaderboardUser, CampusChallengeInfo, ClassRankingItem } from '../types';
+import { UserProfile, MealRecord, LeaderboardUser, CampusChallengeInfo, ClassRankingItem, ChallengeParticipant } from '../types';
 import { getLevelTitle } from '../data/mockData';
+import { getAcademicYearPeriod } from '../data/academicYearChallenge';
+
+export function getCampusStatsDocId(academicYear?: string): string {
+  if (academicYear) {
+    return `bbs-pik-ay-${academicYear.replace('/', '-')}`;
+  }
+  const period = getAcademicYearPeriod();
+  return `bbs-pik-ay-${period.startYear}-${period.endYear}`;
+}
 
 // Generate or retrieve persistent unique User ID for this browser / student session
 export function getOrCreateUserId(currentUser?: UserProfile): string {
@@ -176,8 +186,8 @@ export async function logMealToCloud(
       createdAt: new Date().toISOString(),
     });
 
-    // 2. Increment global campus stats
-    const campusStatsRef = doc(db, 'campusStats', 'bbs-pik-fall-challenge');
+    // 2. Increment global campus stats for current academic year
+    const campusStatsRef = doc(db, 'campusStats', getCampusStatsDocId());
     await setDoc(
       campusStatsRef,
       {
@@ -199,6 +209,26 @@ export async function logMealToCloud(
       // If doc didn't exist yet, do full sync
       await syncUserProfileToCloud(user, userId);
     });
+
+    // 4. Record as verified active participant in the campus sustainability challenge
+    const aySlug = getAcademicYearPeriod().code.replace('/', '-');
+    const participantId = `${aySlug}_${userId}`;
+    const participantRef = doc(db, 'challengeParticipants', participantId);
+    await setDoc(
+      participantRef,
+      {
+        id: participantId,
+        academicYear: aySlug,
+        userId,
+        userName: user.name || 'Student',
+        userGrade: grade,
+        userSection: section,
+        userHomeroom: homeroom,
+        avatarUrl: user.avatarUrl || '',
+        joinedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    ).catch(() => {});
   } catch (err) {
     console.error('Error logging meal to Firestore:', err);
   }
@@ -464,38 +494,168 @@ export function computeLiveGradeClassesRankings(
 }
 
 /**
- * Real-time listener for the Global Campus Challenge progress
+ * Join the BBS Campus Challenge in real-time.
+ * Saves record in `challengeParticipants` collection.
+ */
+export async function joinCampusChallenge(
+  user: UserProfile,
+  academicYear?: string
+): Promise<{ success: boolean; isFirstTime: boolean }> {
+  const aySlug = academicYear ? academicYear.replace('/', '-') : '2026-2027';
+  const userId = getOrCreateUserId(user);
+  const participantId = `${aySlug}_${userId}`;
+  const participantRef = doc(db, 'challengeParticipants', participantId);
+
+  try {
+    const existingSnap = await getDoc(participantRef);
+    const isFirstTime = !existingSnap.exists();
+
+    const grade = user.grade || 'Grade 9';
+    const section = user.section || 'A';
+    const homeroom = user.homeroom || `${grade}-${section}`;
+
+    await setDoc(
+      participantRef,
+      {
+        id: participantId,
+        academicYear: aySlug,
+        userId,
+        userName: user.name || 'Student',
+        userGrade: grade,
+        userSection: section,
+        userHomeroom: homeroom,
+        avatarUrl: user.avatarUrl || '',
+        joinedAt: existingSnap.exists() ? existingSnap.data()?.joinedAt || new Date().toISOString() : new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    // Increment active students on campusStats
+    if (isFirstTime) {
+      const statsRef = doc(db, 'campusStats', `bbs-pik-ay-${aySlug}`);
+      await setDoc(
+        statsRef,
+        {
+          activeStudentsCount: increment(1),
+          lastUpdated: new Date().toISOString(),
+        },
+        { merge: true }
+      ).catch(() => {});
+    }
+
+    return { success: true, isFirstTime };
+  } catch (err) {
+    console.error('Error joining campus challenge in Firestore:', err);
+    return { success: false, isFirstTime: false };
+  }
+}
+
+/**
+ * Leave the BBS Campus Challenge in real-time.
+ */
+export async function leaveCampusChallenge(
+  user: UserProfile,
+  academicYear?: string
+): Promise<boolean> {
+  const aySlug = academicYear ? academicYear.replace('/', '-') : '2026-2027';
+  const userId = getOrCreateUserId(user);
+  const participantId = `${aySlug}_${userId}`;
+  const participantRef = doc(db, 'challengeParticipants', participantId);
+
+  try {
+    const existingSnap = await getDoc(participantRef);
+    if (existingSnap.exists()) {
+      await deleteDoc(participantRef);
+      const statsRef = doc(db, 'campusStats', `bbs-pik-ay-${aySlug}`);
+      await setDoc(
+        statsRef,
+        {
+          activeStudentsCount: increment(-1),
+          lastUpdated: new Date().toISOString(),
+        },
+        { merge: true }
+      ).catch(() => {});
+    }
+    return true;
+  } catch (err) {
+    console.error('Error leaving campus challenge:', err);
+    return false;
+  }
+}
+
+/**
+ * Real-time listener for the Global Campus Challenge progress & participants.
+ * Tracks the EXACT number of students that have joined in Firestore in real time.
  */
 export function subscribeToCampusStats(
   baseChallenge: CampusChallengeInfo,
-  onUpdate: (updatedChallenge: CampusChallengeInfo) => void
+  onUpdate: (updatedChallenge: CampusChallengeInfo) => void,
+  currentUser?: UserProfile
 ): Unsubscribe {
-  const statsRef = doc(db, 'campusStats', 'bbs-pik-fall-challenge');
+  const aySlug = baseChallenge.academicYear ? baseChallenge.academicYear.replace('/', '-') : '2026-2027';
+  const statsRef = doc(db, 'campusStats', `bbs-pik-ay-${aySlug}`);
+  const participantsRef = collection(db, 'challengeParticipants');
+  const participantsQuery = query(participantsRef, where('academicYear', '==', aySlug));
 
-  return onSnapshot(
+  let latestStatsData: any = null;
+  let latestParticipants: ChallengeParticipant[] = [];
+
+  const emitUpdate = () => {
+    // Only real food diverted recorded in Firestore from real student meal logs
+    const loggedFoodKg = latestStatsData ? Number(latestStatsData.totalFoodDivertedKg) || 0 : 0;
+    const currentKg = Math.round(loggedFoodKg * 10) / 10;
+    const targetKg = baseChallenge.targetKg || 1500;
+    const progressPercentage = Math.min(100, Math.round((currentKg / targetKg) * 100));
+
+    const currentUid = currentUser ? getOrCreateUserId(currentUser) : localStorage.getItem('ecoeat_user_uid');
+    const hasJoined = Boolean(currentUid && latestParticipants.some((p) => p.userId === currentUid));
+
+    onUpdate({
+      ...baseChallenge,
+      currentKg,
+      progressPercentage,
+      // EXACT REAL COUNT of students that joined in Firestore in real time (never faked):
+      studentsParticipating: latestParticipants.length,
+      hasJoined,
+      participantsList: latestParticipants,
+    });
+  };
+
+  const unsubStats = onSnapshot(
     statsRef,
     (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.data();
-        const currentKg = Math.round(((data.totalFoodDivertedKg || 0) + 640) * 10) / 10;
-        const targetKg = baseChallenge.targetKg || 1000;
-        const progressPercentage = Math.min(100, Math.round((currentKg / targetKg) * 100));
-
-        onUpdate({
-          ...baseChallenge,
-          currentKg,
-          progressPercentage,
-          studentsParticipating: Math.max(
-            baseChallenge.studentsParticipating,
-            (data.totalMealsLogged || 0) + 214
-          ),
-        });
+        latestStatsData = snapshot.data();
+      } else {
+        latestStatsData = null;
       }
+      emitUpdate();
     },
     (err) => {
       console.warn('Campus stats listener note:', err.message);
+      emitUpdate();
     }
   );
+
+  const unsubParticipants = onSnapshot(
+    participantsQuery,
+    (snapshot) => {
+      latestParticipants = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<ChallengeParticipant, 'id'>),
+      }));
+      emitUpdate();
+    },
+    (err) => {
+      console.warn('Challenge participants listener note:', err.message);
+      emitUpdate();
+    }
+  );
+
+  return () => {
+    unsubStats();
+    unsubParticipants();
+  };
 }
 
 /**
@@ -508,7 +668,7 @@ export async function seedInitialCommunityIfEmpty(): Promise<void> {
 /**
  * Restarts the campus leaderboard for a brand new competition period.
  * Resets all student scores to 0 XP, 0 food diverted, 0 streak, Level 1.
- * Also zeros out the campus dining challenge aggregate.
+ * Also zeros out the campus dining challenge aggregate and clears participants.
  */
 export async function restartLeaderboard(): Promise<{ success: boolean; resetCount: number }> {
   try {
@@ -533,18 +693,26 @@ export async function restartLeaderboard(): Promise<{ success: boolean; resetCou
       resetCount++;
     }
 
-    // Reset campus challenge aggregate
-    const campusDoc = doc(db, 'campusStats', 'bbs-pik-fall-challenge');
+    // Reset campus challenge aggregate for current academic year
+    const campusDoc = doc(db, 'campusStats', getCampusStatsDocId());
     await setDoc(
       campusDoc,
       {
         totalFoodDivertedKg: 0,
         totalMealsLogged: 0,
         totalCarbonSavedKg: 0,
+        activeStudentsCount: 0,
         lastUpdatedAt: new Date().toISOString(),
       },
       { merge: true }
     );
+
+    // Clear challenge participants for fresh start
+    const participantsRef = collection(db, 'challengeParticipants');
+    const participantsSnap = await getDocs(participantsRef);
+    for (const pDoc of participantsSnap.docs) {
+      await deleteDoc(doc(db, 'challengeParticipants', pDoc.id)).catch(() => {});
+    }
 
     return { success: true, resetCount };
   } catch (err) {

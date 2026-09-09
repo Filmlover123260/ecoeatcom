@@ -21,5 +21,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Real-time campus challenge participants
+    match /challengeParticipants/{participantId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   TrendingUp,
   Zap,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { UserProfile, CampusChallengeInfo, LeaderboardUser, ClassRankingItem } from '../types';
 import {
@@ -640,20 +642,28 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
       {/* 2. Sub-tab: Campus Goal */}
       {activeSubTab === 'goal' && (
         <div className="bg-theme-card border border-theme-card rounded-3xl p-6 shadow-xl space-y-6 animate-in fade-in">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-xl font-extrabold text-theme-main">Campus 1-Ton Food Divert</h3>
-              <p className="text-xs text-theme-muted">BBS PIK Grades 3–12 Live Sustainability Goal</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary shrink-0">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full bg-theme-primary/15 text-theme-primary border border-theme-primary/30 flex items-center gap-1">
+                    <Trophy className="w-3 h-3" />
+                    <span>BBS Academic Year {challenge.academicYear || '2026/2027'}</span>
+                  </span>
+                </div>
+                <h3 className="text-xl font-extrabold text-theme-main">{challenge.subtitle}</h3>
+                <p className="text-xs text-theme-muted mt-0.5">{challenge.description}</p>
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-bold text-theme-main">
               <span>{challenge.currentKg} kg Diverted Live</span>
-              <span className="text-theme-muted">Goal: {challenge.targetKg} kg</span>
+              <span className="text-theme-muted">Target: {challenge.targetKg} kg ({challenge.progressPercentage}%)</span>
             </div>
             <div className="w-full progress-theme-track h-4 rounded-full overflow-hidden p-0.5 border border-theme-card">
               <div
@@ -665,24 +675,24 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ user, challenge }) => 
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
             <div className="bg-theme-card-subtle border border-theme-card p-3.5 rounded-2xl">
-              <p className="text-[10px] uppercase font-bold text-theme-muted">Students Logged</p>
-              <p className="text-lg font-black text-theme-main">{challenge.studentsParticipating}</p>
+              <p className="text-[10px] uppercase font-bold text-theme-muted">Students Joined</p>
+              <p className="text-lg font-black text-theme-main">{challenge.studentsParticipating.toLocaleString()}</p>
             </div>
             <div className="bg-theme-card-subtle border border-theme-card p-3.5 rounded-2xl">
-              <p className="text-[10px] uppercase font-bold text-theme-muted">CO2 Equivalent</p>
+              <p className="text-[10px] uppercase font-bold text-theme-muted">CO2 Equivalent Diverted</p>
               <p className="text-lg font-black text-theme-primary">
                 {Math.round(challenge.currentKg * 2.2).toLocaleString()} kg
               </p>
             </div>
             <div className="bg-theme-card-subtle border border-theme-card p-3.5 rounded-2xl col-span-2 sm:col-span-1">
-              <p className="text-[10px] uppercase font-bold text-theme-muted">Days Remaining</p>
-              <p className="text-lg font-black text-amber-500">{challenge.daysLeft} Days</p>
+              <p className="text-[10px] uppercase font-bold text-theme-muted">Meals Equivalent Saved</p>
+              <p className="text-lg font-black text-amber-500">{Math.round(challenge.currentKg * 2.5).toLocaleString()} Meals</p>
             </div>
           </div>
 
           <div className="space-y-2 border-t border-theme-card pt-4">
             <h4 className="text-xs uppercase tracking-wider font-bold text-theme-muted">
-              Unlocked Campus Rewards
+              Unlocked Campus Rewards for AY {challenge.academicYear || '2026/2027'}
             </h4>
             <div className="space-y-2">
               {challenge.rewards.map((reward, i) => (

@@ -1,5 +1,6 @@
 import { UserProfile, MealRecord, BadgeItem, LeaderboardUser, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
 import { allBadgesList } from './badgesData';
+import { getCurrentCampusChallenge } from './academicYearChallenge';
 
 export const LEVEL_TITLES: { [level: number]: string } = {
   1: 'Eco Novice',
@@ -622,21 +623,7 @@ export const leaderboardUsers: LeaderboardUser[] = [];
 
 export const classLeaderboardUsers: LeaderboardUser[] = [];
 
-export const campusChallenge: CampusChallengeInfo = {
-  title: 'CAMPUS CHALLENGE',
-  subtitle: 'Fall Semester Green Race',
-  progressPercentage: 0,
-  daysLeft: 30,
-  studentsParticipating: 0,
-  targetKg: 1000,
-  currentKg: 0,
-  description: 'Unite BBS PIK students to divert 1,000 kg of campus dining food waste this Fall Semester. Every clean plate logs XP toward our campus sustainability grant!',
-  rewards: [
-    'Solar Charging Bench on Quad',
-    'Free Sustainable Smoothie Day',
-    'Campus Zero-Waste Trophy 2026',
-  ],
-};
+export const campusChallenge: CampusChallengeInfo = getCurrentCampusChallenge();
 
 export const defaultSettings: AppSettings = {
   greetingName: 'Student',

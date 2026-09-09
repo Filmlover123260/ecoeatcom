@@ -27,7 +27,7 @@ import {
   Grid,
 } from 'lucide-react';
 import { UserProfile, StickerItem, StickerCategory, StickerRarity } from '../types';
-import { allStickersCatalog, getStickerById, rarityConfigs } from '../data/stickersData';
+import { allStickersCatalog, getStickerById, rarityConfigs, calculateStickerMealModifiers } from '../data/stickersData';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -50,6 +50,11 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   const { t } = useLanguage();
   const { darkMode } = useTheme();
   const gridTopRef = useRef<HTMLDivElement>(null);
+
+  // Active user sticker stakes modifiers
+  const userStickerModifiers = useMemo(() => {
+    return calculateStickerMealModifiers(user.purchasedStickers || [], user.showcaseStickerId);
+  }, [user.purchasedStickers, user.showcaseStickerId]);
 
   // Navigation & Filtering State
   const [activeTab, setActiveTab] = useState<'shop' | 'album'>('shop');
@@ -487,6 +492,70 @@ export const StickerShop: React.FC<StickerShopProps> = ({
         </div>
       </div>
 
+      {/* High-Stakes Eco Multiplier Explanation Banner */}
+      <div className="rounded-3xl bg-gradient-to-r from-amber-500/10 via-theme-primary/10 to-emerald-500/10 border border-theme-card p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-theme-main flex items-center gap-2">
+                <span>Dynamic Meal Rewards & Waste Deductions</span>
+                <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-theme-primary/20 text-theme-primary border border-theme-primary/30">
+                  Core Rule
+                </span>
+              </h2>
+              <p className="text-xs text-theme-muted">
+                The rarer the sticker you buy, the more points you get after each clean plate meal — but if you waste food, the heavier the points deduction!
+              </p>
+            </div>
+          </div>
+
+          {/* Student's current active bonus stats */}
+          <div className="flex items-center gap-2 bg-theme-card/80 border border-theme-card px-3 py-2 rounded-2xl shrink-0">
+            <div className="text-right">
+              <span className="text-[10px] font-bold text-theme-muted block">Your Active Multiplier</span>
+              <span className="text-xs font-black text-emerald-400">+{userStickerModifiers.bonusCleanXp.toLocaleString()} Clean</span>
+              <span className="text-xs font-black text-rose-400 ml-1.5">-{userStickerModifiers.bonusWastePenalty.toLocaleString()} Waste</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Rarity Tiers Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+          {(['common', 'rare', 'epic', 'legendary'] as StickerRarity[]).map((r) => {
+            const config = rarityConfigs[r];
+            const countOwned = userStickerModifiers.countsByRarity[r] || 0;
+            return (
+              <div
+                key={r}
+                className="p-3 rounded-2xl bg-theme-card/70 border border-theme-card space-y-1.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider" style={{ color: config.accentColor }}>
+                    {r} Tier
+                  </span>
+                  <span className="text-[10px] font-bold text-theme-muted">
+                    {countOwned} Owned
+                  </span>
+                </div>
+                <div className="space-y-0.5 text-xs">
+                  <div className="flex justify-between font-bold text-emerald-400 text-[11px]">
+                    <span>🍽️ Clean Plate:</span>
+                    <span>+{config.cleanReward.toLocaleString()} XP</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-rose-400 text-[11px]">
+                    <span>🗑️ Waste Penalty:</span>
+                    <span>-{config.wastePenalty.toLocaleString()} XP</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Mode Switcher Tabs: Shop vs Album */}
       <div className="flex items-center justify-between flex-wrap gap-4 border-b border-theme-card pb-4">
         <div className="flex items-center bg-theme-card-subtle p-1 rounded-2xl border border-theme-card shadow-inner">
@@ -797,6 +866,18 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                   <CheckCircle2 className="w-3 h-3 shrink-0" />
                   <span className="line-clamp-1">{sticker.unlockedWith}</span>
                 </div>
+
+                {/* Dynamic Rarity Stakes */}
+                <div className="pt-1 flex items-center justify-between gap-1 text-[10px] font-bold">
+                  <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <span>Clean:</span>
+                    <span>+{(sticker.cleanReward || rarityConfigs[sticker.rarity]?.cleanReward || 150).toLocaleString()} XP</span>
+                  </span>
+                  <span className="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <span>Waste:</span>
+                    <span>-{(sticker.wastePenalty || rarityConfigs[sticker.rarity]?.wastePenalty || 100).toLocaleString()} XP</span>
+                  </span>
+                </div>
               </div>
 
               {/* Card Footer: Action Controls */}
@@ -1032,6 +1113,33 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{selectedStickerForModal.unlockedWith}</span>
                 </div>
+              </div>
+
+              {/* Meal Multipliers Box */}
+              <div className="bg-theme-card-subtle border border-theme-card rounded-2xl p-3.5 space-y-2 text-center">
+                <div className="flex items-center justify-between text-xs font-bold text-theme-main">
+                  <span>Dining Stakes Multiplier</span>
+                  <span className="uppercase text-[10px] px-2 py-0.5 rounded-full font-black" style={{ color: selectedStickerForModal.accentColor, backgroundColor: `${selectedStickerForModal.accentColor}15` }}>
+                    {selectedStickerForModal.rarity} tier
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="text-[10px] font-bold text-emerald-400 block">Clean Plate Reward</span>
+                    <span className="text-sm font-black text-emerald-400">
+                      +{(selectedStickerForModal.cleanReward || rarityConfigs[selectedStickerForModal.rarity]?.cleanReward || 150).toLocaleString()} XP
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <span className="text-[10px] font-bold text-rose-400 block">Waste Penalty</span>
+                    <span className="text-sm font-black text-rose-400">
+                      -{(selectedStickerForModal.wastePenalty || rarityConfigs[selectedStickerForModal.rarity]?.wastePenalty || 100).toLocaleString()} XP
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-theme-muted">
+                  Purchasing this sticker adds these stakes to every cafeteria meal!
+                </p>
               </div>
 
               {/* Modal Actions */}

@@ -586,7 +586,11 @@ function generateOneThousandStickers(): StickerItem[] {
 }
 
 // Generate the 1,000 stickers catalog
-export const allStickersCatalog: StickerItem[] = generateOneThousandStickers();
+export const allStickersCatalog: StickerItem[] = generateOneThousandStickers().map((s) => ({
+  ...s,
+  cleanReward: rarityConfigs[s.rarity]?.cleanReward ?? 150,
+  wastePenalty: rarityConfigs[s.rarity]?.wastePenalty ?? 100,
+}));
 
 // Fast O(1) Lookup Map
 const stickerMap = new Map<string, StickerItem>();

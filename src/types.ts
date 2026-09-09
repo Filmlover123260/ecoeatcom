@@ -27,6 +27,8 @@ export interface StickerItem {
   accentColor: string;
   purchasedDate?: string;
   isEquipped?: boolean;
+  cleanReward?: number;
+  wastePenalty?: number;
 }
 
 export interface UserProfile {
@@ -183,16 +185,43 @@ export interface DailyTipItem {
   bonusXp?: number;
 }
 
+export interface ChallengeParticipant {
+  id: string;
+  academicYear: string;
+  userId: string;
+  userName: string;
+  userGrade: string;
+  userSection?: string;
+  userHomeroom?: string;
+  avatarUrl?: string;
+  joinedAt: string;
+}
+
 export interface CampusChallengeInfo {
+  id?: string;
   title: string;
   subtitle: string;
+  academicYear: string; // e.g. "2026/2027"
+  academicYearLabel: string; // e.g. "AY 2026/2027 (July 2026 – June 2027)"
+  startMonth: string; // "July"
+  endMonth: string; // "June"
+  startDateStr: string; // "July 1, 2026"
+  endDateStr: string; // "June 30, 2027"
+  cycleTransitionNote?: string; // e.g. "Ended June 2026 • Started July 2026"
   progressPercentage: number;
   daysLeft: number;
+  totalDaysInYear?: number;
+  daysElapsed?: number;
   studentsParticipating: number;
+  hasJoined?: boolean;
+  participantsList?: ChallengeParticipant[];
   targetKg: number;
   currentKg: number;
   description: string;
   rewards: string[];
+  themeColor?: string;
+  motto?: string;
+  isCurrentAcademicYear?: boolean;
 }
 
 export interface AppSettings {

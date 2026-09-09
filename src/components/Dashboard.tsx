@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Zap,
   Crown,
+  UserPlus,
+  CheckCircle2,
 } from 'lucide-react';
 import { PortionSize, UserProfile, MealRecord, DailyTipItem, CampusChallengeInfo } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,17 +33,15 @@ interface DashboardProps {
   meals: MealRecord[];
   tips: DailyTipItem[];
   challenge: CampusChallengeInfo;
-  selectedPortion: PortionSize;
-  onSelectPortion: (portion: PortionSize) => void;
   onStartNewMeal: () => void;
   onOpenMealDetails: (meal: MealRecord) => void;
   onOpenChallengeDetails: () => void;
   onOpenRecentMealsList: () => void;
-  onOpenMealHallSpecial: () => void;
   onOpenTipDetails: (tip: DailyTipItem) => void;
   onOpenWeeklyImpact?: () => void;
   onRestartMeals?: () => void;
   onNavigateToShop?: () => void;
+  onJoinChallenge?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -49,17 +49,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   meals,
   tips,
   challenge,
-  selectedPortion,
-  onSelectPortion,
   onStartNewMeal,
   onOpenMealDetails,
   onOpenChallengeDetails,
   onOpenRecentMealsList,
-  onOpenMealHallSpecial,
   onOpenTipDetails,
   onOpenWeeklyImpact,
   onRestartMeals,
   onNavigateToShop,
+  onJoinChallenge,
 }) => {
   const { t } = useLanguage();
 
@@ -451,15 +449,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         id="campus-challenge-card"
         className="bg-theme-card border border-theme-card rounded-3xl p-6 shadow-lg space-y-4 transition-all duration-300 hover:border-theme-primary"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary shrink-0 mt-0.5">
               <Trophy className="w-5 h-5 fill-current/30" />
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-theme-muted font-bold">
-                {challenge.title}
-              </p>
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full bg-theme-primary/15 text-theme-primary border border-theme-primary/30 flex items-center gap-1">
+                  <Trophy className="w-3 h-3" />
+                  <span>BBS AY {challenge.academicYear || '2026/2027'}</span>
+                </span>
+              </div>
               <h3 className="text-xl font-bold text-theme-main tracking-tight">
                 {challenge.subtitle}
               </h3>
@@ -469,19 +470,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <button
             id="btn-view-challenge-details"
             onClick={onOpenChallengeDetails}
-            className="text-xs font-bold text-theme-primary hover:underline transition-colors cursor-pointer"
+            className="text-xs font-bold text-theme-primary hover:underline transition-colors cursor-pointer shrink-0 pt-1"
           >
             {t('view_details', 'View Details')}
           </button>
         </div>
 
         {/* Challenge Progress */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-theme-main">
-              {challenge.progressPercentage}% {t('of_campus_goal', 'of Campus Goal Reached')}
+              {challenge.currentKg} / {challenge.targetKg} kg ({challenge.progressPercentage}%) {t('of_campus_goal', 'Diverted')}
             </span>
-            <span className="text-theme-muted">{challenge.daysLeft} {t('days_left', 'days left')}</span>
+            <span className="text-theme-muted font-bold flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-theme-primary" />
+              <span>{challenge.title || 'Campus Sustainability Goal'}</span>
+            </span>
           </div>
 
           <div className="w-full progress-theme-track h-3.5 rounded-full overflow-hidden p-0.5 border border-theme-card">
@@ -492,55 +496,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Participating banner pill */}
-        <div className="bg-theme-card-subtle border border-theme-card rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-theme-main font-medium">
-          <Users className="w-4 h-4 text-theme-primary shrink-0" />
-          <span>{t('join_challenge_msg', `Join ${challenge.studentsParticipating.toLocaleString()} students saving food today!`)}</span>
-        </div>
-      </div>
-
-      {/* Campus Meal Hall Pill Banner */}
-      <div className="flex justify-center pt-1">
-        <button
-          id="btn-campus-meal-hall"
-          onClick={onOpenMealHallSpecial}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-theme-card border border-theme-card text-xs font-semibold text-theme-main hover:bg-theme-card-subtle hover:border-theme-primary transition-all shadow-md cursor-pointer"
-        >
-          <Utensils className="w-4 h-4 text-theme-primary" />
-          <span>{t('campus_meal_hall_special', "Campus Meal Hall: Today's Special: Garden Salad")}</span>
-        </button>
-      </div>
-
-      {/* Portion Size Selection */}
-      <div className="space-y-3 pt-2">
-        <label className="text-xs uppercase tracking-wider font-bold text-theme-muted block">
-          {t('select_portion_size', 'Select Portion Size')}
-        </label>
-        <div className="flex items-center gap-3">
-          {(['Small', 'Regular', 'Large'] as PortionSize[]).map((portion) => {
-            const isSelected = selectedPortion === portion;
-            const portionLabel =
-              portion === 'Small'
-                ? t('portion_small', 'Small')
-                : portion === 'Regular'
-                ? t('portion_regular', 'Regular')
-                : t('portion_large', 'Large');
-
-            return (
-              <button
-                key={portion}
-                id={`portion-btn-${portion.toLowerCase()}`}
-                onClick={() => onSelectPortion(portion)}
-                className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-theme-primary text-black shadow-md shadow-theme-glow ring-2 ring-theme-primary'
-                    : 'bg-theme-card text-theme-muted border border-theme-card hover:border-theme-primary hover:text-theme-main'
-                }`}
-              >
-                {portionLabel}
-              </button>
-            );
-          })}
+        {/* Participating banner pill & Impact stats pill */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          {challenge.hasJoined ? (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-3.5 py-2 flex items-center justify-between gap-2 text-emerald-400 font-medium">
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="truncate">
+                  {challenge.studentsParticipating <= 1
+                    ? "You've joined! (1 BBS student)"
+                    : `You've joined! (${challenge.studentsParticipating.toLocaleString()} BBS students)`}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 shrink-0">
+                Active
+              </span>
+            </div>
+          ) : (
+            <button
+              id="btn-join-challenge"
+              onClick={onJoinChallenge}
+              className="bg-theme-card-subtle hover:bg-theme-primary/15 border border-theme-card hover:border-theme-primary/40 rounded-xl px-3.5 py-2 flex items-center justify-between gap-2 text-theme-main font-medium transition-all cursor-pointer group text-left"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <UserPlus className="w-4 h-4 text-theme-primary shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="truncate">
+                  {challenge.studentsParticipating === 0
+                    ? "Be the first BBS student to join!"
+                    : `Join ${challenge.studentsParticipating.toLocaleString()} BBS student${challenge.studentsParticipating === 1 ? '' : 's'}`}
+                </span>
+              </div>
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-theme-primary text-black shrink-0 shadow-sm shadow-theme-glow">
+                Join (+50 XP)
+              </span>
+            </button>
+          )}
+          <div className="bg-theme-card-subtle border border-theme-card rounded-xl px-3.5 py-2 flex items-center gap-2 text-theme-muted text-[11px] font-medium">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="line-clamp-1">
+              {Math.round(challenge.currentKg * 2.2).toLocaleString()} kg CO₂ diverted across campus
+            </span>
+          </div>
         </div>
       </div>
 
