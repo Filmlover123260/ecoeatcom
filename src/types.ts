@@ -1,6 +1,6 @@
 export type PortionSize = 'Small' | 'Regular' | 'Large';
 
-export type TabType = 'dashboard' | 'capture' | 'leaderboard' | 'shop' | 'profile' | 'settings';
+export type TabType = 'dashboard' | 'capture' | 'shop' | 'profile' | 'settings';
 
 export type StickerRarity = 'common' | 'rare' | 'epic' | 'legendary';
 
@@ -69,9 +69,20 @@ export interface DetectedFoodZone {
   estimatedGrams: number;
 }
 
+export interface FoodCategoryItem {
+  id: string;
+  name: string;
+  icon: string;
+  tag: string;
+  description: string;
+  popularFoods: string[];
+}
+
 export interface MealRecord {
   id: string;
   title: string;
+  foodCategory?: string;
+  foodItem?: string;
   time: string;
   date?: string;
   portion: PortionSize;
@@ -98,6 +109,8 @@ export interface MealRecord {
 
 export interface ScanAnalysisResult {
   dishName: string;
+  foodCategory?: string;
+  foodItem?: string;
   isFood?: boolean;
   nonFoodReason?: string;
   confidenceScore: number;

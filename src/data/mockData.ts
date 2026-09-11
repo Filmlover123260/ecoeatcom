@@ -1,4 +1,4 @@
-import { UserProfile, MealRecord, BadgeItem, LeaderboardUser, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
+import { UserProfile, MealRecord, BadgeItem, DailyTipItem, CampusChallengeInfo, AppSettings } from '../types';
 import { allBadgesList } from './badgesData';
 import { getCurrentCampusChallenge } from './academicYearChallenge';
 
@@ -30,9 +30,9 @@ export const initialUserProfile: UserProfile = {
   greetingName: 'Student',
   title: 'Eco Novice',
   level: 1,
-  currentXp: 85,
+  currentXp: 0,
   nextLevelXp: 100,
-  totalXp: 85,
+  totalXp: 0,
   profileGoalXp: 500,
   streakDays: 0,
   foodSavedKg: 0,
@@ -351,15 +351,15 @@ export const allWeeklyTips: DailyTipItem[] = [
     id: 'tip-fri-1',
     title: 'Clean Plate Peer Rally',
     category: 'Community Leadership',
-    description: 'Inspire 2 friends at your dining table to finish their plates with 0g waste and log their scans for leaderboard XP.',
+    description: 'Inspire 2 friends at your dining table to finish their plates with 0g waste and earn clean plate bonus XP.',
     iconType: 'sparkles',
     actionableSteps: [
       'Take a quick pre-meal and post-dining scan together at the lunch table.',
       'Cheer on classmates working toward the 7-day clean plate streak badge.',
-      'Share sustainability tips during dining breaks to elevate your class rank.',
+      'Share sustainability tips during dining breaks to support campus sustainability.',
     ],
     didYouKnow: 'Social reinforcement increases student participation in sustainability initiatives by over 400%.',
-    campusApplication: 'Check the BBS PIK Class Division leaderboard on Friday afternoon to see which grade holds #1 rank!',
+    campusApplication: 'Celebrate zero-waste achievements with your classmates on Friday afternoon to close out the school week!',
     impactStat: 'Triples food diversion impact through student peer teamwork',
     dayOfWeek: 5,
     dayName: 'Friday',
@@ -618,10 +618,6 @@ export const GRADE_DIVISIONS = [
     grades: ['Grade 10', 'Grade 11', 'Grade 12'],
   },
 ];
-
-export const leaderboardUsers: LeaderboardUser[] = [];
-
-export const classLeaderboardUsers: LeaderboardUser[] = [];
 
 export const campusChallenge: CampusChallengeInfo = getCurrentCampusChallenge();
 

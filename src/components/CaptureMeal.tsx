@@ -26,10 +26,14 @@ import {
   ShieldCheck,
   Target,
   Maximize2,
+  CheckCircle2,
+  ArrowRight,
+  Search,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { PortionSize, MealRecord, UserProfile, DetectedFoodZone, MealNutrition } from '../types';
+import { PortionSize, MealRecord, UserProfile, DetectedFoodZone, MealNutrition, FoodCategoryItem } from '../types';
 import { samplePresetMeals } from '../data/mockData';
+import { foodCategories } from '../data/foodCategoriesData';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { calculateStickerMealModifiers, rarityConfigs } from '../data/stickersData';
@@ -90,8 +94,39 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
 }) => {
   const { activeTheme } = useTheme();
   const { t } = useLanguage();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(2);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [selectedCategory, setSelectedCategory] = useState<FoodCategoryItem>(foodCategories[0]);
+  const [selectedFood, setSelectedFood] = useState<string>(foodCategories[0].popularFoods[0]);
+  const [customFoodInput, setCustomFoodInput] = useState<string>('');
+  const [dishSearchQuery, setDishSearchQuery] = useState<string>('');
   const [portion, setPortion] = useState<PortionSize>(initialPortion);
+
+  const filteredPopularFoods = useMemo(() => {
+    if (!selectedCategory) return [];
+    if (!dishSearchQuery.trim()) return selectedCategory.popularFoods;
+    const q = dishSearchQuery.toLowerCase().trim();
+    return selectedCategory.popularFoods.filter((dish) => dish.toLowerCase().includes(q));
+  }, [selectedCategory, dishSearchQuery]);
+
+  const handleSelectCategory = (category: FoodCategoryItem) => {
+    setSelectedCategory(category);
+    setSelectedFood(category.popularFoods[0]);
+    setCustomFoodInput('');
+    setDishSearchQuery('');
+  };
+
+  const handleSelectFood = (food: string) => {
+    setSelectedFood(food);
+    setCustomFoodInput('');
+  };
+
+  const handleContinueToScan = () => {
+    const finalFood = customFoodInput.trim() || selectedFood || selectedCategory.popularFoods[0];
+    setSelectedFood(finalFood);
+    setEditedDishName(finalFood);
+    setCurrentStep(2);
+    setIsLiveMode(true);
+  };
   const [scanMode, setScanMode] = useState<ScanMode>('smart-macro');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
@@ -100,8 +135,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
   const [isLiveMode, setIsLiveMode] = useState(true);
   const [isFlashing, setIsFlashing] = useState(false);
 
-  const [capturedBeforeImage, setCapturedBeforeImage] = useState<string>(samplePresetMeals[0].url);
-  const [capturedAfterImage, setCapturedAfterImage] = useState<string>(samplePresetMeals[4]?.url || samplePresetMeals[3].url);
+  const [capturedBeforeImage, setCapturedBeforeImage] = useState<string>('');
+  const [capturedAfterImage, setCapturedAfterImage] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   // Detailed Analysis State
@@ -124,6 +159,21 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Callback ref to guarantee stream is attached immediately upon video DOM element mount
+  const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && streamRef.current) {
+      if (node.srcObject !== streamRef.current) {
+        node.srcObject = streamRef.current;
+      }
+      node.setAttribute('playsinline', 'true');
+      node.setAttribute('webkit-playsinline', 'true');
+      node.muted = true;
+      node.play().catch((err) => console.warn('Camera video play error on ref attach:', err));
+    }
+  }, []);
 
   // Stop camera tracks cleanly
   const stopCamera = useCallback(() => {
@@ -143,7 +193,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     setIsCameraActive(false);
   }, []);
 
-  // Start or switch live camera stream
+  // Start or switch live camera stream with multi-tier constraint fallback
   const startCamera = useCallback(async (mode: 'environment' | 'user' = facingMode) => {
     setIsCameraLoading(true);
     setCameraError(null);
@@ -156,6 +206,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         throw new Error('Camera API (getUserMedia) not supported by your browser.');
       }
 
+      // 1. Try ideal constraints (preferred orientation and resolution)
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -166,11 +217,19 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           audio: false,
         });
       } catch (idealErr) {
-        console.warn('Ideal camera constraints failed, attempting fallback to default video:', idealErr);
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
+        console.warn('Ideal camera constraints failed, trying facingMode fallback:', idealErr);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: mode },
+            audio: false,
+          });
+        } catch (facingErr) {
+          console.warn('FacingMode fallback failed, trying basic video:', facingErr);
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        }
       }
 
       if (stream) {
@@ -193,11 +252,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     } catch (err: any) {
       console.warn('Camera access failed or was denied:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Camera access was blocked by browser or system settings. Click "Enable / Retry Camera" below or select a photo.');
+        setCameraError('Camera access was blocked by browser or system settings. You can tap "Take Photo Directly" or upload an image from your device.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraError('No camera device detected. You can upload a photo from your gallery or choose a preset meal below.');
+        setCameraError('No camera device detected on this system. You can take a photo or upload an image below.');
       } else {
-        setCameraError('Unable to start live camera stream. Click "Enable / Retry Camera" or upload a dining photo.');
+        setCameraError('Live camera viewfinder is unavailable. Tap "Take Photo Directly" or upload an image to scan.');
       }
       setIsCameraActive(false);
       setIsLiveMode(false);
@@ -206,13 +265,27 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     }
   }, [facingMode, stopCamera]);
 
-  // Initial camera startup
+  // Keep video element attached to stream whenever step or live state updates
   useEffect(() => {
-    startCamera(facingMode);
+    if (videoRef.current && streamRef.current && isCameraActive && isLiveMode) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      videoRef.current.play().catch((err) => console.warn('Stream play effect error:', err));
+    }
+  }, [isCameraActive, isLiveMode, currentStep]);
+
+  // Camera startup for scanning steps 2 and 3
+  useEffect(() => {
+    if (currentStep === 2 || currentStep === 3) {
+      startCamera(facingMode);
+    } else {
+      stopCamera();
+    }
     return () => {
       stopCamera();
     };
-  }, [facingMode, startCamera, stopCamera]);
+  }, [facingMode, startCamera, stopCamera, currentStep]);
 
   // Toggle front/back camera
   const handleFlipCamera = () => {
@@ -223,33 +296,48 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
 
   // Capture frame from webcam or use active static image
   const handleSnap = async () => {
-    let base64Image = currentStep === 2 ? capturedBeforeImage : capturedAfterImage;
+    // If live camera is not ready, paused, or unavailable, trigger native device camera directly
+    if (
+      !isCameraActive ||
+      !videoRef.current ||
+      !isLiveMode ||
+      videoRef.current.videoWidth === 0 ||
+      videoRef.current.readyState < 2
+    ) {
+      cameraInputRef.current?.click();
+      return;
+    }
 
     // Trigger visual shutter flash effect
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 220);
 
-    if (isCameraActive && videoRef.current && isLiveMode) {
-      try {
-        const video = videoRef.current;
-        const rawW = video.videoWidth || 640;
-        const rawH = video.videoHeight || 480;
-        const maxDim = 640;
-        const scale = Math.min(1, maxDim / Math.max(rawW, rawH));
-        const width = Math.round(rawW * scale);
-        const height = Math.round(rawH * scale);
+    let base64Image = '';
+    try {
+      const video = videoRef.current;
+      const rawW = video.videoWidth || 640;
+      const rawH = video.videoHeight || 480;
+      const maxDim = 640;
+      const scale = Math.min(1, maxDim / Math.max(rawW, rawH));
+      const width = Math.round(rawW * scale);
+      const height = Math.round(rawH * scale);
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, width, height);
-          base64Image = canvas.toDataURL('image/jpeg', 0.78);
-        }
-      } catch (snapErr) {
-        console.error('Error capturing video frame:', snapErr);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, width, height);
+        base64Image = canvas.toDataURL('image/jpeg', 0.78);
       }
+    } catch (snapErr) {
+      console.error('Error capturing video frame:', snapErr);
+    }
+
+    if (!base64Image || base64Image.length < 200) {
+      // Fallback to device camera if capture failed
+      cameraInputRef.current?.click();
+      return;
     }
 
     if (currentStep === 2) {
@@ -290,8 +378,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       const isNotFood = preset.isFood === false;
       const isSmall = portion === 'Small';
       const isLarge = portion === 'Large';
+      const dishTitle = isNotFood ? 'Non-Food Object Detected' : (selectedFood || preset.name || 'Sustainable Campus Meal');
       const parsed = {
-        dishName: isNotFood ? 'Non-Food Object Detected' : preset.name || 'Sustainable Campus Meal',
+        dishName: dishTitle,
+        foodCategory: selectedCategory?.name || 'East Asian Cuisine',
+        foodItem: selectedFood || dishTitle,
         isFood: !isNotFood,
         nonFoodReason: isNotFood ? (preset.nonFoodReason || 'Stationery / non-food detected instead of dining meal.') : undefined,
         isPenalty: isNotFood,
@@ -304,19 +395,19 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           fat: isSmall ? 9 : isLarge ? 18 : 14,
           fiber: isSmall ? 6 : isLarge ? 12 : 8,
         },
-        foodItems: isNotFood ? ['Non-Food Object (Penalty: -20 XP)'] : (preset.items || ['Mixed Campus Greens', 'Organic Quinoa', 'Roasted Tofu']),
+        foodItems: isNotFood ? ['Non-Food Object (Penalty: -20 XP)'] : (preset.items || [dishTitle, 'Fresh Campus Greens', 'Organic Grains']),
         detectedZones: isNotFood ? [] : [
-          { label: 'Plant Protein & Tofu', category: 'protein', confidence: 96, estimatedGrams: isSmall ? 65 : isLarge ? 130 : 90 },
+          { label: dishTitle, category: 'protein', confidence: 96, estimatedGrams: isSmall ? 65 : isLarge ? 130 : 90 },
           { label: 'Whole Grains & Rice', category: 'grain', confidence: 95, estimatedGrams: isSmall ? 85 : isLarge ? 170 : 120 },
           { label: 'Fresh Campus Vegetables', category: 'vegetable', confidence: 98, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
         ],
         carbonSavingsKg: isNotFood ? 0 : isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
         waterSavedLiters: isNotFood ? 0 : isSmall ? 420 : isLarge ? 860 : 590,
         ecoScore: isNotFood ? 'N/A' : (preset.ecoScore || 'A+'),
-        dietaryTags: isNotFood ? ['Non-Food', 'Penalty -20 XP'] : (preset.tags || ['Plant-Rich', 'Low Carbon', 'High Fiber']),
+        dietaryTags: isNotFood ? ['Non-Food', 'Penalty -20 XP'] : (preset.tags || [selectedCategory?.name || 'Campus Meal', 'Low Carbon', 'High Fiber']),
         sustainabilityFeedback: isNotFood
           ? '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'
-          : 'Well-balanced plant-forward meal with zero food waste potential!',
+          : `Well-balanced ${selectedCategory?.name || 'campus'} meal with zero food waste potential!`,
         xpEarned: isNotFood ? -20 : (isLarge ? 40 : 35),
       };
       setAnalysisResult(parsed);
@@ -383,6 +474,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           mimeType: 'image/jpeg',
           mealStage: type,
           portionSize: portion,
+          foodCategory: selectedCategory?.name,
+          foodItem: selectedFood,
         }),
       });
 
@@ -395,7 +488,9 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       if (type === 'before') {
         const isNotFood = result.isFood === false || knownPreset?.isFood === false;
         const parsed = {
-          dishName: isNotFood ? 'Non-Food Object Detected' : result.dishName || knownPreset?.name || 'Sustainable Campus Meal',
+          dishName: isNotFood ? 'Non-Food Object Detected' : result.dishName || selectedFood || knownPreset?.name || 'Sustainable Campus Meal',
+          foodCategory: result.foodCategory || selectedCategory?.name || 'East Asian Cuisine',
+          foodItem: result.foodItem || selectedFood || result.dishName || 'Campus Meal',
           isFood: !isNotFood,
           nonFoodReason: isNotFood ? (result.nonFoodReason || knownPreset?.nonFoodReason || 'Non-edible item detected instead of dining meal.') : undefined,
           isPenalty: isNotFood,
@@ -584,6 +679,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       title: dishTitle,
       time: 'Just now',
       portion: portion,
+      foodCategory: selectedCategory?.name || analysisResult?.foodCategory,
+      foodItem: selectedFood || dishTitle,
       xp: totalXp,
       imageUrl: capturedBeforeImage,
       afterImageUrl: capturedAfterImage,
@@ -673,10 +770,10 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           </span>
           <span className="text-theme-primary font-extrabold">
             {currentStep === 1
-              ? t('portion_title', 'Portion Size')
+              ? t('capture_step_choose_food', '1. Food Category & Meal')
               : currentStep === 2
-              ? t('capture_step_1', 'AI Food & Nutrient Scan')
-              : t('capture_step_2', 'Clean Plate Verification')}
+              ? t('capture_step_scan_meal', '2. AI Meal Scan')
+              : t('capture_step_clean_plate', '3. Clean Plate Verification')}
           </span>
         </div>
 
@@ -700,8 +797,307 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         </div>
       </div>
 
-      {/* Main Camera / Viewfinder Box */}
-      <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-black rounded-3xl overflow-hidden border-2 border-theme-card shadow-2xl flex items-center justify-center">
+      {/* STEP 1: Food Category and Dish Selection */}
+      {currentStep === 1 && (
+        <div className="space-y-5 animate-in fade-in duration-300">
+          {/* Question 1: What food category are you going to eat? */}
+          <div className="bg-theme-card border border-theme-card rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-theme-primary bg-theme-primary-bg px-2.5 py-1 rounded-full border border-theme-primary-border">
+                {t('question_food_category', 'What food category are you going to eat?')}
+              </span>
+              <h3 className="text-lg sm:text-xl font-black text-theme-main pt-1.5 leading-tight">
+                {t('question_food_category', 'What food category are you going to eat?')}
+              </h3>
+              <p className="text-xs text-theme-muted">
+                Select your food category to calibrate AI recognition accuracy and nutritional metrics.
+              </p>
+            </div>
+
+            {/* Food Categories Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+              {foodCategories.map((cat) => {
+                const isSelected = selectedCategory?.id === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    id={`cuisine-cat-${cat.id}`}
+                    type="button"
+                    onClick={() => handleSelectCategory(cat)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-3 relative ${
+                      isSelected
+                        ? 'border-theme-primary bg-theme-primary-bg shadow-sm'
+                        : 'border-theme-card bg-theme-card-subtle hover:border-theme-muted/40 hover:bg-theme-card'
+                    }`}
+                  >
+                    <span className="text-2xl p-2 rounded-xl bg-theme-card border border-theme-card shrink-0">
+                      {cat.icon}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-xs sm:text-sm font-extrabold truncate ${isSelected ? 'text-theme-primary' : 'text-theme-main'}`}>
+                          {cat.name}
+                        </span>
+                        {isSelected && (
+                          <CheckCircle2 className="w-4 h-4 text-theme-primary shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-theme-muted truncate mt-0.5">
+                        {cat.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Question 2: What food are you going to eat from that category? */}
+          <div className="bg-theme-card border border-theme-card rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-theme-primary bg-theme-primary-bg px-2.5 py-1 rounded-full border border-theme-primary-border">
+                  {t('question_food_item', 'What food are you going to eat from that category?')}
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-theme-main pt-1 leading-tight">
+                  {t('question_food_item', 'What food are you going to eat from that category?')}
+                </h3>
+                <p className="text-xs text-theme-muted flex items-center gap-1.5">
+                  <span>Category:</span>
+                  <span className="font-bold text-theme-primary">{selectedCategory?.name}</span>
+                  <span>{selectedCategory?.icon}</span>
+                </p>
+              </div>
+              <span className="self-start sm:self-center px-3 py-1 rounded-full bg-theme-primary-bg border border-theme-primary-border text-[11px] font-black text-theme-primary whitespace-nowrap">
+                {selectedCategory?.popularFoods.length || 22} Options Available
+              </span>
+            </div>
+
+            {/* Quick Filter & Search Bar for Dishes */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-theme-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="input-dish-search"
+                type="text"
+                value={dishSearchQuery}
+                onChange={(e) => setDishSearchQuery(e.target.value)}
+                placeholder={`Search or filter ${selectedCategory?.popularFoods.length || 24} options in ${selectedCategory?.name}...`}
+                className="w-full bg-theme-card-subtle border border-theme-card focus:border-theme-primary rounded-2xl pl-10 pr-10 py-2.5 text-xs sm:text-sm font-semibold text-theme-main placeholder-theme-muted/60 focus:outline-none transition-colors"
+              />
+              {dishSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setDishSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme-main text-xs font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Popular dish chips */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-theme-muted font-bold">
+                <span>
+                  {dishSearchQuery.trim()
+                    ? `Matching options (${filteredPopularFoods.length})`
+                    : `${t('popular_options', 'Popular Choices')} (${selectedCategory?.name})`}
+                </span>
+                {dishSearchQuery.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setDishSearchQuery('')}
+                    className="text-theme-primary hover:underline font-bold text-[11px] cursor-pointer"
+                  >
+                    Show all {selectedCategory?.popularFoods.length}
+                  </button>
+                )}
+              </div>
+
+              {filteredPopularFoods.length > 0 ? (
+                <div className="flex flex-wrap gap-2 max-h-72 overflow-y-auto pr-1 py-1">
+                  {filteredPopularFoods.map((dish) => {
+                    const isDishSelected = selectedFood === dish && !customFoodInput;
+                    return (
+                      <button
+                        key={dish}
+                        id={`dish-chip-${dish.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                        type="button"
+                        onClick={() => handleSelectFood(dish)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer flex items-center gap-1.5 text-left ${
+                          isDishSelected
+                            ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
+                            : 'bg-theme-card-subtle text-theme-main hover:bg-theme-card border border-theme-card hover:border-theme-muted/40'
+                        }`}
+                      >
+                        <span>{dish}</span>
+                        {isDishSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-theme-card-subtle border border-dashed border-theme-card text-center space-y-2">
+                  <p className="text-xs text-theme-muted">
+                    No preset option matches &ldquo;{dishSearchQuery}&rdquo; in {selectedCategory?.name}.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomFoodInput(dishSearchQuery.trim());
+                      setSelectedFood(dishSearchQuery.trim());
+                      setDishSearchQuery('');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-theme-primary text-black text-xs font-black shadow-sm hover:opacity-90 transition-opacity cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <span>Use &ldquo;{dishSearchQuery.trim()}&rdquo; as my selection</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Custom dish input */}
+            <div className="pt-2 border-t border-theme-card space-y-2">
+              <label className="text-xs font-bold text-theme-muted block">
+                {t('custom_dish_placeholder', 'Or type custom food name...')}
+              </label>
+              <div className="relative">
+                <input
+                  id="input-custom-dish"
+                  type="text"
+                  value={customFoodInput}
+                  onChange={(e) => {
+                    setCustomFoodInput(e.target.value);
+                    if (e.target.value) {
+                      setSelectedFood(e.target.value);
+                    } else {
+                      setSelectedFood(selectedCategory?.popularFoods[0] || '');
+                    }
+                  }}
+                  placeholder={t('custom_dish_placeholder', 'Or type custom dish name...')}
+                  className="w-full bg-theme-card-subtle border border-theme-card focus:border-theme-primary rounded-xl px-4 py-3 text-xs sm:text-sm font-semibold text-theme-main placeholder-theme-muted/60 focus:outline-none transition-colors"
+                />
+                {customFoodInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomFoodInput('');
+                      setSelectedFood(selectedCategory?.popularFoods[0] || '');
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme-main text-xs font-bold cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Planned Portion Selector */}
+          <div className="bg-theme-card border border-theme-card rounded-3xl p-5 sm:p-6 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-theme-muted">
+                  Planned Portion Size
+                </span>
+                <p className="text-sm font-extrabold text-theme-main">
+                  {portion === 'Small' ? 'Small / Light Plate (~240g)' : portion === 'Large' ? 'Large / Hearty Plate (~480g)' : 'Regular Campus Plate (~350g)'}
+                </p>
+              </div>
+              <span className="text-xs font-black text-theme-primary px-2.5 py-1 rounded-full bg-theme-primary-bg border border-theme-primary-border">
+                {portion === 'Small' ? '+35 XP' : portion === 'Large' ? '+40 XP' : '+35 XP'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {(['Small', 'Regular', 'Large'] as PortionSize[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  id={`portion-btn-${p.toLowerCase()}`}
+                  onClick={() => setPortion(p)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
+                    portion === p
+                      ? 'border-theme-primary bg-theme-primary-bg text-theme-primary font-black shadow-sm'
+                      : 'border-theme-card bg-theme-card-subtle text-theme-muted hover:text-theme-main hover:bg-theme-card'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Summary & Continue CTA */}
+          <div className="bg-theme-card border-2 border-theme-primary/60 rounded-3xl p-5 sm:p-6 shadow-md space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-theme-muted">
+                  Selected Dining Profile
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{selectedCategory?.icon}</span>
+                  <span className="text-sm sm:text-base font-black text-theme-main">
+                    {customFoodInput.trim() || selectedFood || selectedCategory?.popularFoods[0]}
+                  </span>
+                </div>
+                <p className="text-xs text-theme-muted">
+                  {selectedCategory?.name} • {portion} Portion
+                </p>
+              </div>
+            </div>
+
+            <button
+              id="btn-continue-to-scan"
+              type="button"
+              onClick={handleContinueToScan}
+              className="w-full py-4 rounded-full bg-theme-primary text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 hover:opacity-95 active:scale-[0.99] transition-all shadow-lg shadow-theme-glow cursor-pointer"
+            >
+              <Camera className="w-5 h-5" />
+              <span>{t('continue_to_scan', 'Continue to Scan Plate')}</span>
+              <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEPS 2 & 3: Camera, Scanning, and Clean Plate UI */}
+      {currentStep >= 2 && (
+        <>
+          {/* Active Dining Selection Banner (Step 2) */}
+          {currentStep === 2 && (
+            <div className="bg-theme-card border border-theme-card rounded-2xl p-3 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <span className="text-2xl p-1 bg-theme-card-subtle rounded-xl border border-theme-card shrink-0">
+                  {selectedCategory?.icon}
+                </span>
+                <div className="overflow-hidden">
+                  <div className="flex items-center gap-1.5 text-[11px] text-theme-muted font-bold">
+                    <span>{t('dining_on', 'Dining on')}</span>
+                    <span className="text-theme-primary font-extrabold">• {selectedCategory?.name}</span>
+                  </div>
+                  <p className="text-sm font-extrabold text-theme-main truncate">
+                    {selectedFood || selectedCategory?.popularFoods[0]}
+                  </p>
+                </div>
+              </div>
+              <button
+                id="btn-change-selected-food"
+                onClick={() => {
+                  stopCamera();
+                  setCurrentStep(1);
+                }}
+                className="px-3 py-1.5 rounded-full bg-theme-card-subtle hover:bg-theme-card border border-theme-card hover:border-theme-primary text-xs font-bold text-theme-muted hover:text-theme-main transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              >
+                <Pencil className="w-3 h-3 text-theme-primary" />
+                <span>{t('change_food', 'Change Food')}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Main Camera / Viewfinder Box */}
+          <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-black rounded-3xl overflow-hidden border-2 border-theme-card shadow-2xl flex items-center justify-center">
         {/* Shutter flash effect */}
         {isFlashing && (
           <div className="absolute inset-0 bg-white z-30 animate-out fade-out duration-200 pointer-events-none" />
@@ -709,50 +1105,86 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
 
         {/* Live Camera Video */}
         <video
-          ref={videoRef}
+          ref={setVideoRef}
           playsInline
           muted
           autoPlay
+          onLoadedMetadata={(e) => {
+            const v = e.currentTarget;
+            v.play().catch((err) => console.warn('Video onLoadedMetadata play:', err));
+          }}
           className={`w-full h-full object-cover transition-opacity duration-200 ${
             isCameraActive && isLiveMode ? 'opacity-100 block' : 'opacity-0 absolute pointer-events-none'
           }`}
         />
 
-        {/* Static Snapshot or Preset Image Preview */}
+        {/* Static Snapshot or Viewfinder Standby Preview */}
         {(!isCameraActive || !isLiveMode) && (
           <div className="relative w-full h-full flex items-center justify-center bg-theme-card">
-            <img
-              src={currentStep === 3 ? capturedAfterImage : capturedBeforeImage}
-              alt="Meal capture preview"
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            {/* Overlay badge indicating captured/preset */}
-            <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-1.5 shadow-lg">
-              <Check className="w-3.5 h-3.5 text-theme-primary" />
-              <span>Snapshot Loaded</span>
-            </div>
+            {(currentStep === 3 ? capturedAfterImage : capturedBeforeImage) ? (
+              <>
+                <img
+                  src={currentStep === 3 ? capturedAfterImage : capturedBeforeImage}
+                  alt="Meal capture preview"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                {/* Overlay badge indicating captured snapshot */}
+                <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-1.5 shadow-lg">
+                  <Check className="w-3.5 h-3.5 text-theme-primary" />
+                  <span>Snapshot Captured</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
+                <div className="w-14 h-14 rounded-full bg-theme-primary-bg border border-theme-primary/40 flex items-center justify-center text-theme-primary animate-pulse">
+                  {isCameraLoading ? <RefreshCw className="w-7 h-7 animate-spin" /> : <Camera className="w-7 h-7" />}
+                </div>
+                <div className="space-y-1 max-w-xs">
+                  <p className="text-sm font-bold text-theme-main">
+                    {isCameraLoading ? 'Starting AI Camera Viewfinder...' : 'Camera Ready for Scanning'}
+                  </p>
+                  <p className="text-xs text-theme-muted">
+                    {isCameraLoading
+                      ? 'Connecting to your camera feed...'
+                      : 'Point at your food and tap the round button, or take a photo directly.'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Camera Permission / Error Fallback Overlay */}
         {cameraError && !isLiveMode && (
-          <div className="absolute inset-0 bg-black/85 backdrop-blur-md p-6 flex flex-col items-center justify-center text-center space-y-3 z-20">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md p-6 flex flex-col items-center justify-center text-center space-y-3 z-20">
             <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <div className="space-y-1 max-w-sm">
-              <h4 className="text-sm font-bold text-white">Camera Permission Notice</h4>
+            <div className="space-y-1 max-w-xs">
+              <h4 className="text-sm font-bold text-white">Camera Access Notice</h4>
               <p className="text-xs text-zinc-300 leading-relaxed">{cameraError}</p>
             </div>
-            <button
-              id="btn-retry-camera"
-              onClick={() => startCamera(facingMode)}
-              className="px-4 py-2 bg-theme-primary text-black text-xs font-extrabold rounded-full hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Enable / Retry Camera</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs pt-1">
+              <button
+                id="btn-take-direct-photo"
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex-1 py-2.5 px-3 bg-theme-primary text-black text-xs font-extrabold rounded-full hover:opacity-90 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Take Photo Directly</span>
+              </button>
+              <button
+                id="btn-retry-camera"
+                type="button"
+                onClick={() => startCamera(facingMode)}
+                className="py-2.5 px-3 bg-white/15 border border-white/20 text-white text-xs font-bold rounded-full hover:bg-white/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Retry Live</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -789,7 +1221,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
               <Target className="w-8 h-8 text-theme-primary/80" />
             </div>
             <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/60 px-2 py-0.5 rounded-md">
-              {currentStep === 3 ? 'Align Clean Plate' : 'Center Dish in Frame'}
+              {currentStep === 3 ? 'Align Clean Plate' : 'Center Food or Produce in Frame'}
             </span>
           </div>
 
@@ -836,7 +1268,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         <p className="text-sm font-bold text-theme-main">
           {currentStep === 3
             ? t('capture_align_plate', 'Verify clean plate to lock in maximum XP and diversion bonus!')
-            : t('capture_align_meal', 'Align your dish and tap the shutter for intelligent AI macro analysis.')}
+            : t('capture_align_meal', 'Align your food or fruit and tap the shutter for intelligent AI macro analysis.')}
         </p>
         <p className="text-xs text-theme-primary font-semibold flex items-center justify-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5" />
@@ -859,6 +1291,15 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+        {/* Dedicated Native Hardware Camera Trigger Input */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
           className="hidden"
           onChange={handleFileUpload}
         />
@@ -901,46 +1342,10 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           )}
         </button>
       </div>
+    </>
+  )}
 
-      {/* Preset Campus Food Selectors */}
-      <div className="space-y-2 pt-1">
-        <div className="flex items-center justify-between text-xs text-theme-muted font-semibold">
-          <span>{t('capture_demo_sample', 'Quick Campus Meal Samples:')}</span>
-          <span className="text-theme-primary font-bold">{t('click_to_test', '1-Click Test')}</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {samplePresetMeals.map((preset, idx) => (
-            <button
-              key={preset.name}
-              id={`preset-meal-${idx}`}
-              onClick={() => handleSelectPreset(preset)}
-              className="p-2.5 rounded-2xl bg-theme-card border border-theme-card hover:border-theme-primary text-left transition-all flex items-center gap-2.5 group cursor-pointer shadow-sm hover:shadow-md"
-            >
-              <img
-                src={preset.url}
-                alt={preset.name}
-                className="w-10 h-10 rounded-xl object-cover border border-theme-card shrink-0"
-                referrerPolicy="no-referrer"
-              />
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-theme-main group-hover:text-theme-primary truncate">
-                  {preset.name}
-                </p>
-                <div className="flex items-center gap-2 text-[10px] text-theme-muted">
-                  <span>{preset.calories > 0 ? `${preset.calories} kcal` : 'Zero Waste'}</span>
-                  {preset.ecoScore && (
-                    <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-extrabold text-[9px]">
-                      {preset.ecoScore}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Intelligent AI Detection & Nutrition Analysis Card */}
+  {/* Intelligent AI Detection & Nutrition Analysis Card */}
       {analysisResult && currentStep !== 3 && (
         analysisResult.isFood === false || analysisResult.isPenalty ? (
           /* Non-Food Penalty Card */
@@ -987,8 +1392,9 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                 id="btn-retake-non-food-scan"
                 onClick={() => {
                   setAnalysisResult(null);
-                  setCurrentStep(1);
-                  startCamera();
+                  setCurrentStep(2);
+                  setIsLiveMode(true);
+                  startCamera(facingMode);
                 }}
                 className="py-3.5 px-5 rounded-full bg-theme-card border border-theme-card hover:border-theme-primary text-theme-main font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
@@ -1003,7 +1409,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
             {/* Header Banner */}
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   <span className="text-[11px] uppercase tracking-wider font-extrabold text-theme-primary flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>AI Vision Verified</span>
@@ -1014,6 +1420,12 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                   <span className="bg-theme-primary-bg text-theme-primary border border-theme-primary-border text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                     EcoScore {analysisResult.ecoScore || 'A+'}
                   </span>
+                  {selectedCategory && (
+                    <span className="bg-theme-card-subtle text-theme-main border border-theme-card text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span>{selectedCategory.icon}</span>
+                      <span>{selectedCategory.name}</span>
+                    </span>
+                  )}
                 </div>
 
                 {isEditingMeal ? (

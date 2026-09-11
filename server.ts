@@ -75,7 +75,7 @@ app.get('/api/health', (req, res) => {
 
 // API: AI Meal & Portion Analyzer using Gemini (supports both /api/analyze-meal and /api/gemini/analyze-meal)
 const analyzeMealHandler = async (req: express.Request, res: express.Response) => {
-  const { mealStage = 'before', portionSize = 'Regular' } = req.body || {};
+  const { mealStage = 'before', portionSize = 'Regular', foodCategory, foodItem } = req.body || {};
   const isSmall = portionSize === 'Small';
   const isLarge = portionSize === 'Large';
 
@@ -108,12 +108,15 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
     if (!apiKey) {
       // Return rich, intelligent fallback analysis when API key is not configured
       if (stage === 'before') {
+        const dishTitle = foodItem || (isSmall ? 'Garden Harvest Salad & Herb Tofu' : isLarge ? 'Mediterranean Roasted Harvest & Grain Bowl' : 'Healthy Campus Protein Bowl');
         return res.json({
           success: true,
           isMock: true,
           isFood: true,
           isPenalty: false,
-          dishName: isSmall ? 'Garden Harvest Salad & Herb Tofu' : isLarge ? 'Mediterranean Roasted Harvest & Grain Bowl' : 'Healthy Campus Protein Bowl',
+          dishName: dishTitle,
+          foodCategory: foodCategory || 'East Asian Cuisine',
+          foodItem: dishTitle,
           confidenceScore: 96,
           portionEstimatedGrams: isSmall ? 240 : isLarge ? 480 : 350,
           estimatedCalories: isSmall ? 310 : isLarge ? 620 : 440,
@@ -123,18 +126,17 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
             fat: isSmall ? 9 : isLarge ? 18 : 13,
             fiber: isSmall ? 6 : isLarge ? 12 : 9,
           },
-          foodItems: ['Crisp Mixed Greens', 'Herb Roasted Chickpeas', 'Steamed Broccoli', 'Steamed Organic Quinoa', 'Cherry Tomatoes', 'Lemon Herb Dressing'],
+          foodItems: [dishTitle, 'Steamed Organic Grains', 'Herb Roasted Vegetables', 'Fresh Campus Greens'],
           detectedZones: [
-            { label: 'Plant Protein (Chickpeas & Tofu)', category: 'protein', confidence: 95, estimatedGrams: isSmall ? 70 : isLarge ? 140 : 100 },
+            { label: dishTitle, category: 'protein', confidence: 95, estimatedGrams: isSmall ? 70 : isLarge ? 140 : 100 },
             { label: 'Ancient Grains (Quinoa & Brown Rice)', category: 'grain', confidence: 94, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 120 },
-            { label: 'Fresh Campus Greens & Broccoli', category: 'vegetable', confidence: 98, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
-            { label: 'Citrus Vinaigrette', category: 'dressing', confidence: 91, estimatedGrams: 20 },
+            { label: 'Fresh Campus Greens & Vegetables', category: 'vegetable', confidence: 98, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
           ],
           carbonSavingsKg: isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
           waterSavedLiters: isSmall ? 420 : isLarge ? 860 : 590,
           ecoScore: 'A+',
-          dietaryTags: ['Plant-Rich', 'Low Carbon', 'High Fiber', 'Campus Sourced'],
-          sustainabilityFeedback: 'High nutrient-density plant-forward meal! Diverts approx 0.54kg CO2e compared to average high-carbon cafeteria beef dishes.',
+          dietaryTags: [foodCategory || 'Campus Meal', 'Plant-Rich', 'Low Carbon', 'High Fiber'],
+          sustainabilityFeedback: `High nutrient-density ${foodCategory || 'campus'} meal! Diverts approx 0.54kg CO2e compared to average high-carbon cafeteria beef dishes.`,
           xpEarned: isLarge ? 40 : 35,
         });
       } else {
@@ -173,13 +175,22 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
     let prompt = '';
     if (stage === 'before') {
       prompt = `You are EcoEat's expert campus nutrition and sustainable dining AI vision model.
-Analyze this meal photo (student selected portion: ${portionSize}).
+Analyze this food/meal photo (student selected portion: ${portionSize}).
+${foodCategory ? `The student specified their food category/cuisine: "${foodCategory}".` : ''}
+${foodItem ? `The student specified the food item they are eating is: "${foodItem}".` : ''}
+Use this context to accurately identify the food item, fresh fruit, vegetable, or prepared dish and calculate its nutritional, macro, and carbon metrics.
 
-CRITICAL INSTRUCTION - FACE / HUMAN / NON-FOOD DETECTION:
-If the image shows a human face, selfie, person, skin, hand, clothing, room, wall, desk, computer, phone, stationery, pet, or any object that is NOT actual edible food:
-You MUST immediately classify:
+FOOD DETECTION GUIDELINES:
+1. Genuine Food & Produce:
+If the image shows edible items, fresh fruits (e.g. apple, banana, watermelon, grapes, berries, etc.), vegetables, salads, snacks, plated meals, bowls, or beverages:
+Set "isFood": true, "isPenalty": false.
+Note: It is completely normal for a student to hold a fruit or utensil in their hand, or place it on a dining table, tray, or desk. As long as food or fresh produce is present in the frame, classify it as genuine food!
+
+2. Non-Food Objects:
+ONLY classify as non-food if there is ABSOLUTELY NO edible food, fruit, produce, or beverage visible in the image (e.g. pure selfie with no food, empty wall, laptop screen, keyboard, shoes, notebook, pen):
+Set:
 - "isFood": false
-- "nonFoodReason": "Human face, person, or non-food item detected"
+- "nonFoodReason": "No edible food or produce detected in the frame"
 - "isPenalty": true
 - "xpEarned": -20
 - "dishName": "Non-Food Object Detected"
@@ -193,8 +204,7 @@ You MUST immediately classify:
 - "waterSavedLiters": 0
 - "ecoScore": "N/A"
 - "dietaryTags": ["Not Food"]
-- "sustainabilityFeedback": "⚠️ Non-food item detected. Point your camera at a campus meal or plate to scan and log eco points."
-NEVER hallucinate or classify a human face, person, or everyday object as a salad, protein bowl, or meal.
+- "sustainabilityFeedback": "⚠️ Non-food item detected. Point your camera at a meal, fruit, or dining plate to scan and log eco points."
 
 If it IS genuine food:
 Set "isFood": true, "isPenalty": false.
@@ -233,13 +243,15 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
 }`;
     } else {
       prompt = `You are EcoEat's clean plate verification AI vision model.
-Analyze this post-dining photo to verify whether the plate is clean (zero waste) OR if food is unfinished (leftovers/scraps).
-If the image is NOT food, plate, or tray (e.g. human face, selfie, person, desk, random object):
-Set "isFood": false, "isPenalty": true, "xpEarned": -20, "congratulationsMessage": "⚠️ Non-dining image detected", "sustainabilityFeedback": "Please take a photo of your dining plate or tray."
+Analyze this post-dining photo to verify whether the meal was completed (clean plate, finished fruit/snack, or minimal inedible peels/cores) OR if substantial edible food was left unfinished as waste.
 
-If it IS a dining plate/tray:
-- If clean (< 15g leftover scraps): "cleanPlateVerified": true, "wasteGrams": 0, "isPenalty": false, "bonusXp": 30, "xpEarned": 35.
-- If UNFINISHED (significant leftover food or scraps > 15g remaining):
+If the image is completely unrelated to dining or food (e.g. pure selfie with no dining context, empty wall, computer keyboard):
+Set "isFood": false, "isPenalty": true, "xpEarned": -20, "congratulationsMessage": "⚠️ Non-dining image detected", "sustainabilityFeedback": "Please take a photo of your dining plate, bowl, or finished meal."
+
+If it IS a dining plate, bowl, wrapper, or finished food context:
+- If clean, empty, or only minimal inedible food scraps/peels/cores remaining (< 15g edible waste):
+  "cleanPlateVerified": true, "wasteGrams": 0, "isPenalty": false, "bonusXp": 30, "xpEarned": 35.
+- If UNFINISHED (significant uneaten edible food or scraps > 15g remaining):
   "cleanPlateVerified": false,
   "isPenalty": true,
   "wasteGrams": number (estimated leftover waste in grams, e.g. 140),
@@ -283,7 +295,7 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
       }
     }
 
-    const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+    const modelsToTry = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite'];
     let response: any = null;
     let lastError: any = null;
 
@@ -291,16 +303,15 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
       try {
         const generatePromise = ai.models.generateContent({
           model: modelName,
-          contents: { parts },
+          contents: parts,
           config: {
             responseMimeType: 'application/json',
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           },
         });
 
-        // Add 3.8s timeout per attempt so user never suffers long stalls
+        // 10s timeout to allow fast responsive vision processing
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Model timeout')), 3800)
+          setTimeout(() => reject(new Error('Model timeout')), 10000)
         );
 
         response = await Promise.race([generatePromise, timeoutPromise]);
@@ -309,7 +320,7 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
         }
       } catch (modelErr: any) {
         lastError = modelErr;
-        // Move to next lightweight model or fallback immediately
+        // Move to next model
         continue;
       }
     }
@@ -326,32 +337,52 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
     console.warn('Using intelligent real-time fallback analysis:', err?.message || err);
 
     if (mealStage === 'before') {
+      const isFruitOrVeg =
+        (foodCategory && (foodCategory.toLowerCase().includes('fruit') || foodCategory.toLowerCase().includes('vegetable'))) ||
+        ['apple', 'banana', 'orange', 'strawberry', 'watermelon', 'grape', 'mango', 'blueberry', 'peach', 'produce', 'salad'].some((f) =>
+          (foodItem || '').toLowerCase().includes(f)
+        );
+
+      const chosenName = foodItem || (isFruitOrVeg ? 'Fresh Fruit & Produce' : isSmall ? 'Garden Harvest Bowl & Tofu' : isLarge ? 'Mediterranean Roasted Quinoa Bowl' : 'Fresh Campus Protein Bowl');
+
       const result = {
         success: true,
         fallback: true,
         isFood: true,
         isPenalty: false,
-        dishName: isSmall ? 'Garden Harvest Bowl & Tofu' : isLarge ? 'Mediterranean Roasted Quinoa Bowl' : 'Fresh Campus Protein Bowl',
-        confidenceScore: 94,
-        portionEstimatedGrams: isSmall ? 240 : isLarge ? 480 : 350,
-        estimatedCalories: isSmall ? 310 : isLarge ? 620 : 440,
-        nutrition: {
-          protein: isSmall ? 14 : isLarge ? 28 : 22,
-          carbs: isSmall ? 35 : isLarge ? 72 : 54,
-          fat: isSmall ? 9 : isLarge ? 18 : 13,
-          fiber: isSmall ? 6 : isLarge ? 12 : 9,
-        },
-        foodItems: ['Crisp Mixed Greens', 'Herb Roasted Chickpeas', 'Steamed Broccoli', 'Organic Quinoa', 'Cherry Tomatoes'],
+        dishName: chosenName,
+        confidenceScore: 96,
+        portionEstimatedGrams: isFruitOrVeg ? (isSmall ? 130 : isLarge ? 260 : 180) : isSmall ? 240 : isLarge ? 480 : 350,
+        estimatedCalories: isFruitOrVeg ? (isSmall ? 65 : isLarge ? 140 : 95) : isSmall ? 310 : isLarge ? 620 : 440,
+        nutrition: isFruitOrVeg
+          ? {
+              protein: isSmall ? 0.4 : isLarge ? 1.2 : 0.8,
+              carbs: isSmall ? 16 : isLarge ? 34 : 24,
+              fat: isSmall ? 0.2 : isLarge ? 0.5 : 0.3,
+              fiber: isSmall ? 3 : isLarge ? 6 : 4.4,
+            }
+          : {
+              protein: isSmall ? 14 : isLarge ? 28 : 22,
+              carbs: isSmall ? 35 : isLarge ? 72 : 54,
+              fat: isSmall ? 9 : isLarge ? 18 : 13,
+              fiber: isSmall ? 6 : isLarge ? 12 : 9,
+            },
+        foodItems: isFruitOrVeg ? [chosenName] : ['Crisp Mixed Greens', 'Herb Roasted Chickpeas', 'Steamed Broccoli', 'Organic Quinoa', 'Cherry Tomatoes'],
         detectedZones: [
-          { label: 'Plant Protein', category: 'protein', confidence: 93, estimatedGrams: isSmall ? 70 : isLarge ? 140 : 100 },
-          { label: 'Whole Grains', category: 'grain', confidence: 95, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 120 },
-          { label: 'Campus Vegetables', category: 'vegetable', confidence: 97, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
+          {
+            label: chosenName,
+            category: isFruitOrVeg ? 'fruit' : 'protein',
+            confidence: 96,
+            estimatedGrams: isFruitOrVeg ? (isSmall ? 130 : isLarge ? 260 : 180) : isSmall ? 70 : isLarge ? 140 : 100,
+          },
         ],
         carbonSavingsKg: isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
-        waterSavedLiters: isSmall ? 420 : isLarge ? 860 : 590,
+        waterSavedLiters: isFruitOrVeg ? 45 : isSmall ? 420 : isLarge ? 860 : 590,
         ecoScore: 'A+',
-        dietaryTags: ['Plant-Rich', 'High Fiber', 'Low Carbon'],
-        sustainabilityFeedback: 'Balanced sustainable meal choice! Finishing 100% of this dish prevents 0.54kg CO2 equivalent emissions.',
+        dietaryTags: isFruitOrVeg ? ['Fresh Produce', 'Plant-Rich', 'High Fiber', 'Zero Cooking Carbon'] : ['Plant-Rich', 'High Fiber', 'Low Carbon'],
+        sustainabilityFeedback: isFruitOrVeg
+          ? `🍎 Outstanding choice picking fresh produce! ${chosenName} has a negligible carbon footprint, requires zero cooking energy, and provides essential vitamins and fiber.`
+          : 'Balanced sustainable meal choice! Finishing 100% of this dish prevents 0.54kg CO2 equivalent emissions.',
         xpEarned: isLarge ? 40 : 35,
       };
       return res.json({ ...result, text: JSON.stringify(result) });

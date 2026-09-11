@@ -299,7 +299,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-0.5">
               <h4 className="text-sm font-bold text-theme-main">{t('settings_campus_visibility', 'Campus Visibility')}</h4>
-              <p className="text-xs text-theme-muted">{t('settings_campus_visibility_desc', 'Show on BBS PIK Leaderboards')}</p>
+              <p className="text-xs text-theme-muted">{t('settings_campus_visibility_desc', 'Participate in BBS PIK Campus Challenges')}</p>
             </div>
             <button
               id="toggle-campus-visibility"

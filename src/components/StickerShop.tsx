@@ -25,9 +25,21 @@ import {
   ArrowUpDown,
   Tag,
   Grid,
+  Compass,
 } from 'lucide-react';
 import { UserProfile, StickerItem, StickerCategory, StickerRarity } from '../types';
-import { allStickersCatalog, getStickerById, rarityConfigs, calculateStickerMealModifiers } from '../data/stickersData';
+import {
+  allStickersCatalog,
+  getStickerById,
+  getStickerByIndex,
+  rarityConfigs,
+  calculateStickerMealModifiers,
+  TOTAL_STICKERS_COUNT,
+  CATEGORY_COUNTS,
+  RARITY_COUNTS,
+  queryStickersPage,
+  rollRandomMysterySticker,
+} from '../data/stickersData';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -68,6 +80,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(32);
   const [jumpPageInput, setJumpPageInput] = useState('');
+  const [jumpStickerInput, setJumpStickerInput] = useState('');
 
   // Modals & Actions
   const [selectedStickerForModal, setSelectedStickerForModal] = useState<StickerItem | null>(null);
@@ -89,126 +102,71 @@ export const StickerShop: React.FC<StickerShopProps> = ({
     setCurrentPage(1);
   }, [selectedCategory, rarityFilter, ownershipFilter, searchQuery, activeTab, sortBy]);
 
-  // Category counts for badges
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: allStickersCatalog.length,
-      clean_plate: 0,
-      campus_pride: 0,
-      zero_waste: 0,
-      nature_planet: 0,
-      culinary: 0,
-    };
-    for (const sticker of allStickersCatalog) {
-      if (counts[sticker.category] !== undefined) {
-        counts[sticker.category]++;
-      }
-    }
-    return counts;
-  }, []);
-
-  // Rarity counts for badges
-  const rarityCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: allStickersCatalog.length,
-      common: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0,
-    };
-    for (const sticker of allStickersCatalog) {
-      if (counts[sticker.rarity] !== undefined) {
-        counts[sticker.rarity]++;
-      }
-    }
-    return counts;
-  }, []);
-
-  // Filtered & Sorted Stickers Catalog
-  const filteredStickers = useMemo(() => {
-    let result = allStickersCatalog.filter((sticker) => {
-      // Category filter
-      if (selectedCategory !== 'all' && sticker.category !== selectedCategory) {
-        return false;
-      }
-      // Rarity filter
-      if (rarityFilter !== 'all' && sticker.rarity !== rarityFilter) {
-        return false;
-      }
-      // Ownership filter
-      const isOwned = purchasedIds.has(sticker.id);
-      if (ownershipFilter === 'unowned' && isOwned) return false;
-      if (ownershipFilter === 'owned' && !isOwned) return false;
-
-      // Album tab forced ownership
-      if (activeTab === 'album' && !isOwned) {
-        return false;
-      }
-
-      // Search query (matches name, description, category, rarity, unlockedWith, or ID)
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const matchesName = sticker.name.toLowerCase().includes(query);
-        const matchesDesc = sticker.description.toLowerCase().includes(query);
-        const matchesUnlock = sticker.unlockedWith.toLowerCase().includes(query);
-        const matchesId = sticker.id.toLowerCase().includes(query);
-        const matchesNumber = query.replace('#', '') && sticker.id.includes(`_${query.replace('#', '')}`);
-        if (!matchesName && !matchesDesc && !matchesUnlock && !matchesId && !matchesNumber) {
-          return false;
-        }
-      }
-
-      return true;
+  // Lightning-fast virtual query result for current filters and page
+  const queryResult = useMemo(() => {
+    return queryStickersPage({
+      category: selectedCategory,
+      rarity: rarityFilter,
+      ownership: ownershipFilter,
+      searchQuery,
+      sortBy,
+      page: currentPage,
+      pageSize,
+      purchasedIds,
+      activeTab,
     });
-
-    // Sort order
-    if (sortBy === 'price_asc') {
-      result.sort((a, b) => a.cost - b.cost);
-    } else if (sortBy === 'price_desc') {
-      result.sort((a, b) => b.cost - a.cost);
-    } else if (sortBy === 'rarity') {
-      const rarityRank: Record<StickerRarity, number> = {
-        legendary: 4,
-        epic: 3,
-        rare: 2,
-        common: 1,
-      };
-      result.sort((a, b) => rarityRank[b.rarity] - rarityRank[a.rarity]);
-    } else if (sortBy === 'name') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    return result;
   }, [
     selectedCategory,
     rarityFilter,
     ownershipFilter,
     searchQuery,
-    activeTab,
-    purchasedIds,
     sortBy,
+    currentPage,
+    pageSize,
+    purchasedIds,
+    activeTab,
   ]);
 
-  // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filteredStickers.length / pageSize));
-  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
-  const startIndex = (safeCurrentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, filteredStickers.length);
-  const displayedStickers = useMemo(() => {
-    return filteredStickers.slice(startIndex, endIndex);
-  }, [filteredStickers, startIndex, endIndex]);
+  const displayedStickers = queryResult.items;
+  const totalMatchingCount = queryResult.totalCount;
+  const totalPages = queryResult.totalPages;
+  const safeCurrentPage = queryResult.currentPage;
+  const startIndex = queryResult.startIndex;
+  const endIndex = queryResult.endIndex;
 
   const totalCollectedCount = purchasedIds.size;
-  const totalCatalogCount = allStickersCatalog.length;
-  const collectionPercent = Math.round((totalCollectedCount / totalCatalogCount) * 100);
+  const totalCatalogCount = TOTAL_STICKERS_COUNT;
+  const collectionPercent = Number(
+    ((totalCollectedCount / totalCatalogCount) * 100).toFixed(4)
+  );
 
   const categories: { id: StickerCategory; label: string; count: number }[] = [
-    { id: 'all', label: t('shop_cat_all', 'All Stickers'), count: categoryCounts.all },
-    { id: 'clean_plate', label: t('shop_cat_clean_plate', '🍽️ Clean Plate'), count: categoryCounts.clean_plate },
-    { id: 'campus_pride', label: t('shop_cat_campus_pride', '🏫 BBS Campus'), count: categoryCounts.campus_pride },
-    { id: 'zero_waste', label: t('shop_cat_zero_waste', '♻️ Zero Waste'), count: categoryCounts.zero_waste },
-    { id: 'nature_planet', label: t('shop_cat_nature_planet', '🌍 Planet & Ocean'), count: categoryCounts.nature_planet },
-    { id: 'culinary', label: t('shop_cat_culinary', '🥗 Culinary'), count: categoryCounts.culinary },
+    { id: 'all', label: t('shop_cat_all', 'All Stickers'), count: CATEGORY_COUNTS.all },
+    {
+      id: 'clean_plate',
+      label: t('shop_cat_clean_plate', '🍽️ Clean Plate'),
+      count: CATEGORY_COUNTS.clean_plate,
+    },
+    {
+      id: 'campus_pride',
+      label: t('shop_cat_campus_pride', '🏫 BBS Campus'),
+      count: CATEGORY_COUNTS.campus_pride,
+    },
+    {
+      id: 'zero_waste',
+      label: t('shop_cat_zero_waste', '♻️ Zero Waste'),
+      count: CATEGORY_COUNTS.zero_waste,
+    },
+    {
+      id: 'nature_planet',
+      label: t('shop_cat_nature_planet', '🌍 Planet & Ocean'),
+      count: CATEGORY_COUNTS.nature_planet,
+    },
+    {
+      id: 'culinary',
+      label: t('shop_cat_culinary', '🥗 Culinary'),
+      count: CATEGORY_COUNTS.culinary,
+    },
   ];
 
   const handlePageChange = (newPage: number) => {
@@ -225,6 +183,49 @@ export const StickerShop: React.FC<StickerShopProps> = ({
     if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
       handlePageChange(pageNum);
       setJumpPageInput('');
+    }
+  };
+
+  const handleJumpToStickerNumber = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = jumpStickerInput.replace(/[^0-9]/g, '');
+    const stickerNum = parseInt(cleaned, 10);
+    if (!isNaN(stickerNum) && stickerNum >= 1 && stickerNum <= TOTAL_STICKERS_COUNT) {
+      setSelectedCategory('all');
+      setRarityFilter('all');
+      setOwnershipFilter('all');
+      setSearchQuery('');
+      const targetPage = Math.ceil(stickerNum / pageSize);
+      setCurrentPage(targetPage);
+      const sticker = getStickerByIndex(stickerNum);
+      setSelectedStickerForModal(sticker);
+      setJumpStickerInput('');
+      if (gridTopRef.current) {
+        gridTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  // Teleport to random sticker in the 1,000,000 universe
+  const handleTeleportRandom = () => {
+    const randomIdx = Math.floor(Math.random() * TOTAL_STICKERS_COUNT) + 1;
+    setSelectedCategory('all');
+    setRarityFilter('all');
+    setOwnershipFilter('all');
+    setSearchQuery('');
+    const targetPage = Math.ceil(randomIdx / pageSize);
+    setCurrentPage(targetPage);
+    const sticker = getStickerByIndex(randomIdx);
+    setSelectedStickerForModal(sticker);
+
+    try {
+      confetti({
+        particleCount: 40,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    } catch {
+      // Confetti fallback
     }
   };
 
@@ -251,30 +252,28 @@ export const StickerShop: React.FC<StickerShopProps> = ({
     }, 250);
   };
 
-  // Mystery Box / Roll Random Sticker feature
+  // Mystery Box / Roll Random Sticker feature across the 1,000,000 collection
   const handleRollMysterySticker = () => {
-    const unownedStickers = allStickersCatalog.filter(
-      (s) => !purchasedIds.has(s.id) && s.cost <= user.currentXp
-    );
     const minRequiredXp = rarityConfigs.common.minCost;
-    if (unownedStickers.length === 0) {
+    if (user.currentXp < minRequiredXp) {
       alert(
-        user.currentXp < minRequiredXp
-          ? `You need at least ${minRequiredXp.toLocaleString()} XP to roll a mystery sticker! Finish a meal to earn XP.`
-          : 'You already own all eligible stickers in your current XP budget!'
+        `You need at least ${minRequiredXp.toLocaleString()} XP to roll a mystery sticker! Finish a meal to earn XP.`
       );
       return;
     }
 
     setIsRollingMystery(true);
 
-    // Pick random sticker
-    const randomPick = unownedStickers[Math.floor(Math.random() * unownedStickers.length)];
+    const randomPick = rollRandomMysterySticker(user.currentXp, purchasedIds);
 
     setTimeout(() => {
       setIsRollingMystery(false);
-      handlePurchase(randomPick);
-      setSelectedStickerForModal(randomPick);
+      if (randomPick) {
+        handlePurchase(randomPick);
+        setSelectedStickerForModal(randomPick);
+      } else {
+        alert('Could not find an unowned sticker within your current XP budget! Save up more XP.');
+      }
     }, 600);
   };
 
@@ -400,19 +399,19 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 {t('shop_title', 'Campus Eco Sticker Shop')}
               </h1>
               <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold shadow-xs">
-                ✨ 1,000 Stickers To Collect!
+                ✨ 1,000,000 Stickers To Collect!
               </span>
             </div>
 
             <p className="text-sm text-theme-muted leading-relaxed">
               {t(
                 'shop_subtitle',
-                'Exchange the XP you earned by finishing your food and returning clean dining plates for official campus eco stickers. Collect across 5 categories and showcase your zero-waste pride!'
+                'Exchange the XP you earned by finishing your food and returning clean dining plates for official campus eco stickers. Collect across 1,000,000 procedural editions in 5 categories and showcase your zero-waste pride!'
               )}
             </p>
 
-            {/* Quick Earn Tip & Mystery Box */}
-            <div className="flex items-center gap-4 pt-1 flex-wrap">
+            {/* Quick Earn Tip & Mystery Box & Teleport */}
+            <div className="flex items-center gap-3 pt-1 flex-wrap">
               <div className="flex items-center gap-2 text-xs text-theme-muted">
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>
@@ -429,10 +428,21 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 onClick={handleRollMysterySticker}
                 disabled={isRollingMystery || user.currentXp < rarityConfigs.common.minCost}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Roll a random affordable sticker from the 1,000 catalog"
+                title="Roll a random affordable sticker from the 1,000,000 catalog"
               >
                 <Shuffle className={`w-3.5 h-3.5 ${isRollingMystery ? 'animate-spin' : ''}`} />
-                <span>{isRollingMystery ? 'Rolling...' : 'Mystery Sticker Roll'}</span>
+                <span>{isRollingMystery ? 'Rolling...' : 'Mystery Box Roll'}</span>
+              </button>
+
+              {/* Teleport to Random Sticker */}
+              <button
+                type="button"
+                onClick={handleTeleportRandom}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                title="Teleport to a random sticker in the 1,000,000 collection"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>🎲 Teleport (Random #)</span>
               </button>
             </div>
           </div>
@@ -574,7 +584,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
             <ShoppingBag className="w-4 h-4" />
             <span>{t('shop_tab_store', 'Sticker Store')}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/20 text-current font-extrabold">
-              1,000
+              1,000,000
             </span>
           </button>
 
@@ -606,7 +616,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('shop_search_placeholder', 'Search 1,000 stickers or ID...')}
+              placeholder={t('shop_search_placeholder', 'Search 1,000,000 stickers, #ID, or keyword (e.g. #777777, Tiger, Dragon)...')}
               className="w-full bg-theme-card border border-theme-card rounded-2xl py-2 pl-10 pr-8 text-xs sm:text-sm text-theme-main placeholder:text-theme-muted/50 focus:outline-none focus:border-theme-primary transition-colors"
             />
             {searchQuery && (
@@ -657,7 +667,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                   ? 'bg-theme-card/30 text-current'
                   : 'bg-theme-card-subtle text-theme-muted'
               }`}>
-                {cat.count}
+                {cat.count.toLocaleString()}
               </span>
             </button>
           ))}
@@ -676,7 +686,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main'
                 }`}
               >
-                All (1,000)
+                All (1,000,000)
               </button>
               <button
                 onClick={() => setOwnershipFilter('unowned')}
@@ -686,7 +696,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main'
                 }`}
               >
-                Unowned ({1000 - totalCollectedCount})
+                Unowned ({(TOTAL_STICKERS_COUNT - totalCollectedCount).toLocaleString()})
               </button>
               <button
                 onClick={() => setOwnershipFilter('owned')}
@@ -696,7 +706,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main'
                 }`}
               >
-                Owned ({totalCollectedCount})
+                Owned ({totalCollectedCount.toLocaleString()})
               </button>
             </div>
           )}
@@ -720,7 +730,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     • {rarityConfigs[rarity].tierLabel}
                   </span>
                 )}
-                <span className="text-[9px] opacity-70">({rarityCounts[rarity]})</span>
+                <span className="text-[9px] opacity-70">({RARITY_COUNTS[rarity].toLocaleString()})</span>
               </button>
             ))}
           </div>
@@ -729,8 +739,8 @@ export const StickerShop: React.FC<StickerShopProps> = ({
         {/* Count & Page Info Summary */}
         <div className="flex items-center justify-between text-xs text-theme-muted px-1 flex-wrap gap-2 border-t border-theme-card/60 pt-3">
           <span>
-            {t('shop_showing_count', 'Showing')} {filteredStickers.length > 0 ? startIndex + 1 : 0}–{endIndex} of{' '}
-            {filteredStickers.length}{' '}
+            {t('shop_showing_count', 'Showing')} {totalMatchingCount > 0 ? (startIndex + 1).toLocaleString() : 0}–{Math.min(endIndex, totalMatchingCount).toLocaleString()} of{' '}
+            {totalMatchingCount.toLocaleString()}{' '}
             {activeTab === 'album' ? t('shop_collected_label', 'collected stickers') : t('shop_stickers_label', 'stickers')}
           </span>
 
@@ -755,7 +765,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
       </div>
 
       {/* Empty State */}
-      {filteredStickers.length === 0 && (
+      {totalMatchingCount === 0 && (
         <div className="p-12 text-center rounded-3xl bg-theme-card border border-theme-card space-y-4">
           <div className="w-16 h-16 rounded-full bg-theme-card-subtle flex items-center justify-center mx-auto text-3xl">
             {activeTab === 'album' ? '📓' : '🔍'}
@@ -963,10 +973,10 @@ export const StickerShop: React.FC<StickerShopProps> = ({
 
       {/* Bottom Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 border-t border-theme-card mt-6">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 py-4 border-t border-theme-card mt-6">
           <div className="text-xs text-theme-muted">
-            Page <span className="font-bold text-theme-main">{safeCurrentPage}</span> of{' '}
-            <span className="font-bold text-theme-main">{totalPages}</span> ({filteredStickers.length} stickers)
+            Page <span className="font-bold text-theme-main">{safeCurrentPage.toLocaleString()}</span> of{' '}
+            <span className="font-bold text-theme-main">{totalPages.toLocaleString()}</span> ({totalMatchingCount.toLocaleString()} stickers)
           </div>
 
           {/* Page Buttons Range */}
@@ -1040,25 +1050,46 @@ export const StickerShop: React.FC<StickerShopProps> = ({
             </button>
           </div>
 
-          {/* Jump to Page Form */}
-          <form onSubmit={handleJumpToPage} className="flex items-center gap-2 text-xs">
-            <span className="text-theme-muted">Go to:</span>
-            <input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={jumpPageInput}
-              onChange={(e) => setJumpPageInput(e.target.value)}
-              placeholder="#"
-              className="w-14 bg-theme-card border border-theme-card rounded-xl py-1 px-2 text-center text-theme-main focus:outline-none focus:border-theme-primary"
-            />
-            <button
-              type="submit"
-              className="px-2.5 py-1 rounded-xl bg-theme-card-subtle hover:bg-theme-primary hover:text-black border border-theme-card text-theme-main font-bold cursor-pointer transition-colors"
-            >
-              Go
-            </button>
-          </form>
+          {/* Jump to Page & Jump to Sticker Forms */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Jump to Page Form */}
+            <form onSubmit={handleJumpToPage} className="flex items-center gap-1.5 text-xs">
+              <span className="text-theme-muted">Page:</span>
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={jumpPageInput}
+                onChange={(e) => setJumpPageInput(e.target.value)}
+                placeholder="#"
+                className="w-16 bg-theme-card border border-theme-card rounded-xl py-1 px-2 text-center text-theme-main focus:outline-none focus:border-theme-primary"
+              />
+              <button
+                type="submit"
+                className="px-2.5 py-1 rounded-xl bg-theme-card-subtle hover:bg-theme-primary hover:text-black border border-theme-card text-theme-main font-bold cursor-pointer transition-colors"
+              >
+                Go
+              </button>
+            </form>
+
+            {/* Jump to Sticker # Form */}
+            <form onSubmit={handleJumpToStickerNumber} className="flex items-center gap-1.5 text-xs">
+              <span className="text-theme-muted">Sticker #:</span>
+              <input
+                type="text"
+                value={jumpStickerInput}
+                onChange={(e) => setJumpStickerInput(e.target.value)}
+                placeholder="1–1,000,000"
+                className="w-24 bg-theme-card border border-theme-card rounded-xl py-1 px-2 text-center text-theme-main focus:outline-none focus:border-theme-primary font-mono text-[11px]"
+              />
+              <button
+                type="submit"
+                className="px-2.5 py-1 rounded-xl bg-theme-card-subtle hover:bg-theme-primary hover:text-black border border-theme-card text-theme-main font-bold cursor-pointer transition-colors"
+              >
+                Jump
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

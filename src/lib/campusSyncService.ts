@@ -392,6 +392,10 @@ export function computeLiveGradeClassesRankings(
   allUsers: LeaderboardUser[],
   userHomeroom: string
 ): ClassRankingItem[] {
+  if (!allUsers || allUsers.length === 0) {
+    return [];
+  }
+
   const classMap = new Map<
     string,
     {
@@ -468,7 +472,7 @@ export function computeLiveGradeClassesRankings(
 
   // Convert map to array and sort by total combined XP descending
   const classList = Array.from(classMap.values())
-    .filter((c) => c.studentsCount > 0 || c.className === userHomeroom)
+    .filter((c) => c.studentsCount > 0)
     .sort((a, b) => b.totalXp - a.totalXp);
 
   return classList.map((item, index) => {

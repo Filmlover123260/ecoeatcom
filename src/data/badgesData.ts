@@ -479,7 +479,7 @@ const generateSpecialHonorsAndEliteBadges = (): ExtendedBadgeItem[] => {
     { name: 'Class Homeroom MVP', icon: 'users', xp: 1000, tier: 'diamond' as const, desc: 'Top overall XP contributor to your class section ranking.' },
     { name: 'Zero Waste Scholar of the Year', icon: 'award', xp: 2000, tier: 'diamond' as const, desc: 'Exceptional cumulative record of food waste prevention and peer leadership.' },
     { name: 'The Unbroken Finisher', icon: 'shield-check', xp: 1300, tier: 'diamond' as const, desc: 'Logged over 50 meals without a single food scrap penalty.' },
-    { name: 'Solar Zenith Hero', icon: 'sun', xp: 1400, tier: 'diamond' as const, icon2: 'trophy', desc: 'Radiant environmental champion on the campus leaderboard.' },
+    { name: 'Solar Zenith Hero', icon: 'sun', xp: 1400, tier: 'diamond' as const, icon2: 'trophy', desc: 'Radiant environmental champion in campus dining sustainability.' },
     { name: 'Compost Vanguard Supreme', icon: 'recycle', xp: 1250, tier: 'diamond' as const, desc: 'Sorted organic food waste with surgical accuracy.' },
     { name: 'The Eco Luminary', icon: 'sparkles', xp: 1600, tier: 'diamond' as const, desc: 'A shining beacon of environmental mindfulness in the dining hall.' },
     { name: 'Planetary Custodian General', icon: 'globe', xp: 2500, tier: 'mythic' as const, desc: 'Commanding leader in campus ecological stewardship.' },

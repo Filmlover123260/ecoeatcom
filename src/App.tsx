@@ -29,14 +29,13 @@ import {
   joinCampusChallenge,
   getOrCreateUserId,
   startOnlinePresenceHeartbeat,
-} from './lib/leaderboardService';
+} from './lib/campusSyncService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Navigation } from './components/Navigation';
 import { SidebarDrawer } from './components/SidebarDrawer';
 import { Dashboard } from './components/Dashboard';
 import { CaptureMeal } from './components/CaptureMeal';
-import { Leaderboard } from './components/Leaderboard';
 import { Profile } from './components/Profile';
 import { SettingsView } from './components/SettingsView';
 import { StickerShop } from './components/StickerShop';
@@ -529,6 +528,9 @@ function AppContent() {
 
   const handleSignOut = () => {
     setIsAuthenticated(false);
+    setUser({ ...initialUserProfile, title: getLevelTitle(initialUserProfile.level) });
+    localStorage.removeItem('ecoeat_user');
+    localStorage.removeItem('ecoeat_user_uid');
     setIsDrawerOpen(false);
     setCurrentTab('dashboard');
     showToast('Signed out of BBS PIK EcoEat');
@@ -619,10 +621,6 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'leaderboard' && (
-              <Leaderboard user={user} challenge={challenge} />
-            )}
-
             {currentTab === 'shop' && (
               <StickerShop
                 user={user}
@@ -658,7 +656,7 @@ function AppContent() {
                   setInfoModalData({
                     title: 'EcoEat Campus FAQ',
                     content:
-                      '1. How does meal scanning work?\nSnap a photo before eating to verify portions, then take a quick clean plate photo after dining to unlock bonus XP.\n\n2. What are the rewards?\nXP unlocks badges, campus leaderboards, and exclusive campus dining credits.\n\n3. Can I customize appearance?\nYes! Use the Palette icon to select themes like Eco Emerald, Ocean Teal, Solar Amber, Lavender Bloom, or Cyber Obsidian.',
+                      '1. How does meal scanning work?\nSnap a photo before eating, then take a quick clean plate photo after dining to unlock bonus XP.\n\n2. What are the rewards?\nXP unlocks achievement badges and rewards in the Sticker Shop.\n\n3. Can I customize appearance?\nYes! Use the Palette icon to select themes like Eco Emerald, Ocean Teal, Solar Amber, Lavender Bloom, or Cyber Obsidian.',
                   })
                 }
                 onOpenContactUs={() =>

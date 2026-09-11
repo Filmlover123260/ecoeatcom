@@ -3,7 +3,6 @@ import {
   X,
   LayoutDashboard,
   Camera,
-  BarChart3,
   User,
   Settings,
   Leaf,
@@ -134,24 +133,6 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           >
             <Camera className="w-5 h-5" />
             <span>{t('nav_capture', 'Scan Meal')}</span>
-          </a>
-
-          <a
-            id="drawer-link-leaderboard"
-            href={toAbsoluteHttpsUrl('/leaderboard')}
-            onClick={(e) => {
-              e.preventDefault();
-              onSelectTab('leaderboard');
-              onClose();
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer no-underline ${
-              currentTab === 'leaderboard'
-                ? 'bg-theme-primary text-black font-extrabold shadow-sm shadow-theme-glow'
-                : 'text-theme-main hover:bg-theme-card-subtle'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5" />
-            <span>{t('nav_leaderboard', 'Leaderboard')}</span>
           </a>
 
           <a
