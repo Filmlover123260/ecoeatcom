@@ -55,11 +55,20 @@ export interface UserProfile {
   showcaseStickerId?: string;
 }
 
+export interface VitaminDetail {
+  name: string;
+  amount?: string;
+  dailyValue?: string;
+  benefit?: string;
+}
+
 export interface MealNutrition {
   protein: number; // grams
   carbs: number; // grams
   fat: number; // grams
   fiber: number; // grams
+  vitamins?: string[]; // e.g. ["Vitamin C (85% DV)", "Vitamin A (40% DV)", "Iron (20% DV)"]
+  vitaminDetails?: VitaminDetail[];
 }
 
 export interface DetectedFoodZone {
@@ -81,6 +90,7 @@ export interface FoodCategoryItem {
 export interface MealRecord {
   id: string;
   title: string;
+  customDishName?: string;
   foodCategory?: string;
   foodItem?: string;
   time: string;

@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   ArrowRight,
   Search,
+  Loader2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { PortionSize, MealRecord, UserProfile, DetectedFoodZone, MealNutrition, FoodCategoryItem } from '../types';
@@ -126,6 +127,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     setEditedDishName(finalFood);
     setCurrentStep(2);
     setIsLiveMode(true);
+    detectNutritionForDish(finalFood, portion);
   };
   const [scanMode, setScanMode] = useState<ScanMode>('smart-macro');
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -150,6 +152,92 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
   const [newIngredientInput, setNewIngredientInput] = useState('');
   const [studentNotes, setStudentNotes] = useState('');
   const [showMacroBreakdown, setShowMacroBreakdown] = useState(true);
+  const [isDetectingNutrition, setIsDetectingNutrition] = useState(false);
+
+  // AI-powered Protein, Vitamin, and Nutritional Profile detector for custom dishes
+  const detectNutritionForDish = useCallback(
+    async (dishName: string, portionSize: PortionSize = portion) => {
+      if (!dishName || !dishName.trim()) return;
+      setIsDetectingNutrition(true);
+      try {
+        const response = await fetch('/api/analyze-dish-nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dishName: dishName.trim(),
+            portionSize,
+            foodCategory: selectedCategory?.name,
+            ingredients: editedFoodItems,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.nutrition) {
+            setAnalysisResult((prev: any) => ({
+              ...(prev || {}),
+              dishName: dishName.trim(),
+              estimatedCalories:
+                data.estimatedCalories ||
+                prev?.estimatedCalories ||
+                (portionSize === 'Small' ? 310 : portionSize === 'Large' ? 620 : 440),
+              portionEstimatedGrams:
+                data.portionEstimatedGrams ||
+                prev?.portionEstimatedGrams ||
+                (portionSize === 'Small' ? 220 : portionSize === 'Large' ? 460 : 340),
+              nutrition: data.nutrition,
+              carbonSavingsKg: data.carbonSavingsKg ?? prev?.carbonSavingsKg ?? 0.54,
+              waterSavedLiters: data.waterSavedLiters ?? prev?.waterSavedLiters ?? 590,
+              ecoScore: data.ecoScore || prev?.ecoScore || 'A+',
+              foodItems:
+                Array.isArray(data.foodItems) && data.foodItems.length > 0
+                  ? data.foodItems
+                  : prev?.foodItems || [dishName.trim()],
+              sustainabilityFeedback:
+                data.sustainabilityFeedback ||
+                prev?.sustainabilityFeedback ||
+                `Rich in protein (${data.nutrition.protein}g) and essential vitamins.`,
+            }));
+            if (Array.isArray(data.foodItems) && data.foodItems.length > 0) {
+              setEditedFoodItems(data.foodItems);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.log('Nutrition detection endpoint notice:', err?.message || 'Handled');
+      } finally {
+        setIsDetectingNutrition(false);
+      }
+    },
+    [portion, selectedCategory, editedFoodItems]
+  );
+
+  // Auto-detect nutritional profile and vitamins if dish name is present or custom dish is entered
+  useEffect(() => {
+    if (currentStep === 3) {
+      const activeDish =
+        editedDishName.trim() ||
+        customFoodInput.trim() ||
+        (selectedFood && selectedFood !== foodCategories[0]?.popularFoods[0] ? selectedFood : '') ||
+        analysisResult?.dishName;
+      if (
+        activeDish &&
+        (!analysisResult?.nutrition?.vitamins ||
+          analysisResult.nutrition.vitamins.length === 0 ||
+          (analysisResult?.dishName && analysisResult.dishName !== activeDish))
+      ) {
+        detectNutritionForDish(activeDish, portion);
+      }
+    }
+  }, [
+    currentStep,
+    editedDishName,
+    customFoodInput,
+    selectedFood,
+    analysisResult?.nutrition?.vitamins,
+    analysisResult?.dishName,
+    detectNutritionForDish,
+    portion,
+  ]);
 
   // Calculate sticker modifiers: Rarer stickers yield higher clean plate XP, but amplify waste penalty
   const stickerModifiers = useMemo(() => {
@@ -376,14 +464,16 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
   const analyzePresetDirect = (preset: (typeof samplePresetMeals)[0], type: 'before' | 'after') => {
     if (type === 'before') {
       const isNotFood = preset.isFood === false;
+      const isFruitRemnant = (preset as any).isFinishedFruit || preset.tags?.includes('Finished Fruit');
       const isSmall = portion === 'Small';
       const isLarge = portion === 'Large';
       const dishTitle = isNotFood ? 'Non-Food Object Detected' : (selectedFood || preset.name || 'Sustainable Campus Meal');
       const parsed = {
         dishName: dishTitle,
-        foodCategory: selectedCategory?.name || 'East Asian Cuisine',
+        foodCategory: isFruitRemnant ? 'Fresh Fruits' : (selectedCategory?.name || 'East Asian Cuisine'),
         foodItem: selectedFood || dishTitle,
         isFood: !isNotFood,
+        isFinishedFruit: isFruitRemnant,
         nonFoodReason: isNotFood ? (preset.nonFoodReason || 'Stationery / non-food detected instead of dining meal.') : undefined,
         isPenalty: isNotFood,
         confidenceScore: isNotFood ? 99 : 98,
@@ -397,9 +487,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         },
         foodItems: isNotFood ? ['Non-Food Object (Penalty: -20 XP)'] : (preset.items || [dishTitle, 'Fresh Campus Greens', 'Organic Grains']),
         detectedZones: isNotFood ? [] : [
-          { label: dishTitle, category: 'protein', confidence: 96, estimatedGrams: isSmall ? 65 : isLarge ? 130 : 90 },
-          { label: 'Whole Grains & Rice', category: 'grain', confidence: 95, estimatedGrams: isSmall ? 85 : isLarge ? 170 : 120 },
-          { label: 'Fresh Campus Vegetables', category: 'vegetable', confidence: 98, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
+          { label: dishTitle, category: isFruitRemnant ? 'fruit' : 'protein', confidence: 96, estimatedGrams: isSmall ? 65 : isLarge ? 130 : 90 },
+          { label: 'Organic Compostable Peels & Core', category: 'fruit', confidence: 97, estimatedGrams: 35 },
         ],
         carbonSavingsKg: isNotFood ? 0 : isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
         waterSavedLiters: isNotFood ? 0 : isSmall ? 420 : isLarge ? 860 : 590,
@@ -407,6 +496,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         dietaryTags: isNotFood ? ['Non-Food', 'Penalty -20 XP'] : (preset.tags || [selectedCategory?.name || 'Campus Meal', 'Low Carbon', 'High Fiber']),
         sustainabilityFeedback: isNotFood
           ? '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'
+          : isFruitRemnant
+          ? '🍎 Finished fruit detected! You enjoyed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'
           : `Well-balanced ${selectedCategory?.name || 'campus'} meal with zero food waste potential!`,
         xpEarned: isNotFood ? -20 : (isLarge ? 40 : 35),
       };
@@ -414,25 +505,31 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       setEditedDishName(parsed.dishName);
       setEditedFoodItems([...parsed.foodItems]);
     } else {
+      const isFruitRemnant = (preset as any).isFinishedFruit || preset.tags?.includes('Finished Fruit');
       const isClean = preset.cleanPlateVerified !== false;
       const wasteGrams = isClean ? 0 : (preset.wasteGrams || 160);
       const parsedAfter = {
-        dishName: isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
+        dishName: isFruitRemnant ? 'Finished Fruit Verification' : isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
         cleanPlateVerified: isClean,
+        isFinishedFruit: isFruitRemnant,
         cleanPlateConfidence: 99,
         confidenceScore: 99,
         wasteGrams: wasteGrams,
         remainingWasteGrams: wasteGrams,
-        foodSavedKg: isClean ? 0.35 : 0,
+        foodSavedKg: isClean ? (isFruitRemnant ? 0.25 : 0.35) : 0,
         carbonSavingsKg: isClean ? 0.54 : -0.35,
-        waterSavedLiters: isClean ? 590 : 0,
+        waterSavedLiters: isClean ? (isFruitRemnant ? 120 : 590) : 0,
         bonusXp: isClean ? 30 : -25,
         xpEarned: isClean ? 35 : -25,
         isPenalty: !isClean,
-        congratulationsMessage: isClean
+        congratulationsMessage: isFruitRemnant
+          ? '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Natural peels & cores composted!'
+          : isClean
           ? 'Clean plate 100% verified! Zero scraps sent to landfill.'
           : '⚠️ Unfinished Food Detected! Leftovers sent to landfill produce methane.',
-        sustainabilityFeedback: isClean
+        sustainabilityFeedback: isFruitRemnant
+          ? 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.'
+          : isClean
           ? 'Outstanding! You prevented food waste and claimed maximum clean plate streak multiplier.'
           : 'Leftover food scraps waste valuable resources and emit landfill greenhouse gases. A -25 XP penalty has been applied.',
       };
@@ -487,11 +584,13 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       
       if (type === 'before') {
         const isNotFood = result.isFood === false || knownPreset?.isFood === false;
+        const isFruitRemnant = !!(result.isFinishedFruit || (knownPreset as any)?.isFinishedFruit);
         const parsed = {
           dishName: isNotFood ? 'Non-Food Object Detected' : result.dishName || selectedFood || knownPreset?.name || 'Sustainable Campus Meal',
-          foodCategory: result.foodCategory || selectedCategory?.name || 'East Asian Cuisine',
+          foodCategory: result.foodCategory || selectedCategory?.name || (isFruitRemnant ? 'Fresh Fruits' : 'East Asian Cuisine'),
           foodItem: result.foodItem || selectedFood || result.dishName || 'Campus Meal',
           isFood: !isNotFood,
+          isFinishedFruit: isFruitRemnant,
           nonFoodReason: isNotFood ? (result.nonFoodReason || knownPreset?.nonFoodReason || 'Non-edible item detected instead of dining meal.') : undefined,
           isPenalty: isNotFood,
           confidenceScore: result.confidenceScore || 96,
@@ -515,6 +614,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           dietaryTags: isNotFood ? ['Non-Food', 'Penalty -20 XP'] : result.dietaryTags || ['Plant-Rich', 'Low Carbon', 'High Fiber'],
           sustainabilityFeedback: isNotFood
             ? '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'
+            : isFruitRemnant
+            ? '🍎 Finished fruit detected! You enjoyed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'
             : result.sustainabilityFeedback || 'Well-balanced plant-forward meal with zero food waste potential!',
           xpEarned: isNotFood ? -20 : result.xpEarned || (portion === 'Large' ? 40 : 35),
         };
@@ -522,39 +623,47 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         setEditedDishName(parsed.dishName);
         setEditedFoodItems([...parsed.foodItems]);
       } else {
+        const isFruitRemnant = !!(result.isFinishedFruit || (knownPreset as any)?.isFinishedFruit);
         const isClean = (result.cleanPlateVerified !== false) && (knownPreset?.cleanPlateVerified !== false);
         const wasteGrams = isClean ? 0 : (result.wasteGrams || knownPreset?.wasteGrams || 160);
         const parsedAfter = {
-          dishName: isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
+          dishName: isFruitRemnant ? 'Finished Fruit Verification' : isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
           cleanPlateVerified: isClean,
+          isFinishedFruit: isFruitRemnant,
           cleanPlateConfidence: result.cleanPlateConfidence || result.cleanlinessConfidence || 99,
           confidenceScore: result.confidenceScore || 99,
           wasteGrams: wasteGrams,
           remainingWasteGrams: wasteGrams,
-          foodSavedKg: isClean ? (result.foodSavedKg || 0.35) : 0,
+          foodSavedKg: isClean ? (result.foodSavedKg || (isFruitRemnant ? 0.25 : 0.35)) : 0,
           carbonSavingsKg: isClean ? (result.carbonSavingsKg || 0.54) : -0.35,
-          waterSavedLiters: isClean ? (result.waterSavedLiters || 590) : 0,
+          waterSavedLiters: isClean ? (result.waterSavedLiters || (isFruitRemnant ? 120 : 590)) : 0,
           bonusXp: isClean ? (result.bonusXp || 30) : -25,
           xpEarned: isClean ? (result.xpEarned || 35) : -25,
           isPenalty: !isClean,
-          congratulationsMessage: isClean
+          congratulationsMessage: isFruitRemnant
+            ? (result.congratulationsMessage || '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Natural peels & cores composted!')
+            : isClean
             ? (result.congratulationsMessage || 'Clean plate 100% verified! Zero scraps sent to landfill.')
             : '⚠️ Unfinished Food Detected! Leftovers sent to landfill produce methane.',
-          sustainabilityFeedback: isClean
+          sustainabilityFeedback: isFruitRemnant
+            ? (result.sustainabilityFeedback || 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.')
+            : isClean
             ? (result.sustainabilityFeedback || 'Outstanding! You prevented food waste and claimed maximum clean plate streak multiplier.')
             : 'Leftover food scraps waste valuable resources and emit landfill greenhouse gases. A -25 XP penalty has been applied.',
         };
         setAfterAnalysisResult(parsedAfter);
       }
-    } catch (error) {
-      console.warn('Using intelligent fallback meal analysis:', error);
+    } catch (error: any) {
+      console.log('Using real-time fallback meal analysis:', error?.message || 'Handled');
       if (type === 'before') {
         const isNotFood = knownPreset?.isFood === false;
+        const isFruitRemnant = (knownPreset as any)?.isFinishedFruit || false;
         const isSmall = portion === 'Small';
         const isLarge = portion === 'Large';
         const fallback = {
           dishName: isNotFood ? 'Non-Food Object Detected' : knownPreset ? knownPreset.name : isSmall ? 'Garden Harvest Salad & Herb Tofu' : isLarge ? 'Mediterranean Roasted Quinoa & Protein Bowl' : 'Healthy Campus Protein Bowl',
           isFood: !isNotFood,
+          isFinishedFruit: isFruitRemnant,
           nonFoodReason: isNotFood ? (knownPreset?.nonFoodReason || 'Stationery / non-food detected instead of dining meal') : undefined,
           isPenalty: isNotFood,
           confidenceScore: 94,
@@ -575,9 +684,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           carbonSavingsKg: isNotFood ? 0 : isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
           waterSavedLiters: isNotFood ? 0 : isSmall ? 420 : isLarge ? 860 : 590,
           ecoScore: isNotFood ? 'N/A' : 'A+',
-          dietaryTags: isNotFood ? ['Non-Food', 'Penalty: -20 XP'] : ['Plant-Rich', 'Low Carbon', 'Campus Sourced', 'High Fiber'],
+          dietaryTags: isNotFood ? ['Non-Food', 'Penalty: -20 XP'] : isFruitRemnant ? ['Finished Fruit', 'Zero Waste', 'Natural Compost'] : ['Plant-Rich', 'Low Carbon', 'Campus Sourced', 'High Fiber'],
           sustainabilityFeedback: isNotFood
             ? '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'
+            : isFruitRemnant
+            ? '🍎 Finished fruit detected! You consumed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'
             : 'High nutrient-density plant-forward meal! Diverts approx 0.54kg CO2e compared to average high-carbon cafeteria dishes.',
           xpEarned: isNotFood ? -20 : (isLarge ? 40 : 35),
         };
@@ -585,25 +696,31 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         setEditedDishName(fallback.dishName);
         setEditedFoodItems([...fallback.foodItems]);
       } else {
+        const isFruitRemnant = (knownPreset as any)?.isFinishedFruit || false;
         const isClean = knownPreset?.cleanPlateVerified !== false;
         const wasteGrams = isClean ? 0 : (knownPreset?.wasteGrams || 160);
         setAfterAnalysisResult({
-          dishName: isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
+          dishName: isFruitRemnant ? 'Finished Fruit Verification' : isClean ? 'Clean Plate Verification' : 'Unfinished Plate Waste Detected',
           cleanPlateVerified: isClean,
+          isFinishedFruit: isFruitRemnant,
           cleanPlateConfidence: 99,
           confidenceScore: 99,
           wasteGrams: wasteGrams,
           remainingWasteGrams: wasteGrams,
-          foodSavedKg: isClean ? 0.35 : 0,
+          foodSavedKg: isClean ? (isFruitRemnant ? 0.25 : 0.35) : 0,
           carbonSavingsKg: isClean ? 0.54 : -0.35,
-          waterSavedLiters: isClean ? 590 : 0,
+          waterSavedLiters: isClean ? (isFruitRemnant ? 120 : 590) : 0,
           bonusXp: isClean ? 30 : -25,
           xpEarned: isClean ? 35 : -25,
           isPenalty: !isClean,
-          congratulationsMessage: isClean
+          congratulationsMessage: isFruitRemnant
+            ? '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Natural peels & cores composted!'
+            : isClean
             ? 'Clean Plate Verified! 100% food diverted from campus waste.'
             : '⚠️ Unfinished Food Detected! Leftover food creates landfill waste.',
-          sustainabilityFeedback: isClean
+          sustainabilityFeedback: isFruitRemnant
+            ? 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.'
+            : isClean
             ? 'Outstanding! Zero scraps detected on the dining tray. Bonus XP granted!'
             : 'Unfinished meal scraps produce landfill emissions. A -25 XP penalty has been deducted.',
         });
@@ -663,7 +780,8 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       });
     }
 
-    const dishTitle = editedDishName || analysisResult?.dishName || (isClean ? 'Healthy Campus Meal' : 'Unfinished Campus Meal');
+    const userTypedDish = editedDishName.trim() || customFoodInput.trim() || (selectedFood && selectedFood !== foodCategories[0]?.popularFoods[0] ? selectedFood : '');
+    const dishTitle = userTypedDish || analysisResult?.dishName || (isClean ? 'Healthy Campus Meal' : 'Unfinished Campus Meal');
     const finalFoodItems = editedFoodItems.length > 0 ? editedFoodItems : analysisResult?.foodItems;
 
     const baseCleanXp = (analysisResult?.xpEarned || 35) + (afterAnalysisResult?.bonusXp || 30);
@@ -677,10 +795,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     const newRecord: MealRecord = {
       id: `meal-${Date.now()}`,
       title: dishTitle,
+      customDishName: userTypedDish || undefined,
       time: 'Just now',
       portion: portion,
       foodCategory: selectedCategory?.name || analysisResult?.foodCategory,
-      foodItem: selectedFood || dishTitle,
+      foodItem: dishTitle,
       xp: totalXp,
       imageUrl: capturedBeforeImage,
       afterImageUrl: capturedAfterImage,
@@ -689,7 +808,13 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       waterSavedLiters: isClean ? (analysisResult?.waterSavedLiters || 590) : 0,
       ecoScore: isClean ? (analysisResult?.ecoScore || 'A+') : 'F',
       confidenceScore: analysisResult?.confidenceScore || 96,
-      nutrition: analysisResult?.nutrition || { protein: 22, carbs: 54, fat: 13, fiber: 9 },
+      nutrition: analysisResult?.nutrition || {
+        protein: 22,
+        carbs: 54,
+        fat: 13,
+        fiber: 9,
+        vitamins: ['Vitamin C (85% DV - 76mg)', 'Vitamin A (45% DV - 410mcg)', 'Iron (22% DV - 4.0mg)', 'Calcium (18% DV - 230mg)'],
+      },
       foodItems: finalFoodItems,
       detectedZones: analysisResult?.detectedZones,
       sustainabilityFeedback: isClean
@@ -1342,6 +1467,40 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           )}
         </button>
       </div>
+
+      {/* Quick Interactive AI Vision Demo Scenarios */}
+      <div className="pt-2 pb-1 text-center space-y-2">
+        <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-theme-muted">
+          <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
+          <span>Try AI Scanner Demo Scenarios:</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+          {samplePresetMeals.map((preset) => {
+            const isFruit = (preset as any).isFinishedFruit;
+            return (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => handleSelectPreset(preset)}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                  isFruit
+                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 ring-1 ring-amber-500/30'
+                    : preset.cleanPlateVerified
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
+                    : preset.isPenalty && preset.isFood
+                    ? 'bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25'
+                    : preset.isFood === false
+                    ? 'bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25'
+                    : 'bg-theme-card text-theme-main border-theme-card hover:border-theme-primary'
+                }`}
+              >
+                <span>{isFruit ? '🍎' : preset.cleanPlateVerified ? '✨' : preset.isPenalty && preset.isFood ? '⚠️' : preset.isFood === false ? '❌' : '🥗'}</span>
+                <span>{preset.name.split('(')[0].trim()}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </>
   )}
 
@@ -1414,9 +1573,16 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>AI Vision Verified</span>
                   </span>
-                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                    {analysisResult.confidenceScore || 96}% Match
-                  </span>
+                  {analysisResult.isFinishedFruit ? (
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span>🍎</span>
+                      <span>Finished Fruit Detected</span>
+                    </span>
+                  ) : (
+                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                      {analysisResult.confidenceScore || 96}% Match
+                    </span>
+                  )}
                   <span className="bg-theme-primary-bg text-theme-primary border border-theme-primary-border text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                     EcoScore {analysisResult.ecoScore || 'A+'}
                   </span>
@@ -1429,23 +1595,44 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                 </div>
 
                 {isEditingMeal ? (
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                     <input
                       type="text"
                       value={editedDishName}
                       onChange={(e) => setEditedDishName(e.target.value)}
-                      className="bg-theme-card-subtle border border-theme-primary rounded-xl px-3 py-1 text-sm font-bold text-theme-main focus:outline-none w-full"
+                      className="bg-theme-card-subtle border border-theme-primary rounded-xl px-3 py-1.5 text-sm font-bold text-theme-main focus:outline-none w-full"
                       placeholder="Enter custom meal name"
                     />
-                    <button
-                      onClick={() => setIsEditingMeal(false)}
-                      className="p-1.5 bg-theme-primary text-black rounded-lg text-xs font-bold cursor-pointer"
-                    >
-                      Save
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => {
+                          setIsEditingMeal(false);
+                          detectNutritionForDish(editedDishName);
+                        }}
+                        className="px-3 py-1.5 bg-theme-primary text-black rounded-xl text-xs font-extrabold cursor-pointer hover:opacity-90 transition-all flex items-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Save</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          detectNutritionForDish(editedDishName);
+                          setIsEditingMeal(false);
+                        }}
+                        disabled={isDetectingNutrition}
+                        className="px-3 py-1.5 bg-theme-card border border-theme-primary text-theme-primary rounded-xl text-xs font-bold cursor-pointer hover:bg-theme-primary/15 transition-all flex items-center gap-1"
+                      >
+                        {isDetectingNutrition ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
+                        )}
+                        <span>Detect AI</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center flex-wrap gap-2">
                     <h3 className="text-xl font-extrabold text-theme-main leading-tight">
                       {editedDishName || analysisResult.dishName}
                     </h3>
@@ -1455,6 +1642,19 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                       title="Edit Dish Name"
                     >
                       <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => detectNutritionForDish(editedDishName || analysisResult.dishName)}
+                      disabled={isDetectingNutrition}
+                      className="px-2.5 py-0.5 rounded-full bg-theme-primary/10 border border-theme-primary/30 text-theme-primary text-[10px] font-bold hover:bg-theme-primary/20 transition-all flex items-center gap-1 cursor-pointer"
+                      title="Run AI Protein & Vitamin Detection"
+                    >
+                      {isDetectingNutrition ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      <span>{isDetectingNutrition ? 'Detecting Nutrients...' : 'AI Protein & Vitamins'}</span>
                     </button>
                   </div>
                 )}
@@ -1492,9 +1692,9 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
               </div>
 
               <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-                <div className="bg-theme-card p-2 rounded-xl border border-theme-card">
-                  <p className="text-[10px] font-bold text-theme-muted uppercase">Protein</p>
-                  <p className="text-sm font-extrabold text-theme-main">{analysisResult.nutrition?.protein || 22}g</p>
+                <div className="bg-theme-card p-2 rounded-xl border-2 border-theme-primary/40">
+                  <p className="text-[10px] font-bold text-theme-primary uppercase">Protein</p>
+                  <p className="text-sm font-black text-theme-main">{analysisResult.nutrition?.protein || 22}g</p>
                 </div>
                 <div className="bg-theme-card p-2 rounded-xl border border-theme-card">
                   <p className="text-[10px] font-bold text-theme-muted uppercase">Carbs</p>
@@ -1509,6 +1709,30 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                   <p className="text-sm font-extrabold text-theme-main">{analysisResult.nutrition?.fiber || 9}g</p>
                 </div>
               </div>
+
+              {/* Detected Vitamins & Micronutrients in Step 2 */}
+              {analysisResult.nutrition?.vitamins && analysisResult.nutrition.vitamins.length > 0 && (
+                <div className="pt-2 border-t border-theme-card/70 text-left">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-extrabold text-theme-main flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-theme-primary" />
+                      <span>AI Detected Vitamins & Micronutrients:</span>
+                    </span>
+                    <span className="text-[9px] text-theme-primary font-bold">Bioactive Profile</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysisResult.nutrition.vitamins.map((vit: string, vIdx: number) => (
+                      <span
+                        key={vIdx}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-theme-card text-theme-primary border border-theme-primary/30 px-2 py-0.5 rounded-md"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-theme-primary" />
+                        {vit}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Recognized Food Ingredients (Editable Tag List) */}
@@ -1610,12 +1834,19 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
               id="btn-proceed-to-step3"
               onClick={() => {
                 setCurrentStep(3);
-                setCapturedAfterImage(samplePresetMeals[4]?.url || samplePresetMeals[3].url);
-                analyzeImageWithGemini(samplePresetMeals[4]?.url || samplePresetMeals[3].url, 'after');
+                const targetImage = (analysisResult.isFinishedFruit && capturedBeforeImage)
+                  ? capturedBeforeImage
+                  : (samplePresetMeals.find((p) => (p as any).isFinishedFruit)?.url || samplePresetMeals[4]?.url || samplePresetMeals[3].url);
+                setCapturedAfterImage(targetImage);
+                if (analysisResult.isFinishedFruit) {
+                  analyzePresetDirect(samplePresetMeals.find((p) => (p as any).isFinishedFruit) || samplePresetMeals[4], 'after');
+                } else {
+                  analyzeImageWithGemini(targetImage, 'after');
+                }
               }}
               className="w-full py-4 rounded-full bg-theme-primary text-black font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition-all shadow-lg shadow-theme-glow cursor-pointer"
             >
-              <span>{t('capture_btn_proceed', 'Proceed to Clean Plate Verification')}</span>
+              <span>{analysisResult.isFinishedFruit ? '🍎 Verify Finished Fruit (100% Eaten)' : t('capture_btn_proceed', 'Proceed to Clean Plate Verification')}</span>
               <ChevronRight className="w-4 h-4 stroke-[3]" />
             </button>
           </div>
@@ -1739,23 +1970,27 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
             </div>
           </div>
         ) : (
-          /* Clean Plate 100% Zero Waste Success Card */
+          /* Clean Plate / Finished Fruit 100% Zero Waste Success Card */
           <div className="bg-theme-card border-2 border-theme-primary rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary">
-                <CheckCircle className="w-7 h-7 fill-current/30" />
+              <div className="w-12 h-12 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary text-2xl">
+                {afterAnalysisResult?.isFinishedFruit ? '🍎' : <CheckCircle className="w-7 h-7 fill-current/30" />}
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] uppercase tracking-wider font-extrabold text-theme-primary">
-                    {t('clean_plate_verified', 'Clean Plate 100% Verified')}
+                    {afterAnalysisResult?.isFinishedFruit
+                      ? '🍎 ' + t('finished_fruit_verified', 'Finished Fruit 100% Verified')
+                      : t('clean_plate_verified', 'Clean Plate 100% Verified')}
                   </span>
                   <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                    0g Scraps
+                    {afterAnalysisResult?.isFinishedFruit ? '0g Edible Waste' : '0g Scraps'}
                   </span>
                 </div>
                 <h3 className="text-xl font-extrabold text-theme-main">
-                  {t('zero_waste_achieved', 'Zero Waste Achieved')}
+                  {afterAnalysisResult?.isFinishedFruit
+                    ? t('finished_fruit_title', 'All Fruit Eaten • Peels Composted')
+                    : t('zero_waste_achieved', 'Zero Waste Achieved')}
                 </h3>
               </div>
             </div>
@@ -1780,25 +2015,159 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                 <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-theme-primary">
                   <img
                     src={capturedAfterImage}
-                    alt="Clean plate after dining"
+                    alt="Clean plate or finished fruit after dining"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
                   <span className="absolute bottom-1 left-1 bg-theme-primary text-black text-[9px] font-extrabold px-1.5 py-0.5 rounded">
-                    Clean Plate (0g)
+                    {afterAnalysisResult?.isFinishedFruit ? '🍎 Finished Fruit (0g)' : 'Clean Plate (0g)'}
                   </span>
                 </div>
-                <p className="text-[10px] text-theme-primary font-bold">100% Waste Diverted</p>
+                <p className="text-[10px] text-theme-primary font-bold">
+                  {afterAnalysisResult?.isFinishedFruit ? '100% Fruit Eaten (Peels Composted)' : '100% Waste Diverted'}
+                </p>
               </div>
             </div>
 
             <p className="text-xs text-theme-muted leading-relaxed">
-              {afterAnalysisResult?.sustainabilityFeedback ||
+              {afterAnalysisResult?.congratulationsMessage ||
+                afterAnalysisResult?.sustainabilityFeedback ||
                 t(
                   'clean_plate_praise',
                   `Outstanding job, ${user.greetingName}! Your meal was finished with zero scraps. Maximum XP bonus and streak multiplier unlocked.`
                 )}
             </p>
+
+            {/* Dish Details with AI Protein & Vitamins Profile */}
+            <div className="bg-theme-card-subtle border border-theme-primary/40 rounded-2xl p-4 space-y-3.5 shadow-md text-left">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-theme-primary bg-theme-primary/10 border border-theme-primary/30 px-2 py-0.5 rounded-full">
+                      Dish Details
+                    </span>
+                    {(editedDishName.trim() || customFoodInput.trim()) && (
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                        Custom Dish
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-base font-extrabold text-theme-main">
+                    {editedDishName.trim() || customFoodInput.trim() || selectedFood || analysisResult?.dishName || 'Healthy Campus Meal'}
+                  </h4>
+                  <p className="text-xs text-theme-muted">
+                    Portion: <span className="font-semibold text-theme-main">{portion}</span> • Category:{' '}
+                    <span className="font-semibold text-theme-main">{selectedCategory?.name || 'Campus Dining'}</span>
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] font-bold text-theme-muted uppercase">Energy</span>
+                  <p className="text-base font-black text-theme-main">
+                    {analysisResult?.estimatedCalories || (portion === 'Small' ? 310 : portion === 'Large' ? 620 : 440)}{' '}
+                    <span className="text-xs font-normal text-theme-muted">kcal</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* AI Nutritional Profile & Protein Highlight */}
+              <div className="bg-theme-card border border-theme-card rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-theme-main">
+                    <Sparkles className="w-4 h-4 text-theme-primary" />
+                    <span>AI Detected Protein & Nutrition</span>
+                  </div>
+                  {isDetectingNutrition ? (
+                    <span className="text-[10px] text-theme-primary font-bold animate-pulse flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Detecting nutrients...
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        detectNutritionForDish(
+                          editedDishName.trim() || customFoodInput.trim() || selectedFood || analysisResult?.dishName || 'Campus Meal'
+                        )
+                      }
+                      className="text-[10px] text-theme-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5" /> Re-scan AI
+                    </button>
+                  )}
+                </div>
+
+                {/* Macro Grid with Protein Highlight */}
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="bg-theme-card-subtle border-2 border-theme-primary/50 rounded-xl p-2">
+                    <p className="text-[9px] uppercase font-bold text-theme-primary">Protein</p>
+                    <p className="text-base font-black text-theme-main">
+                      {analysisResult?.nutrition?.protein ?? 22}g
+                    </p>
+                    <p className="text-[8px] text-theme-muted font-medium">Muscle & satiety</p>
+                  </div>
+                  <div className="bg-theme-card-subtle border border-theme-card rounded-xl p-2">
+                    <p className="text-[9px] uppercase font-bold text-theme-muted">Carbs</p>
+                    <p className="text-base font-black text-theme-main">
+                      {analysisResult?.nutrition?.carbs ?? 54}g
+                    </p>
+                    <p className="text-[8px] text-theme-muted font-medium">Energy fuel</p>
+                  </div>
+                  <div className="bg-theme-card-subtle border border-theme-card rounded-xl p-2">
+                    <p className="text-[9px] uppercase font-bold text-theme-muted">Fat</p>
+                    <p className="text-base font-black text-theme-main">
+                      {analysisResult?.nutrition?.fat ?? 13}g
+                    </p>
+                    <p className="text-[8px] text-theme-muted font-medium">Healthy lipids</p>
+                  </div>
+                  <div className="bg-theme-card-subtle border border-theme-card rounded-xl p-2">
+                    <p className="text-[9px] uppercase font-bold text-theme-muted">Fiber</p>
+                    <p className="text-base font-black text-theme-main">
+                      {analysisResult?.nutrition?.fiber ?? 9}g
+                    </p>
+                    <p className="text-[8px] text-theme-muted font-medium">Gut health</p>
+                  </div>
+                </div>
+
+                {/* Detected Vitamins & Micronutrients */}
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[11px] font-bold text-theme-main flex items-center gap-1">
+                    <span>💊 Detected Vitamins & Essential Minerals:</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysisResult?.nutrition?.vitamins && analysisResult.nutrition.vitamins.length > 0 ? (
+                      analysisResult.nutrition.vitamins.map((vit: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold bg-theme-primary/10 text-theme-primary border border-theme-primary/25 px-2 py-0.5 rounded-md"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-theme-primary" />
+                          {vit}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-theme-muted italic">
+                        Analyzing vitamin composition with Gemini...
+                      </span>
+                    )}
+                  </div>
+
+                  {analysisResult?.nutrition?.vitaminDetails && analysisResult.nutrition.vitaminDetails.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                      {analysisResult.nutrition.vitaminDetails.slice(0, 4).map((vd: any, vIdx: number) => (
+                        <div key={vIdx} className="bg-theme-card-subtle border border-theme-card rounded-lg p-2 text-[10px]">
+                          <div className="flex justify-between font-extrabold text-theme-main">
+                            <span>{vd.name}</span>
+                            <span className="text-theme-primary font-black">
+                              {vd.dailyValue} DV ({vd.amount})
+                            </span>
+                          </div>
+                          <p className="text-theme-muted text-[9px] mt-0.5 line-clamp-1">{vd.benefit}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Reward Summary Card */}
             <div className="bg-theme-card-subtle border border-theme-card rounded-2xl p-4 space-y-3">

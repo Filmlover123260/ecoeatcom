@@ -632,7 +632,7 @@ export const defaultSettings: AppSettings = {
   greetingColor: 'auto',
   theme: 'Eco Green',
   darkMode: true,
-  dailyWasteGoal: 250,
+  dailyWasteGoal: 0,
   campusVisibility: false,
 };
 
@@ -688,6 +688,22 @@ export const samplePresetMeals = [
     waterSavedLiters: 710,
     ecoScore: 'A+',
     tags: ['High Protein', 'Plant-Powered', 'Eco Champion'],
+  },
+  {
+    name: 'Finished Fruit (Apple Core & Peels - 100% Eaten)',
+    portion: 'Regular' as const,
+    url: 'https://images.unsplash.com/photo-1576179635662-9d1983e97e1e?auto=format&fit=crop&w=800&q=80',
+    items: ['100% Edible Fruit Consumed', 'Compostable Apple Core & Seeds'],
+    calories: 95,
+    grams: 160,
+    nutrition: { protein: 0.5, carbs: 24, fat: 0.3, fiber: 4.4 },
+    carbonSavedKg: 0.45,
+    waterSavedLiters: 120,
+    ecoScore: 'A+',
+    tags: ['Finished Fruit', 'Zero Food Waste', 'Compostable Peels', '100% Diverted'],
+    cleanPlateVerified: true,
+    isFinishedFruit: true,
+    isFood: true,
   },
   {
     name: 'Clean Plate / Zero Food Waste',

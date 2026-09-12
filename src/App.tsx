@@ -125,7 +125,10 @@ function AppContent() {
     const saved = localStorage.getItem('ecoeat_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...defaultSettings, ...parsed, schoolName: 'Linked to BBS PIK' };
+      const migratedGoal = (parsed.dailyWasteGoal === 250 || parsed.dailyWasteGoal === 150)
+        ? defaultSettings.dailyWasteGoal
+        : Math.min(100, Math.max(0, parsed.dailyWasteGoal ?? defaultSettings.dailyWasteGoal));
+      return { ...defaultSettings, ...parsed, dailyWasteGoal: migratedGoal, schoolName: 'Linked to BBS PIK' };
     }
     return defaultSettings;
   });

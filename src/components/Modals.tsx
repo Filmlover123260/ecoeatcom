@@ -587,7 +587,14 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Utensils className="w-5 h-5 text-theme-primary" />
-            <h3 className="text-lg font-extrabold text-theme-main">{meal.title}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-theme-main">{meal.title}</h3>
+              {meal.customDishName && (
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                  Custom Dish
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -693,6 +700,49 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
                   <p className="text-xs font-extrabold text-theme-main">{meal.nutrition.fiber}g</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* AI Detected Vitamins & Micronutrients Profile */}
+          {meal.nutrition && ((meal.nutrition.vitamins && meal.nutrition.vitamins.length > 0) || (meal.nutrition.vitaminDetails && meal.nutrition.vitaminDetails.length > 0)) && (
+            <div className="space-y-2 bg-theme-card-subtle p-3.5 rounded-2xl border border-theme-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-theme-main flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
+                  <span>AI Detected Vitamins & Micronutrients:</span>
+                </p>
+                <span className="text-[10px] font-extrabold text-theme-primary bg-theme-primary/10 border border-theme-primary/30 px-2 py-0.5 rounded-full">
+                  Bioactive Profile
+                </span>
+              </div>
+
+              {meal.nutrition.vitamins && meal.nutrition.vitamins.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {meal.nutrition.vitamins.map((vit, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold bg-theme-primary/10 text-theme-primary border border-theme-primary/30 px-2.5 py-1 rounded-lg"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-theme-primary" />
+                      {vit}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {meal.nutrition.vitaminDetails && meal.nutrition.vitaminDetails.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                  {meal.nutrition.vitaminDetails.map((vd, vIdx) => (
+                    <div key={vIdx} className="bg-theme-card border border-theme-card rounded-xl p-2 text-[11px]">
+                      <div className="flex justify-between font-extrabold text-theme-main">
+                        <span>{vd.name}</span>
+                        <span className="text-theme-primary font-black">{vd.dailyValue} DV ({vd.amount})</span>
+                      </div>
+                      <p className="text-theme-muted text-[10px] mt-0.5 leading-snug">{vd.benefit}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
