@@ -49,66 +49,80 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
           {/* Inner Shield Clipping Boundary */}
           <defs>
             <clipPath id="crestShieldInner">
-              <path d="M 40 20 L 460 20 L 460 360 C 460 450 360 515 250 545 C 140 515 40 450 40 360 Z" />
+              <path d="M 40 24 L 460 24 L 460 330 C 460 430 355 498 250 532 C 145 498 40 430 40 330 Z" />
             </clipPath>
           </defs>
 
-          {/* Outer Teal / Turquoise Shield Rim */}
+          {/* Outer Teal Shield Rim */}
           <path
-            d="M 20 10 L 480 10 L 480 365 C 480 470 370 545 250 575 C 130 545 20 470 20 365 Z"
-            fill="#009ca6"
+            d="M 18 10 L 482 10 L 482 340 C 482 455 370 530 250 568 C 130 530 18 455 18 340 Z"
+            fill="#0da19c"
           />
 
-          {/* Inner Crest Graphic Area */}
+          {/* Inner Crest Graphic Area with Exact Quadrants */}
           <g clipPath="url(#crestShieldInner)">
-            {/* White Field */}
-            <rect x="0" y="0" width="500" height="580" fill="#ffffff" />
+            {/* Base Teal Fill (Provides Top-Left & Bottom-Right Teal Quadrants) */}
+            <rect x="0" y="0" width="500" height="580" fill="#0da19c" />
 
-            {/* Dark Navy Cross Horizontal Bar */}
-            <rect x="0" y="170" width="500" height="105" fill="#0c2540" />
+            {/* Top-Right Quadrant: Crisp White */}
+            <rect x="302" y="24" width="160" height="142" fill="#ffffff" />
 
-            {/* Dark Navy Cross Vertical Bar */}
+            {/* Bottom-Left Quadrant: Crisp White */}
+            <rect x="40" y="258" width="160" height="280" fill="#ffffff" />
+
+            {/* Dark Navy Cross: Horizontal Bar */}
+            <rect x="40" y="164" width="420" height="96" fill="#0b2444" />
+
+            {/* Dark Navy Cross: Vertical Bar ending in pointed tip */}
             <path
-              d="M 195 0 L 305 0 L 305 570 L 250 580 L 195 570 Z"
-              fill="#0c2540"
+              d="M 198 24 L 302 24 L 302 516 L 250 534 L 198 516 Z"
+              fill="#0b2444"
             />
 
-            {/* Open Book In Upper Section */}
-            <g transform="translate(250, 245)">
-              {/* Left Page (White with navy border) */}
+            {/* Open Book In Upper/Middle Section */}
+            <g id="crest-open-book">
+              {/* Dark Navy Cover Underlay */}
+              <path d="M 246 112 L 118 94 L 118 296 L 246 318 Z" fill="#08182b" />
+              <path d="M 254 112 L 382 94 L 382 296 L 254 318 Z" fill="#08182b" />
+              <path d="M 244 316 L 250 326 L 256 316 Z" fill="#08182b" />
+
+              {/* Left Page (White with dark navy border) */}
               <path
-                d="M -8 -125 L -125 -85 C -128 -84 -130 -80 -130 -75 L -130 40 C -130 46 -125 50 -118 48 L -8 10 Z"
+                d="M 246 122 L 128 104 L 128 286 L 246 308 Z"
                 fill="#ffffff"
-                stroke="#0c2540"
-                strokeWidth="12"
+                stroke="#0b2444"
+                strokeWidth="11"
                 strokeLinejoin="round"
               />
 
-              {/* Right Page (White with navy border) */}
+              {/* Right Page (White with dark navy border) */}
               <path
-                d="M 8 -125 L 125 -85 C 128 -84 130 -80 130 -75 L 130 40 C 130 46 125 50 118 48 L 8 10 Z"
+                d="M 254 122 L 372 104 L 372 286 L 254 308 Z"
                 fill="#ffffff"
-                stroke="#0c2540"
-                strokeWidth="12"
+                stroke="#0b2444"
+                strokeWidth="11"
                 strokeLinejoin="round"
               />
 
               {/* Book Spine */}
-              <path
-                d="M 0 -125 L 0 18"
-                stroke="#0c2540"
+              <line
+                x1="250"
+                y1="114"
+                x2="250"
+                y2="314"
+                stroke="#0b2444"
                 strokeWidth="8"
                 strokeLinecap="round"
               />
 
               {/* Chinese Characters: 培 (Pei) & 民 (Min) */}
               <text
-                x="-68"
-                y="-12"
+                x="187"
+                y="210"
                 fontFamily="'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif"
-                fontSize="64"
+                fontSize="62"
                 fontWeight="900"
-                fill="#0c2540"
+                fill="#0b2444"
                 textAnchor="middle"
                 dominantBaseline="central"
               >
@@ -116,12 +130,12 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
               </text>
 
               <text
-                x="68"
-                y="-12"
+                x="313"
+                y="210"
                 fontFamily="'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif"
-                fontSize="64"
+                fontSize="62"
                 fontWeight="900"
-                fill="#0c2540"
+                fill="#0b2444"
                 textAnchor="middle"
                 dominantBaseline="central"
               >
@@ -130,25 +144,25 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
             </g>
 
             {/* BBS Typography Across Lower Half */}
-            {/* First 'B' (Navy on White) */}
+            {/* First 'B' (Dark Navy on White Bottom-Left Quadrant) */}
             <text
-              x="145"
-              y="475"
-              fontFamily="'Times New Roman', 'Georgia', 'Playfair Display', serif"
-              fontSize="128"
+              x="142"
+              y="445"
+              fontFamily="'Times New Roman', 'Playfair Display', 'Georgia', serif"
+              fontSize="124"
               fontWeight="900"
-              fill="#0c2540"
+              fill="#0b2444"
               textAnchor="middle"
             >
               B
             </text>
 
-            {/* Middle 'B' (Crisp White on Dark Navy Cross) */}
+            {/* Middle 'B' (Crisp White on Dark Navy Vertical Crossbar) */}
             <text
               x="250"
-              y="475"
-              fontFamily="'Times New Roman', 'Georgia', 'Playfair Display', serif"
-              fontSize="128"
+              y="445"
+              fontFamily="'Times New Roman', 'Playfair Display', 'Georgia', serif"
+              fontSize="124"
               fontWeight="900"
               fill="#ffffff"
               textAnchor="middle"
@@ -156,14 +170,14 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
               B
             </text>
 
-            {/* 'S' (Navy on White) */}
+            {/* 'S' (Dark Navy on Teal Bottom-Right Quadrant) */}
             <text
-              x="355"
-              y="475"
-              fontFamily="'Times New Roman', 'Georgia', 'Playfair Display', serif"
-              fontSize="128"
+              x="358"
+              y="445"
+              fontFamily="'Times New Roman', 'Playfair Display', 'Georgia', serif"
+              fontSize="124"
               fontWeight="900"
-              fill="#0c2540"
+              fill="#0b2444"
               textAnchor="middle"
             >
               S

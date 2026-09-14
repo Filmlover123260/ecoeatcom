@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronRight,
   ShieldCheck,
@@ -26,82 +26,109 @@ const DraggableGoalSlider: React.FC<DraggableGoalSliderProps> = ({
   value,
   min,
   max,
-  step = 5,
+  step = 1,
   onChange,
   id = 'slider-waste-goal',
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [dragValue, setDragValue] = useState(value);
   const trackRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const latestValueRef = useRef(value);
 
-  const clampedValue = Math.min(max, Math.max(min, value));
-  const percentage = ((clampedValue - min) / (max - min)) * 100;
+  // Synchronize local state when external value changes while idle
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setDragValue(value);
+      latestValueRef.current = value;
+    }
+  }, [value]);
 
-  const updateFromPointer = (clientX: number) => {
-    if (!trackRef.current) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const rawRatio = (clientX - rect.left) / rect.width;
-    const clampedRatio = Math.max(0, Math.min(1, rawRatio));
-    const rawValue = min + clampedRatio * (max - min);
-    const steppedValue = Math.round(rawValue / step) * step;
-    const finalValue = Math.max(min, Math.min(max, steppedValue));
-    onChange(finalValue);
-  };
+  const activeValue = isDragging ? dragValue : value;
+  const clampedValue = Math.min(max, Math.max(min, activeValue));
+  const percentage = Math.max(0, Math.min(100, ((clampedValue - min) / (max - min)) * 100));
+
+  const calculateValueFromPointer = useCallback(
+    (clientX: number) => {
+      if (!trackRef.current) return null;
+      const rect = trackRef.current.getBoundingClientRect();
+      if (rect.width <= 0) return null;
+      const rawRatio = (clientX - rect.left) / rect.width;
+      const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+      const rawValue = min + clampedRatio * (max - min);
+      const steppedValue = Math.round(rawValue / step) * step;
+      return Math.max(min, Math.min(max, steppedValue));
+    },
+    [min, max, step]
+  );
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
+    isDraggingRef.current = true;
     setIsDragging(true);
-    updateFromPointer(e.clientX);
-  };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDragging) {
-      updateFromPointer(e.clientX);
+    const initialVal = calculateValueFromPointer(e.clientX);
+    if (initialVal !== null) {
+      setDragValue(initialVal);
+      latestValueRef.current = initialVal;
+      onChange(initialVal);
     }
-  };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    try {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      if (!isDraggingRef.current) return;
+      const newVal = calculateValueFromPointer(moveEvent.clientX);
+      if (newVal !== null && newVal !== latestValueRef.current) {
+        latestValueRef.current = newVal;
+        setDragValue(newVal);
+        onChange(newVal);
       }
-    } catch {
-      // ignore
-    }
-    setIsDragging(false);
+    };
+
+    const onPointerUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+      }
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    const jump = step > 1 ? step : 5;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
       e.preventDefault();
-      onChange(Math.max(min, clampedValue - step));
+      const next = Math.max(min, clampedValue - jump);
+      setDragValue(next);
+      onChange(next);
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
       e.preventDefault();
-      onChange(Math.min(max, clampedValue + step));
+      const next = Math.min(max, clampedValue + jump);
+      setDragValue(next);
+      onChange(next);
     } else if (e.key === 'Home') {
       e.preventDefault();
+      setDragValue(min);
       onChange(min);
     } else if (e.key === 'End') {
       e.preventDefault();
+      setDragValue(max);
       onChange(max);
     }
   };
 
   return (
     <div className="w-full pt-1 pb-0.5">
-      {/* Draggable Track Area with enhanced touch target */}
+      {/* Draggable Track Area with wide touch-friendly hit area */}
       <div
         id={id}
         ref={trackRef}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="slider"
@@ -113,9 +140,11 @@ const DraggableGoalSlider: React.FC<DraggableGoalSliderProps> = ({
       >
         {/* Track background */}
         <div className="h-3 rounded-full bg-theme-card-subtle border border-theme-card relative overflow-hidden shadow-inner">
-          {/* Active filled track */}
+          {/* Active filled track - zero lag during dragging, smooth ease when idle */}
           <div
-            className="absolute top-0 bottom-0 left-0 bg-theme-primary transition-all duration-75 rounded-full"
+            className={`absolute top-0 bottom-0 left-0 bg-theme-primary rounded-full will-change-[width] ${
+              isDragging ? 'transition-none' : 'transition-all duration-150 ease-out'
+            }`}
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -129,12 +158,12 @@ const DraggableGoalSlider: React.FC<DraggableGoalSliderProps> = ({
           <div className="w-1 h-1 rounded-full bg-theme-muted" />
         </div>
 
-        {/* Draggable Thumb / Handle */}
+        {/* Draggable Thumb / Handle - zero latency position tracking glued to pointer */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white dark:bg-zinc-100 border-2 border-theme-primary shadow-lg flex items-center justify-center transition-transform duration-75 ${
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white dark:bg-zinc-100 border-2 border-theme-primary shadow-lg flex items-center justify-center will-change-[left] ${
             isDragging
-              ? 'scale-125 shadow-theme-glow ring-4 ring-theme-primary/30 cursor-grabbing'
-              : 'cursor-grab group-hover:scale-110'
+              ? 'scale-125 shadow-theme-glow ring-4 ring-theme-primary/30 cursor-grabbing transition-none'
+              : 'cursor-grab group-hover:scale-110 transition-all duration-150 ease-out'
           }`}
           style={{ left: `${percentage}%` }}
         >
@@ -143,8 +172,10 @@ const DraggableGoalSlider: React.FC<DraggableGoalSliderProps> = ({
 
           {/* Floating Tooltip Indicator while dragging or hovering */}
           <div
-            className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-[11px] font-extrabold shadow-md pointer-events-none transition-all duration-150 ${
-              isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'
+            className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-[11px] font-extrabold shadow-md pointer-events-none will-change-transform ${
+              isDragging
+                ? 'opacity-100 scale-100 transition-none'
+                : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150'
             }`}
           >
             {clampedValue}g
@@ -423,7 +454,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   id="btn-decrease-food-saved"
-                  onClick={() => onUpdateSettings({ dailyWasteGoal: Math.max(0, settings.dailyWasteGoal - 10) })}
+                  onClick={() => onUpdateSettings({ dailyWasteGoal: Math.max(0, settings.dailyWasteGoal - 5) })}
                   className="w-8 h-8 flex items-center justify-center rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-main font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-xs"
                   title="Decrease amount"
                   aria-label="Decrease amount"
@@ -436,7 +467,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   id="btn-increase-food-saved"
-                  onClick={() => onUpdateSettings({ dailyWasteGoal: Math.min(100, settings.dailyWasteGoal + 10) })}
+                  onClick={() => onUpdateSettings({ dailyWasteGoal: Math.min(100, settings.dailyWasteGoal + 5) })}
                   className="w-8 h-8 flex items-center justify-center rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-main font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-xs"
                   title="Increase amount"
                   aria-label="Increase amount"
@@ -450,7 +481,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               id="slider-waste-goal"
               min={0}
               max={100}
-              step={5}
+              step={1}
               value={settings.dailyWasteGoal}
               onChange={(val) => onUpdateSettings({ dailyWasteGoal: val })}
             />

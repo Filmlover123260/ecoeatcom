@@ -410,7 +410,10 @@ function AppContent() {
     if (newSettings.darkMode !== undefined) {
       setDarkMode(newSettings.darkMode);
     }
-    showToast('Preferences saved');
+    // Only show toast notification for discrete preference updates, not continuous slider dragging
+    if (!('dailyWasteGoal' in newSettings)) {
+      showToast('Preferences saved');
+    }
   };
 
   const handleGreetingColorChange = (color: string) => {

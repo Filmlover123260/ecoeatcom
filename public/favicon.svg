@@ -1,23 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 580" fill="none">
   <defs>
-    <clipPath id="faviconShieldInner">
-      <path d="M 40 20 L 460 20 L 460 360 C 460 450 360 515 250 545 C 140 515 40 450 40 360 Z" />
+    <clipPath id="favInnerShield">
+      <path d="M 40 24 L 460 24 L 460 330 C 460 430 355 498 250 532 C 145 498 40 430 40 330 Z" />
     </clipPath>
   </defs>
-  <path d="M 20 10 L 480 10 L 480 365 C 480 470 370 545 250 575 C 130 545 20 470 20 365 Z" fill="#009ca6" />
-  <g clip-path="url(#faviconShieldInner)">
-    <rect x="0" y="0" width="500" height="580" fill="#ffffff" />
-    <rect x="0" y="170" width="500" height="105" fill="#0d2847" />
-    <path d="M 195 0 L 305 0 L 305 570 L 250 580 L 195 570 Z" fill="#0d2847" />
-    <g transform="translate(250, 245)">
-      <path d="M -8 -125 L -125 -85 C -128 -84 -130 -80 -130 -75 L -130 40 C -130 46 -125 50 -118 48 L -8 10 Z" fill="#ffffff" stroke="#0d2847" stroke-width="12" stroke-linejoin="round" />
-      <path d="M 8 -125 L 125 -85 C 128 -84 130 -80 130 -75 L 130 40 C 130 46 125 50 118 48 L 8 10 Z" fill="#ffffff" stroke="#0d2847" stroke-width="12" stroke-linejoin="round" />
-      <path d="M 0 -125 L 0 18" stroke="#0d2847" stroke-width="8" stroke-linecap="round" />
-      <text x="-68" y="-12" font-family="'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif" font-size="64" font-weight="900" fill="#0d2847" text-anchor="middle" dominant-baseline="central">培</text>
-      <text x="68" y="-12" font-family="'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif" font-size="64" font-weight="900" fill="#0d2847" text-anchor="middle" dominant-baseline="central">民</text>
+
+  <!-- Outer Base Shield (Teal) -->
+  <path d="M 18 10 L 482 10 L 482 340 C 482 455 370 530 250 568 C 130 530 18 455 18 340 Z" fill="#0da19c" />
+
+  <g clip-path="url(#favInnerShield)">
+    <!-- Base Teal Fill (Top-Left & Bottom-Right) -->
+    <rect x="0" y="0" width="500" height="580" fill="#0da19c" />
+
+    <!-- Top-Right Quadrant: White -->
+    <rect x="302" y="24" width="160" height="142" fill="#ffffff" />
+
+    <!-- Bottom-Left Quadrant: White -->
+    <rect x="40" y="258" width="160" height="280" fill="#ffffff" />
+
+    <!-- Dark Navy Cross -->
+    <rect x="40" y="164" width="420" height="96" fill="#0b2444" />
+    <path d="M 198 24 L 302 24 L 302 516 L 250 534 L 198 516 Z" fill="#0b2444" />
+
+    <!-- Open Book in Center -->
+    <g id="fav-book">
+      <!-- Dark Navy Cover Backing -->
+      <path d="M 246 112 L 118 94 L 118 296 L 246 318 Z" fill="#08182b" />
+      <path d="M 254 112 L 382 94 L 382 296 L 254 318 Z" fill="#08182b" />
+      <!-- Left Page -->
+      <path d="M 246 122 L 128 104 L 128 286 L 246 308 Z" fill="#ffffff" stroke="#0b2444" stroke-width="11" stroke-linejoin="round" />
+      <!-- Right Page -->
+      <path d="M 254 122 L 372 104 L 372 286 L 254 308 Z" fill="#ffffff" stroke="#0b2444" stroke-width="11" stroke-linejoin="round" />
+      <!-- Spine -->
+      <line x1="250" y1="114" x2="250" y2="314" stroke="#0b2444" stroke-width="8" stroke-linecap="round" />
+      <!-- Characters: 培 民 -->
+      <text x="187" y="210" font-family="'Noto Serif SC', serif" font-size="62" font-weight="900" fill="#0b2444" text-anchor="middle" dominant-baseline="central">培</text>
+      <text x="313" y="210" font-family="'Noto Serif SC', serif" font-size="62" font-weight="900" fill="#0b2444" text-anchor="middle" dominant-baseline="central">民</text>
     </g>
-    <text x="145" y="475" font-family="'Times New Roman', 'Georgia', 'Playfair Display', serif" font-size="126" font-weight="900" fill="#0d2847" text-anchor="middle">B</text>
-    <text x="250" y="475" font-family="'Times New Roman', 'Georgia', 'Playfair Display', serif" font-size="126" font-weight="900" fill="#ffffff" text-anchor="middle">B</text>
-    <text x="355" y="475" font-family="'Times New Roman', 'Georgia', 'Playfair Display', serif" font-size="126" font-weight="900" fill="#0d2847" text-anchor="middle">S</text>
+
+    <!-- BBS Letters -->
+    <text x="142" y="445" font-family="'Times New Roman', serif" font-size="124" font-weight="900" fill="#0b2444" text-anchor="middle">B</text>
+    <text x="250" y="445" font-family="'Times New Roman', serif" font-size="124" font-weight="900" fill="#ffffff" text-anchor="middle">B</text>
+    <text x="358" y="445" font-family="'Times New Roman', serif" font-size="124" font-weight="900" fill="#0b2444" text-anchor="middle">S</text>
   </g>
 </svg>
