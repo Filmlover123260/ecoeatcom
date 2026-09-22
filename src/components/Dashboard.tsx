@@ -126,105 +126,105 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const getStreakDetails = (streakDays: number) => {
     if (streakDays <= 0) {
       return {
-        title: '0 Days (Streak Broken)',
-        message: 'The landfill is crying right now 😢 Don\'t let good food go to waste today! Eat clean to start your redemption.',
-        badgeText: '⚠️ 0 Streak • Need Redemption',
+        title: t('streak_0_title', '0 Days (Streak Broken)'),
+        message: t('streak_0_msg', "The landfill is crying right now 😢 Don't let good food go to waste today! Eat clean to start your redemption."),
+        badgeText: t('streak_0_badge', '⚠️ 0 Streak • Need Redemption'),
         badgeStyle: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
         icon: <AlertTriangle className="w-5 h-5 text-rose-400" />,
         iconBg: 'bg-rose-500/15',
         iconBorder: 'border-rose-500/30',
         cardBorder: 'border-rose-500/30 hover:border-rose-500/50',
-        levelTip: '⚠️ Streak is currently 0. Finish your plate today to restore your eco momentum!',
+        levelTip: t('streak_0_tip', '⚠️ Streak is currently 0. Finish your plate today to restore your eco momentum!'),
       };
     }
     if (streakDays === 1) {
       return {
-        title: '1 Day Streak',
-        message: 'First step down! Keep pushing — don\'t let the momentum slip away tomorrow! 🚀',
-        badgeText: '🌱 Fresh Start • Keep Pushing!',
+        title: `1 ${t('days', 'Day')} ${t('streak', 'Streak')}`,
+        message: t('streak_1_msg', "First step down! Keep pushing — don't let the momentum slip away tomorrow! 🚀"),
+        badgeText: `🌱 ${t('fresh_start', 'Fresh Start')} • ${t('keep_pushing', 'Keep Pushing!')}`,
         badgeStyle: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
         icon: <Sparkles className="w-5 h-5 text-emerald-400" />,
         iconBg: 'bg-emerald-500/15',
         iconBorder: 'border-emerald-500/30',
         cardBorder: 'border-emerald-500/30 hover:border-emerald-500/50',
-        levelTip: '🌱 1-Day streak started! Clean your plate tomorrow to keep the flame alive.',
+        levelTip: t('streak_1_tip', '🌱 1-Day streak started! Clean your plate tomorrow to keep the flame alive.'),
       };
     }
     if (streakDays === 2) {
       return {
-        title: '2 Days Strong',
-        message: 'Back-to-back clean plates! You\'re building serious momentum — keep the fire burning! 🔥',
-        badgeText: '🔥 Sparks Flying • 2 In A Row',
+        title: `2 ${t('days_strong', 'Days Strong')}`,
+        message: t('streak_2_msg', "Back-to-back clean plates! You're building serious momentum — keep the fire burning! 🔥"),
+        badgeText: `🔥 ${t('sparks_flying', 'Sparks Flying')} • 2 ${t('in_a_row', 'In A Row')}`,
         badgeStyle: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
         icon: <Flame className="w-5 h-5 text-orange-400 fill-orange-400/20" />,
         iconBg: 'bg-orange-500/15',
         iconBorder: 'border-orange-500/30',
         cardBorder: 'border-orange-500/30 hover:border-orange-500/50',
-        levelTip: '🔥 2-Day streak active! Reach 3 days to unlock the 3-Day Flame badge!',
+        levelTip: t('streak_2_tip', '🔥 2-Day streak active! Reach 3 days to unlock the 3-Day Flame badge!'),
       };
     }
     if (streakDays === 3) {
       return {
-        title: '3 Days Strong',
-        message: '3-Day Hat Trick! The zero-waste habit is locking in. Don\'t break the chain now! ⚡',
-        badgeText: '⚡ Hat Trick • Locked In',
+        title: `3 ${t('days_strong', 'Days Strong')}`,
+        message: t('streak_3_msg', "3-Day Hat Trick! The zero-waste habit is locking in. Don't break the chain now! ⚡"),
+        badgeText: `⚡ ${t('hat_trick', 'Hat Trick')} • ${t('locked_in', 'Locked In')}`,
         badgeStyle: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
         icon: <Zap className="w-5 h-5 text-amber-400 fill-amber-400/20" />,
         iconBg: 'bg-amber-500/15',
         iconBorder: 'border-amber-500/30',
         cardBorder: 'border-amber-500/30 hover:border-amber-500/50',
-        levelTip: '⚡ 3-Day Hat Trick active! Every clean plate earns +25% bonus eco XP.',
+        levelTip: t('streak_3_tip', '⚡ 3-Day Hat Trick active! Every clean plate earns +25% bonus eco XP.'),
       };
     }
     if (streakDays >= 4 && streakDays <= 6) {
       return {
-        title: `${streakDays} Days Strong`,
-        message: 'Unstoppable eco warrior! You\'re crushing cafeteria food waste day after day! 🌟',
-        badgeText: '🌟 Waste Nemesis • Blazing Hot',
+        title: `${streakDays} ${t('days_strong', 'Days Strong')}`,
+        message: t('streak_4_msg', "Unstoppable eco warrior! You're crushing cafeteria food waste day after day! 🌟"),
+        badgeText: `🌟 ${t('waste_nemesis', 'Waste Nemesis')} • ${t('blazing_hot', 'Blazing Hot')}`,
         badgeStyle: 'bg-theme-primary/20 text-theme-primary border-theme-primary/40',
         icon: <Flame className="w-5 h-5 text-theme-primary fill-theme-primary/30" />,
         iconBg: 'bg-theme-primary-bg',
         iconBorder: 'border-theme-primary-border',
         cardBorder: 'border-theme-card hover:border-theme-primary',
-        levelTip: `🌟 ${streakDays}-Day streak! You're only ${7 - streakDays} day${7 - streakDays > 1 ? 's' : ''} away from Week Champion!`,
+        levelTip: `🌟 ${streakDays}-${t('days', 'Day')} ${t('streak', 'streak')}! ${t('keep_pushing', 'Keep Pushing!')}`,
       };
     }
     if (streakDays >= 7 && streakDays <= 13) {
       return {
-        title: `${streakDays} Days Strong`,
-        message: '1+ Week of Zero Waste! Pure discipline. BBS PIK campus legend status unlocked! 🏆',
-        badgeText: '🏆 Campus Legend • 1+ Week',
+        title: `${streakDays} ${t('days_strong', 'Days Strong')}`,
+        message: t('streak_7_msg', '1+ Week of Zero Waste! Pure discipline. BBS PIK campus legend status unlocked! 🏆'),
+        badgeText: `🏆 ${t('campus_legend', 'Campus Legend')} • 1+ ${t('weeks', 'Week')}`,
         badgeStyle: 'bg-amber-400/20 text-amber-300 border-amber-400/40',
         icon: <Trophy className="w-5 h-5 text-amber-400 fill-amber-400/30" />,
         iconBg: 'bg-amber-500/15',
         iconBorder: 'border-amber-500/30',
         cardBorder: 'border-amber-500/30 hover:border-amber-400',
-        levelTip: '🏆 1+ Week Zero Waste streak active! You are setting the gold standard for BBS PIK.',
+        levelTip: t('streak_7_tip', '🏆 1+ Week Zero Waste streak active! You are setting the gold standard for BBS PIK.'),
       };
     }
     if (streakDays >= 14 && streakDays <= 29) {
       return {
-        title: `${streakDays} Days Strong`,
-        message: '2+ Weeks of pristine plates! You are single-handedly lowering campus carbon emissions! 👑',
-        badgeText: '👑 Zero Waste Titan • 2+ Weeks',
+        title: `${streakDays} ${t('days_strong', 'Days Strong')}`,
+        message: t('streak_14_msg', '2+ Weeks of pristine plates! You are single-handedly lowering campus carbon emissions! 👑'),
+        badgeText: `👑 ${t('zero_waste_titan', 'Zero Waste Titan')} • 2+ ${t('weeks', 'Weeks')}`,
         badgeStyle: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
         icon: <Crown className="w-5 h-5 text-purple-400 fill-purple-400/30" />,
         iconBg: 'bg-purple-500/15',
         iconBorder: 'border-purple-500/30',
         cardBorder: 'border-purple-500/30 hover:border-purple-400',
-        levelTip: '👑 2+ Weeks streak! You are an elite eco guardian of the campus.',
+        levelTip: t('streak_14_tip', '👑 2+ Weeks streak! You are an elite eco guardian of the campus.'),
       };
     }
     return {
-      title: `${streakDays} Days Strong`,
-      message: 'God-tier eco consistency! 30+ days of spotless plates. You are BBS PIK royalty! 💎',
-      badgeText: '💎 Eco Royalty • Diamond Tier',
+      title: `${streakDays} ${t('days_strong', 'Days Strong')}`,
+      message: t('streak_30_msg', 'God-tier eco consistency! 30+ days of spotless plates. You are BBS PIK royalty! 💎'),
+      badgeText: `💎 ${t('eco_royalty', 'Eco Royalty')} • ${t('diamond_tier', 'Diamond Tier')}`,
       badgeStyle: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
       icon: <Sparkles className="w-5 h-5 text-cyan-400 fill-cyan-400/30" />,
       iconBg: 'bg-cyan-500/15',
       iconBorder: 'border-cyan-500/30',
       cardBorder: 'border-cyan-500/30 hover:border-cyan-400',
-      levelTip: '💎 30+ Days Diamond streak! You have achieved legendary zero-waste status.',
+      levelTip: t('streak_30_tip', '💎 30+ Days Diamond streak! You have achieved legendary zero-waste status.'),
     };
   };
 
@@ -361,7 +361,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {t('level', 'Lvl')} {user.level}
             </span>
             <span className="text-[11px] font-bold text-theme-primary px-2 py-0.5 rounded-md bg-theme-primary-bg border border-theme-primary-border">
-              {user.title}
+              {t(user.title, user.title)}
             </span>
           </div>
         </div>
@@ -416,7 +416,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {t('dashboard_sticker_shop_title', 'Campus Eco Sticker Store')}
               </h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-theme-primary-bg text-theme-primary border border-theme-primary-border">
-                1,000 Stickers
+                {t('1000_stickers', '1,000 Stickers')}
               </span>
             </div>
             <p className="text-xs text-theme-muted mt-0.5">
@@ -430,15 +430,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center gap-2 bg-theme-card-subtle border border-theme-card px-3 py-1.5 rounded-xl text-xs">
-            <span className="text-theme-muted font-medium">Balance:</span>
+            <span className="text-theme-muted font-medium">{t('balance', 'Balance:')}</span>
             <span className="font-extrabold text-theme-primary flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
-              {user.currentXp} XP
+              {user.currentXp} {t('xp', 'XP')}
             </span>
           </div>
 
           <div className="px-3.5 py-1.5 rounded-xl bg-theme-primary text-black font-extrabold text-xs shadow-sm flex items-center gap-1.5 whitespace-nowrap group-hover:opacity-90">
-            <span>Shop</span>
+            <span>{t('nav_shop', 'Shop')}</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
@@ -462,7 +462,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </span>
               </div>
               <h3 className="text-xl font-bold text-theme-main tracking-tight">
-                {challenge.subtitle}
+                {t(challenge.subtitle, challenge.subtitle)}
               </h3>
             </div>
           </div>
@@ -484,7 +484,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </span>
             <span className="text-theme-muted font-bold flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-theme-primary" />
-              <span>{challenge.title || 'Campus Sustainability Goal'}</span>
+              <span>{t(challenge.title || 'Campus Sustainability Goal', challenge.title || 'Campus Sustainability Goal')}</span>
             </span>
           </div>
 
@@ -504,12 +504,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="truncate">
                   {challenge.studentsParticipating <= 1
-                    ? "You've joined! (1 BBS student)"
-                    : `You've joined! (${challenge.studentsParticipating.toLocaleString()} BBS students)`}
+                    ? `${t('youve_joined', "You've joined!")} (1 BBS ${t('student', 'student')})`
+                    : `${t('youve_joined', "You've joined!")} (${challenge.studentsParticipating.toLocaleString()} BBS ${t('students', 'students')})`}
                 </span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 shrink-0">
-                Active
+                {t('active', 'Active')}
               </span>
             </div>
           ) : (
@@ -522,19 +522,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <UserPlus className="w-4 h-4 text-theme-primary shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="truncate">
                   {challenge.studentsParticipating === 0
-                    ? "Be the first BBS student to join!"
-                    : `Join ${challenge.studentsParticipating.toLocaleString()} BBS student${challenge.studentsParticipating === 1 ? '' : 's'}`}
+                    ? t('be_first_bbs_student', 'Be the first BBS student to join!')
+                    : `${t('join_challenge', 'Join')} ${challenge.studentsParticipating.toLocaleString()} BBS ${t('students', 'students')}`}
                 </span>
               </div>
               <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-theme-primary text-black shrink-0 shadow-sm shadow-theme-glow">
-                Join (+50 XP)
+                {t('join_challenge', 'Join')} (+50 XP)
               </span>
             </button>
           )}
           <div className="bg-theme-card-subtle border border-theme-card rounded-xl px-3.5 py-2 flex items-center gap-2 text-theme-muted text-[11px] font-medium">
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span className="line-clamp-1">
-              {Math.round(challenge.currentKg * 2.2).toLocaleString()} kg CO₂ diverted across campus
+              {Math.round(challenge.currentKg * 2.2).toLocaleString()} {t('kg_co2_diverted_campus', 'kg CO₂ diverted across campus')}
             </span>
           </div>
         </div>
@@ -563,12 +563,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </h2>
               {activeDayFilter === todayDayOfWeek && (
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-extrabold border border-emerald-500/30">
-                  Today
+                  {t('today', 'Today')}
                 </span>
               )}
             </div>
             <p className="text-xs text-theme-muted pt-0.5">
-              {activeDayInfo.fullName} Theme: <strong className="text-theme-main">{activeDayInfo.focus}</strong>
+              {t(activeDayInfo.fullName, activeDayInfo.fullName)} {t('active_focus', 'Active Focus')}: <strong className="text-theme-main">{t(activeDayInfo.focus, activeDayInfo.focus)}</strong>
             </p>
           </div>
 
@@ -586,9 +586,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       ? 'bg-theme-primary text-black shadow-md shadow-theme-glow ring-1 ring-theme-primary'
                       : 'bg-theme-card text-theme-muted hover:text-theme-main border border-theme-card hover:border-theme-primary'
                   }`}
-                  title={`${w.fullName}: ${w.focus}`}
+                  title={`${t(w.fullName, w.fullName)}: ${t(w.focus, w.focus)}`}
                 >
-                  <span>{w.name}</span>
+                  <span>{t(w.name, w.name)}</span>
                   {isToday && (
                     <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-black' : 'bg-theme-primary'}`} />
                   )}
@@ -612,25 +612,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {renderTipIcon(tip.iconType)}
                   </div>
                   <span className="text-[10px] font-bold text-theme-muted bg-theme-card-subtle px-2 py-0.5 rounded-full border border-theme-card">
-                    {tip.category}
+                    {t(tip.category, tip.category)}
                   </span>
                 </div>
                 <div>
                   <h4 className="text-sm font-extrabold text-theme-main leading-snug group-hover:text-theme-primary transition-colors">
-                    {tip.title}
+                    {t(tip.title, tip.title)}
                   </h4>
                   <p className="text-xs text-theme-muted line-clamp-2 leading-relaxed pt-1">
-                    {tip.description}
+                    {t(tip.description, tip.description)}
                   </p>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-theme-card mt-3 flex items-center justify-between text-[10px]">
                 <span className="text-emerald-400 font-bold truncate max-w-[130px]">
-                  {tip.impactStat ? tip.impactStat.replace('Saves ', 'Save ') : `+${tip.bonusXp || 20} XP`}
+                  {tip.impactStat ? t(tip.impactStat, tip.impactStat).replace('Saves ', 'Save ') : `+${tip.bonusXp || 20} XP`}
                 </span>
                 <span className="text-theme-primary font-extrabold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                  Details <ChevronRight className="w-3 h-3" />
+                  {t('details', 'Details')} <ChevronRight className="w-3 h-3" />
                 </span>
               </div>
             </div>
@@ -655,7 +655,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 id="btn-restart-meals"
                 onClick={onRestartMeals}
                 className="text-xs font-bold text-rose-400 hover:text-rose-300 hover:underline cursor-pointer transition-colors"
-                title="Restart and reset recent meals"
+                title={t('restart_recent_meals_title', 'Restart and reset recent meals')}
               >
                 {t('restart', 'Restart')}
               </button>
@@ -681,16 +681,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <Plus className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-sm">
-                <h4 className="text-base font-bold text-theme-main">No meals logged yet</h4>
+                <h4 className="text-base font-bold text-theme-main">{t('no_meals_logged_yet', 'No meals logged yet')}</h4>
                 <p className="text-xs text-theme-muted leading-relaxed">
-                  Scan your campus dining plate before & after eating to verify zero waste, earn XP, and start your clean plate streak!
+                  {t('empty_meals_desc', 'Scan your campus dining plate before & after eating to verify zero waste, earn XP, and start your clean plate streak!')}
                 </p>
               </div>
               <button
                 type="button"
                 className="mt-2 text-xs font-bold px-4 py-2 rounded-full bg-theme-primary text-black shadow-md shadow-theme-glow group-hover:opacity-95"
               >
-                Scan First Meal
+                {t('scan_first_meal', 'Scan First Meal')}
               </button>
             </div>
           ) : (
@@ -704,14 +704,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex items-center gap-3.5">
                   <img
                     src={meal.imageUrl}
-                    alt={meal.title}
+                    alt={t(meal.title, meal.title)}
                     className="w-14 h-14 rounded-xl object-cover border border-theme-card shrink-0"
                     referrerPolicy="no-referrer"
                   />
                   <div>
-                    <h4 className="text-base font-bold text-theme-main leading-tight">{meal.title}</h4>
+                    <h4 className="text-base font-bold text-theme-main leading-tight">{t(meal.title, meal.title)}</h4>
                     <p className="text-xs text-theme-muted mt-1">
-                      {meal.time} • {meal.portion}
+                      {meal.time} • {t(meal.portion, meal.portion)}
                     </p>
                   </div>
                 </div>

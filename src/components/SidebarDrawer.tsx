@@ -11,10 +11,11 @@ import {
   Palette,
   LogOut,
   ShoppingBag,
+  Globe,
 } from 'lucide-react';
 import { TabType, UserProfile } from '../types';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, SupportedLanguage } from '../context/LanguageContext';
 import { EcoEatLogo } from './EcoEatLogo';
 import { toAbsoluteHttpsUrl, CAMPUS_LINKS } from '../utils/urlHelper';
 import { ExternalLink } from 'lucide-react';
@@ -39,7 +40,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   user,
 }) => {
   const { darkMode, toggleDarkMode, activeTheme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language, setLanguage, supportedLanguages } = useLanguage();
 
   if (!isOpen) return null;
 
@@ -75,7 +76,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
           <button
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={t('close_menu', 'Close menu')}
             className="p-2 rounded-full text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -92,8 +93,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           />
           <div className="min-w-0">
             <h4 className="text-sm font-extrabold text-theme-main truncate">{user.name}</h4>
-            <p className="text-xs text-theme-primary font-bold">{t('level', 'Lvl')} {user.level} {user.title}</p>
-            <p className="text-[11px] text-theme-muted truncate">{user.school}</p>
+            <p className="text-xs text-theme-primary font-bold">{t('level', 'Lvl')} {user.level} {t(user.title, user.title)}</p>
+            <p className="text-[11px] text-theme-muted truncate">{t(user.school, user.school)}</p>
           </div>
         </div>
 
@@ -195,7 +196,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold text-theme-main">
               <Palette className="w-4 h-4 text-theme-primary" />
-              <span>{activeTheme.name}</span>
+              <span>{t(activeTheme.name, activeTheme.name)}</span>
             </div>
             {onOpenThemePicker && (
               <button
@@ -222,8 +223,27 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               }`}
             >
               {darkMode ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-              <span>{darkMode ? 'Dark' : 'Light'}</span>
+              <span>{darkMode ? t('dark', 'Dark') : t('light', 'Light')}</span>
             </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-theme-card">
+            <div className="flex items-center gap-1.5 text-xs text-theme-muted">
+              <Globe className="w-3.5 h-3.5 text-theme-primary" />
+              <span>{t('settings_language', 'Language')}</span>
+            </div>
+            <select
+              id="drawer-language-select"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+              className="bg-theme-card border border-theme-primary/40 text-theme-main font-bold text-xs rounded-xl px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-theme-primary cursor-pointer transition-all"
+            >
+              {supportedLanguages.map((lang) => (
+                <option key={lang.name} value={lang.name} className="bg-theme-card text-theme-main">
+                  {lang.flag} {lang.nativeName}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -245,7 +265,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
         {/* Campus Portal & Sustainability Links - all explicit https:// */}
         <div className="pt-2 border-t border-theme-card/60 space-y-1.5 text-[11px] text-theme-muted">
           <div className="flex items-center justify-between px-1">
-            <span className="font-bold text-theme-main">BBS PIK Campus Hub</span>
+            <span className="font-bold text-theme-main">{t('bbs_campus_hub', 'BBS PIK Campus Hub')}</span>
             <span className="text-[10px] text-theme-primary font-bold">2026</span>
           </div>
           <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -256,7 +276,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               rel="noopener noreferrer"
               className="flex items-center justify-between p-2 rounded-xl bg-theme-card-subtle hover:bg-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline border border-theme-card"
             >
-              <span>Campus Site</span>
+              <span>{t('campus_site', 'Campus Site')}</span>
               <ExternalLink className="w-3 h-3 shrink-0" />
             </a>
             <a
@@ -266,7 +286,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               rel="noopener noreferrer"
               className="flex items-center justify-between p-2 rounded-xl bg-theme-card-subtle hover:bg-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline border border-theme-card"
             >
-              <span>Charter</span>
+              <span>{t('charter', 'Charter')}</span>
               <ExternalLink className="w-3 h-3 shrink-0" />
             </a>
           </div>
@@ -278,7 +298,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               rel="noopener noreferrer"
               className="text-[10px] text-theme-muted hover:text-theme-main underline cursor-pointer inline-flex items-center gap-1"
             >
-              <span>Student Privacy Guidelines</span>
+              <span>{t('student_privacy_guidelines', 'Student Privacy Guidelines')}</span>
               <ExternalLink className="w-2.5 h-2.5" />
             </a>
           </div>
@@ -286,7 +306,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
         {/* Version Footer */}
         <div className="pt-1 text-center text-xs text-theme-muted">
-          EcoEat • BBS PIK Campus Dining
+          {t('drawer_footer', 'EcoEat • BBS PIK Campus Dining')}
         </div>
       </div>
     </div>

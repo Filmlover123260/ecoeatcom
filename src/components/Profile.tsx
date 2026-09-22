@@ -231,7 +231,7 @@ export const Profile: React.FC<ProfileProps> = ({
               <div className="flex items-center gap-2 flex-wrap pt-0.5">
                 <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-theme-primary-bg border border-theme-primary-border text-xs font-semibold text-theme-primary">
                   <Leaf className="w-3.5 h-3.5" />
-                  <span>{user.title}</span>
+                  <span>{t(user.title, user.title)}</span>
                 </div>
                 {user.showcaseStickerId && (
                   (() => {
@@ -240,11 +240,11 @@ export const Profile: React.FC<ProfileProps> = ({
                     return (
                       <div
                         onClick={onNavigateToShop}
-                        title={`Active Showcase Sticker: ${showcase.name}`}
+                        title={`${t('active_showcase_sticker', 'Active Showcase Sticker')}: ${t(showcase.name, showcase.name)}`}
                         className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-theme-card-subtle border border-theme-primary/40 text-xs font-extrabold text-theme-main shadow-xs cursor-pointer hover:border-theme-primary"
                       >
                         <span className="text-sm">{showcase.emoji}</span>
-                        <span className="text-[11px]">{showcase.name}</span>
+                        <span className="text-[11px]">{t(showcase.name, showcase.name)}</span>
                       </div>
                     );
                   })()
@@ -261,8 +261,8 @@ export const Profile: React.FC<ProfileProps> = ({
                   <Flame className="w-3 h-3 fill-current" />
                   <span>
                     {user.streakDays === 0
-                      ? '0d Streak 😢'
-                      : `${user.streakDays}d Streak ${user.streakDays === 1 ? '🌱' : '🔥'}`}
+                      ? `0${t('days', 'd')} ${t('streak', 'Streak')} 😢`
+                      : `${user.streakDays}${t('days', 'd')} ${t('streak', 'Streak')} ${user.streakDays === 1 ? '🌱' : '🔥'}`}
                   </span>
                 </div>
               </div>
@@ -306,35 +306,35 @@ export const Profile: React.FC<ProfileProps> = ({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-extrabold text-theme-main flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Meal Sticker Stakes ({stickerModifiers.totalStickersCount} Stickers)</span>
+                  <span>{t('meal_sticker_stakes', 'Meal Sticker Stakes')} ({stickerModifiers.totalStickersCount} {t('stickers', 'Stickers')})</span>
                 </span>
                 {stickerModifiers.highestRarity !== 'none' ? (
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-theme-primary/20 text-theme-primary border border-theme-primary/30">
-                    {stickerModifiers.highestRarity} tier
+                    {t(stickerModifiers.highestRarity, stickerModifiers.highestRarity)} {t('tier', 'tier')}
                   </span>
                 ) : (
                   <button
                     onClick={onNavigateToShop}
                     className="text-[10px] font-bold text-theme-primary hover:underline cursor-pointer"
                   >
-                    Get Stickers
+                    {t('get_stickers', 'Get Stickers')}
                   </button>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 text-center text-xs">
                 <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl">
-                  <span className="text-[10px] font-bold text-emerald-400 block">Clean Plate Reward</span>
+                  <span className="text-[10px] font-bold text-emerald-400 block">{t('clean_plate_reward', 'Clean Plate Reward')}</span>
                   <span className="text-sm font-black text-emerald-400">+{stickerModifiers.bonusCleanXp.toLocaleString()} XP</span>
                 </div>
                 <div className="bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl">
-                  <span className="text-[10px] font-bold text-rose-400 block">Waste Penalty Risk</span>
+                  <span className="text-[10px] font-bold text-rose-400 block">{t('waste_penalty_risk', 'Waste Penalty Risk')}</span>
                   <span className="text-sm font-black text-rose-400">-{stickerModifiers.bonusWastePenalty.toLocaleString()} XP</span>
                 </div>
               </div>
               <p className="text-[10px] text-theme-muted text-center leading-tight">
                 {stickerModifiers.hasStickers
-                  ? '⚡ The rarer the stickers in your collection, the more XP you earn for clean plates — and the more points deducted if food is wasted.'
-                  : 'Collect rare stickers from the Eco Shop to multiply your clean plate XP gains!'}
+                  ? t('sticker_stakes_active_desc', '⚡ The rarer the stickers in your collection, the more XP you earn for clean plates — and the more points deducted if food is wasted.')
+                  : t('sticker_stakes_empty_desc', 'Collect rare stickers from the Eco Shop to multiply your clean plate XP gains!')}
               </p>
             </div>
           </div>
@@ -393,7 +393,7 @@ export const Profile: React.FC<ProfileProps> = ({
               </div>
 
               <div className="w-full">
-                <h4 className="text-[11px] font-bold text-theme-main leading-tight truncate">{badge.name}</h4>
+                <h4 className="text-[11px] font-bold text-theme-main leading-tight truncate">{t(badge.name, badge.name)}</h4>
                 <p className="text-[9px] font-semibold text-theme-muted mt-0.5">
                   {badge.unlocked ? t('unlocked', 'Unlocked') : `${badge.xpReward} XP`}
                 </p>
@@ -449,7 +449,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 >
                   {isEquipped && (
                     <span className="absolute top-1.5 right-1.5 text-[8px] font-black uppercase tracking-wider bg-theme-primary text-black px-1.5 py-0.2 rounded-full shadow-xs">
-                      Active
+                      {t('active', 'Active')}
                     </span>
                   )}
 
@@ -464,9 +464,9 @@ export const Profile: React.FC<ProfileProps> = ({
                   </div>
 
                   <div className="w-full">
-                    <h4 className="text-[11px] font-bold text-theme-main truncate">{sticker.name}</h4>
+                    <h4 className="text-[11px] font-bold text-theme-main truncate">{t(sticker.name, sticker.name)}</h4>
                     <span className="text-[9px] font-semibold text-emerald-400 capitalize block">
-                      {sticker.rarity}
+                      {t(sticker.rarity, sticker.rarity)}
                     </span>
                   </div>
                 </div>
@@ -482,7 +482,7 @@ export const Profile: React.FC<ProfileProps> = ({
                   +{user.purchasedStickers.length - 12}
                 </span>
                 <span className="text-[10px] font-bold text-theme-muted group-hover:text-theme-main">
-                  More in Album
+                  {t('more_in_album', 'More in Album')}
                 </span>
               </div>
             )}
@@ -524,7 +524,7 @@ export const Profile: React.FC<ProfileProps> = ({
               <h3 className="text-xl font-extrabold text-theme-main tracking-tight">{t('weekly_impact', 'Weekly Impact')}</h3>
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-theme-primary-bg text-theme-primary border border-theme-primary-border flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                <span>Today: {today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                <span>{t('today', 'Today')}: {today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
               </span>
             </div>
             <p className="text-xs text-theme-muted mt-1">
@@ -582,11 +582,11 @@ export const Profile: React.FC<ProfileProps> = ({
                       : 'text-theme-muted'
                   }`}
                 >
-                  {item.fullDay}
+                  {t(item.fullDay, item.fullDay)}
                 </span>
                 {item.isToday && (
                   <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-theme-primary text-black mt-0.5">
-                    Today
+                    {t('today', 'Today')}
                   </span>
                 )}
               </div>
@@ -601,12 +601,12 @@ export const Profile: React.FC<ProfileProps> = ({
             <span className="text-theme-muted">
               {t('total_saved', 'Total Saved')}:{' '}
               <strong className="text-theme-main">
-                {Number(calculatedWeekKg) > 0 ? calculatedWeekKg : user.foodSavedWeekKg.toFixed(1)} kg this week
+                {Number(calculatedWeekKg) > 0 ? calculatedWeekKg : user.foodSavedWeekKg.toFixed(1)} {t('kg_this_week', 'kg this week')}
               </strong>
             </span>
           </div>
           <span className="text-theme-primary font-bold bg-theme-primary-bg px-2.5 py-1 rounded-full border border-theme-primary-border">
-            {today.toLocaleDateString(undefined, { weekday: 'long' })} Active Focus
+            {t(today.toLocaleDateString('en-US', { weekday: 'long' }), today.toLocaleDateString(undefined, { weekday: 'long' }))} {t('active_focus', 'Active Focus')}
           </span>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface EcoEatLogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | number;
@@ -13,10 +14,11 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
   showWordmark = false,
   wordmarkClassName = '',
 }) => {
+  const { t } = useLanguage();
   // Dimensions helper
   const getDimensionClass = () => {
     if (typeof size === 'number') {
-      return `w-[${size}px] h-[${size}px]`;
+      return `w-[${size}px] h-[${Math.round(size * 1.16)}px]`;
     }
     switch (size) {
       case 'xs':
@@ -24,15 +26,15 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
       case 'sm':
         return 'w-7 h-8';
       case 'md':
-        return 'w-9 h-10';
+        return 'w-9 h-11';
       case 'lg':
-        return 'w-12 h-14';
+        return 'w-14 h-16';
       case 'xl':
-        return 'w-16 h-20';
+        return 'w-20 h-24';
       case '2xl':
-        return 'w-24 h-28';
+        return 'w-28 h-32';
       default:
-        return 'w-9 h-10';
+        return 'w-9 h-11';
     }
   };
 
@@ -43,8 +45,8 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
           viewBox="0 0 500 580"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full object-contain drop-shadow-sm transition-transform"
-          aria-label="EcoEat BBS School Crest Logo"
+          className="w-full h-full object-contain filter drop-shadow-sm transition-transform duration-200 hover:scale-105"
+          aria-label={t('ecoeat_school_crest_logo', 'EcoEat BBS School Crest Logo')}
         >
           {/* Inner Shield Clipping Boundary */}
           <defs>
@@ -197,7 +199,7 @@ export const EcoEatLogo: React.FC<EcoEatLogoProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-theme-muted font-medium">
-            Campus Dining Sustainability
+            {t('campus_dining_sustainability', 'Campus Dining Sustainability')}
           </span>
         </div>
       )}

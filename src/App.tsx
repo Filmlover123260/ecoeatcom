@@ -31,7 +31,7 @@ import {
   startOnlinePresenceHeartbeat,
 } from './lib/campusSyncService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { Navigation } from './components/Navigation';
 import { SidebarDrawer } from './components/SidebarDrawer';
 import { Dashboard } from './components/Dashboard';
@@ -56,6 +56,7 @@ import { AppThemeId } from './theme/themeConfig';
 
 function AppContent() {
   const { setThemeId, setDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   // Authentication state - always start at the log-in page upon startup
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -159,9 +160,9 @@ function AppContent() {
         newCurrentXp = newCurrentXp - newNextXp;
         newNextXp = Math.round(newNextXp * 1.2);
         const earnedTitle = getLevelTitle(newLevel);
-        showToast(`🎉 Level Up! You reached Level ${newLevel} (${earnedTitle})!`);
+        showToast(t('toast_level_up', '🎉 Level Up! You reached Level {level} ({title})!').replace('{level}', String(newLevel)).replace('{title}', t(earnedTitle, earnedTitle)));
       } else {
-        showToast(`✨ Mastered "${tip.title}"! +${gainedXp} XP added`);
+        showToast(t('toast_mastered_tip', '✨ Mastered "{title}"! +{xp} XP added').replace('{title}', t(tip.title, tip.title)).replace('{xp}', String(gainedXp)));
       }
 
       return {
@@ -242,15 +243,15 @@ function AppContent() {
               title: getLevelTitle(newLevel),
             };
           });
-          showToast('🎉 You joined the BBS Campus Challenge! (+50 XP)');
+          showToast(t('toast_joined_challenge', '🎉 You joined the BBS Campus Challenge! (+50 XP)'));
         } else {
-          showToast('✓ You are an active participant in this challenge!');
+          showToast(t('toast_active_challenge', '✓ You are an active participant in this challenge!'));
         }
       } else {
-        showToast('Could not join challenge. Please try again.');
+        showToast(t('toast_could_not_join', 'Could not join challenge. Please try again.'));
       }
     } catch (err) {
-      showToast('Could not join challenge. Please try again.');
+      showToast(t('toast_could_not_join', 'Could not join challenge. Please try again.'));
     }
   };
 
@@ -266,7 +267,7 @@ function AppContent() {
         const penaltyAmount = Math.abs(xpEarned);
         const newCurrentXp = Math.max(0, prev.currentXp - penaltyAmount);
         const newTotalXp = Math.max(0, prev.totalXp - penaltyAmount);
-        showToast(`⚠️ Food waste penalty: -${penaltyAmount.toLocaleString()} XP deducted! Clean plate streak reset to 0.`);
+        showToast(t('toast_food_waste_penalty', '⚠️ Food waste penalty: -{xp} XP deducted! Clean plate streak reset to 0.').replace('{xp}', penaltyAmount.toLocaleString()));
         return {
           ...prev,
           currentXp: newCurrentXp,
@@ -285,9 +286,9 @@ function AppContent() {
         newCurrentXp = newCurrentXp - newNextXp;
         newNextXp = Math.round(newNextXp * 1.2);
         const earnedTitle = getLevelTitle(newLevel);
-        showToast(`🎉 Level Up! You are now Level ${newLevel} (${earnedTitle})! Streak is now ${newStreak} days! 🔥`);
+        showToast(t('toast_level_up_streak', '🎉 Level Up! You are now Level {level} ({title})! Streak is now {streak} days! 🔥').replace('{level}', String(newLevel)).replace('{title}', t(earnedTitle, earnedTitle)).replace('{streak}', String(newStreak)));
       } else {
-        showToast(`✨ Clean plate verified! +${xpEarned.toLocaleString()} XP • Streak increased to ${newStreak} days! 🔥`);
+        showToast(t('toast_clean_plate_verified', '✨ Clean plate verified! +{xp} XP • Streak increased to {streak} days! 🔥').replace('{xp}', xpEarned.toLocaleString()).replace('{streak}', String(newStreak)));
       }
 
       return {
@@ -348,7 +349,7 @@ function AppContent() {
           return {
             ...b,
             unlocked: true,
-            unlockedDate: 'Today',
+            unlockedDate: t('today', 'Today'),
           };
         }
         return b;
@@ -357,9 +358,9 @@ function AppContent() {
       if (newlyUnlockedBadgeName) {
         setTimeout(() => {
           if (unlockedCountThisTurn > 1) {
-            showToast(`🏆 ${unlockedCountThisTurn} New Badges Unlocked! First: ${newlyUnlockedBadgeName}`);
+            showToast(t('toast_badges_unlocked_multi', '🏆 {count} New Badges Unlocked! First: {name}').replace('{count}', String(unlockedCountThisTurn)).replace('{name}', newlyUnlockedBadgeName));
           } else {
-            showToast(`🏆 Badge Unlocked: ${newlyUnlockedBadgeName}!`);
+            showToast(t('toast_badge_unlocked_single', '🏆 Badge Unlocked: {name}!').replace('{name}', newlyUnlockedBadgeName));
           }
         }, 1200);
       }
@@ -387,7 +388,7 @@ function AppContent() {
       syncUserProfileToCloud(updatedUser);
       return updatedUser;
     });
-    showToast(`⚠️ Non-food item detected: -${penaltyAmount} XP penalty applied!`);
+    showToast(t('toast_penalty_applied', '⚠️ Non-food item detected: -{penalty} XP penalty applied!').replace('{penalty}', String(penaltyAmount)));
     setCurrentTab('dashboard');
   };
 
@@ -399,7 +400,7 @@ function AppContent() {
     if (updated.name) {
       setSettings((prev) => ({ ...prev, fullName: updated.name! }));
     }
-    showToast('Profile updated successfully');
+    showToast(t('toast_profile_updated', 'Profile updated successfully'));
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
@@ -412,20 +413,20 @@ function AppContent() {
     }
     // Only show toast notification for discrete preference updates, not continuous slider dragging
     if (!('dailyWasteGoal' in newSettings)) {
-      showToast('Preferences saved');
+      showToast(t('toast_preferences_saved', 'Preferences saved'));
     }
   };
 
   const handleGreetingColorChange = (color: string) => {
     setUser((prev) => ({ ...prev, greetingColor: color }));
     setSettings((prev) => ({ ...prev, greetingColor: color }));
-    showToast(`Greeting color updated!`);
+    showToast(t('toast_greeting_updated', 'Greeting color updated!'));
   };
 
   const handleRestartMeals = () => {
     setMeals([]);
     localStorage.setItem('ecoeat_meals', JSON.stringify([]));
-    showToast('✨ Recent meals log has been restarted to 0!');
+    showToast(t('toast_meals_restarted', '✨ Recent meals log has been restarted to 0!'));
   };
 
   const handleOpenWeeklyImpact = () => {
@@ -482,17 +483,17 @@ function AppContent() {
       fullName: signedInUser.name,
     }));
     setIsAuthenticated(true);
-    showToast(`👋 Welcome to BBS PIK EcoEat, ${signedInUser.greetingName}!`);
+    showToast(t('toast_welcome_bbs', '👋 Welcome to BBS PIK EcoEat, {name}!').replace('{name}', signedInUser.greetingName));
   };
 
   const handleBuySticker = (sticker: StickerItem) => {
     if (user.currentXp < sticker.cost) {
-      showToast(`⚠️ Insufficient XP! You need ${(sticker.cost - user.currentXp).toLocaleString()} more XP.`);
+      showToast(t('toast_insufficient_xp', '⚠️ Insufficient XP! You need {amount} more XP.').replace('{amount}', (sticker.cost - user.currentXp).toLocaleString()));
       return;
     }
     const currentPurchased = user.purchasedStickers || [];
     if (currentPurchased.includes(sticker.id)) {
-      showToast(`You already own "${sticker.name}"!`);
+      showToast(t('toast_already_own_sticker', 'You already own "{name}"!').replace('{name}', sticker.name));
       return;
     }
 
@@ -510,7 +511,7 @@ function AppContent() {
       return updatedUser;
     });
 
-    showToast(`🎉 You purchased "${sticker.name}" for ${sticker.cost.toLocaleString()} XP!`);
+    showToast(t('toast_purchased_sticker', '🎉 You purchased "{name}" for {cost} XP!').replace('{name}', sticker.name).replace('{cost}', sticker.cost.toLocaleString()));
   };
 
   const handleEquipSticker = (stickerId: string | null) => {
@@ -526,9 +527,9 @@ function AppContent() {
 
     if (stickerId) {
       const sticker = getStickerById(stickerId);
-      showToast(`✨ Equipped "${sticker?.name || 'Sticker'}" as profile showcase!`);
+      showToast(t('toast_equipped_showcase', '✨ Equipped "{name}" as profile showcase!').replace('{name}', sticker?.name || t('sticker', 'Sticker')));
     } else {
-      showToast('Unequipped showcase sticker.');
+      showToast(t('toast_unequipped_showcase', 'Unequipped showcase sticker.'));
     }
   };
 
@@ -539,7 +540,7 @@ function AppContent() {
     localStorage.removeItem('ecoeat_user_uid');
     setIsDrawerOpen(false);
     setCurrentTab('dashboard');
-    showToast('Signed out of BBS PIK EcoEat');
+    showToast(t('toast_signed_out_bbs', 'Signed out of BBS PIK EcoEat'));
   };
 
   // If user is not authenticated, render the dedicated SignIn / Student Portal page
@@ -573,7 +574,7 @@ function AppContent() {
         onSelectTab={setCurrentTab}
         onOpenDrawer={() => setIsDrawerOpen(true)}
         onOpenThemePicker={() => setIsThemePickerOpen(true)}
-        titleOverride={currentTab === 'settings' ? 'Settings' : undefined}
+        titleOverride={currentTab === 'settings' ? t('nav_settings', 'Settings') : undefined}
         showBackArrow={currentTab === 'settings' || currentTab === 'capture'}
         onBack={() => setCurrentTab('dashboard')}
       />
@@ -660,23 +661,29 @@ function AppContent() {
                 onRestartMeals={handleRestartMeals}
                 onOpenFAQ={() =>
                   setInfoModalData({
-                    title: 'EcoEat Campus FAQ',
-                    content:
-                      '1. How does meal scanning work?\nSnap a photo before eating, then take a quick clean plate photo after dining to unlock bonus XP.\n\n2. What are the rewards?\nXP unlocks achievement badges and rewards in the Sticker Shop.\n\n3. Can I customize appearance?\nYes! Use the Palette icon to select themes like Eco Emerald, Ocean Teal, Solar Amber, Lavender Bloom, or Cyber Obsidian.',
+                    title: t('faq_title', 'EcoEat Campus FAQ'),
+                    content: t(
+                      'faq_content',
+                      '1. How does meal scanning work?\nSnap a photo before eating, then take a quick clean plate photo after dining to unlock bonus XP.\n\n2. What are the rewards?\nXP unlocks achievement badges and rewards in the Sticker Shop.\n\n3. Can I customize appearance?\nYes! Use the Palette icon to select themes like Eco Emerald, Ocean Teal, Solar Amber, Lavender Bloom, or Cyber Obsidian.'
+                    ),
                   })
                 }
                 onOpenContactUs={() =>
                   setInfoModalData({
-                    title: 'Contact Campus Sustainability',
-                    content:
-                      'Email: sustainability@bbs-campus.edu\nDining Hall Office: Building North, Room 104\nHelpline: +1 (800) 555-ECOS\nOffice Hours: Mon-Fri 8:00 AM - 5:00 PM',
+                    title: t('contact_title', 'Contact Campus Sustainability'),
+                    content: t(
+                      'contact_content',
+                      'Email: sustainability@bbs-campus.edu\nDining Hall Office: Building North, Room 104\nHelpline: +1 (800) 555-ECOS\nOffice Hours: Mon-Fri 8:00 AM - 5:00 PM'
+                    ),
                   })
                 }
                 onOpenPrivacyPolicy={() =>
                   setInfoModalData({
-                    title: 'Student Privacy & Data Policy',
-                    content:
-                      'EcoEat prioritizes student data security. Meal captures and logs are processed for campus sustainability tracking and verified locally. Personal identifiers remain strictly protected under campus privacy standards.',
+                    title: t('privacy_title', 'Student Privacy & Data Policy'),
+                    content: t(
+                      'privacy_content',
+                      'EcoEat prioritizes student data security. Meal captures and logs are processed for campus sustainability tracking and verified locally. Personal identifiers remain strictly protected under campus privacy standards.'
+                    ),
                   })
                 }
                 onSignOut={handleSignOut}

@@ -64,7 +64,7 @@ export const ThemePickerModal: React.FC<ThemePickerModalProps> = ({ isOpen, onCl
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('close', 'Close')}
             className="p-2 rounded-full text-theme-muted hover:text-theme-main hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -161,7 +161,7 @@ export const ThemePickerModal: React.FC<ThemePickerModalProps> = ({ isOpen, onCl
 
                     <div className="space-y-0.5 text-left">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-extrabold text-theme-main">{theme.name}</h4>
+                        <h4 className="text-sm font-extrabold text-theme-main">{t(theme.name, theme.name)}</h4>
                         <span
                           className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
                           style={{
@@ -170,11 +170,11 @@ export const ThemePickerModal: React.FC<ThemePickerModalProps> = ({ isOpen, onCl
                             border: `1px solid ${theme.primaryColor}40`,
                           }}
                         >
-                          {theme.category}
+                          {t(theme.category, theme.category)}
                         </span>
                       </div>
                       <p className="text-xs text-theme-muted leading-relaxed line-clamp-1">
-                        {theme.description}
+                        {t(theme.description, theme.description)}
                       </p>
                     </div>
                   </div>

@@ -47,7 +47,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={onBack || (() => onSelectTab('dashboard'))}
-              aria-label="Go Back"
+              aria-label={t('go_back', 'Go Back')}
               className="p-2 rounded-full text-theme-main hover:bg-theme-card-subtle transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary cursor-pointer"
             >
               <ArrowLeft className="w-6 h-6" />
@@ -58,7 +58,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={onOpenDrawer}
-              aria-label="Open Menu"
+              aria-label={t('open_menu', 'Open Menu')}
               className="p-2 rounded-full text-theme-main hover:bg-theme-card-subtle transition-colors focus:outline-none focus:ring-2 focus:ring-theme-primary cursor-pointer"
             >
               <Menu className="w-6 h-6" />
@@ -75,7 +75,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               e.preventDefault();
               onSelectTab('dashboard');
             }}
-            title="EcoEat Dashboard"
+            title={t('nav_dashboard', 'Dashboard')}
           >
             <EcoEatLogo size="sm" />
             <span className="text-xl font-extrabold tracking-tight text-theme-main">
@@ -127,8 +127,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.9 }}
             onClick={onOpenThemePicker}
-            aria-label="Change Theme"
-            title="Choose Theme & Palette"
+            aria-label={t('change_theme', 'Change Theme')}
+            title={t('choose_theme_palette', 'Choose Theme & Palette')}
             className="p-2 rounded-full bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main hover:border-theme-primary hover:bg-theme-card-subtle transition-colors cursor-pointer shadow-sm"
           >
             <Palette className="w-4 h-4 text-theme-primary" />
@@ -140,8 +140,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             whileHover={{ scale: 1.08, rotate: darkMode ? -15 : 15 }}
             whileTap={{ scale: 0.9 }}
             onClick={toggleDarkMode}
-            aria-label="Toggle Dark/Light Mode"
-            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={t('toggle_dark_light', 'Toggle Dark/Light Mode')}
+            title={darkMode ? t('switch_light_mode', 'Switch to Light Mode') : t('switch_dark_mode', 'Switch to Dark Mode')}
             className="p-2 rounded-full bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main hover:border-theme-primary hover:bg-theme-card-subtle transition-colors cursor-pointer shadow-sm"
           >
             {darkMode ? (
@@ -229,8 +229,8 @@ export const Navigation: React.FC<NavigationProps> = ({
           whileTap={{ scale: 0.88 }}
           onClick={onOpenDrawer}
           className="flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-0.5 py-1 px-2 rounded-xl text-theme-muted hover:text-theme-main transition-colors cursor-pointer"
-          title="Open Campus Menu"
-          aria-label="Open Campus Menu"
+          title={t('open_campus_menu', 'Open Campus Menu')}
+          aria-label={t('open_campus_menu', 'Open Campus Menu')}
         >
           <Menu className="w-5 h-5" />
           <span className="text-[11px] font-medium leading-none">{t('nav_menu', 'Menu')}</span>

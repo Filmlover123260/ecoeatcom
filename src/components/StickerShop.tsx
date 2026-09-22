@@ -399,7 +399,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 {t('shop_title', 'Campus Eco Sticker Shop')}
               </h1>
               <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold shadow-xs">
-                ✨ 1,000,000 Stickers To Collect!
+                ✨ 1,000,000 {t('stickers_to_collect', 'Stickers To Collect!')}
               </span>
             </div>
 
@@ -428,10 +428,10 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 onClick={handleRollMysterySticker}
                 disabled={isRollingMystery || user.currentXp < rarityConfigs.common.minCost}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Roll a random affordable sticker from the 1,000,000 catalog"
+                title={t('roll_random_affordable_sticker', 'Roll a random affordable sticker from the 1,000,000 catalog')}
               >
                 <Shuffle className={`w-3.5 h-3.5 ${isRollingMystery ? 'animate-spin' : ''}`} />
-                <span>{isRollingMystery ? 'Rolling...' : 'Mystery Box Roll'}</span>
+                <span>{isRollingMystery ? t('rolling', 'Rolling...') : t('mystery_box_roll', 'Mystery Box Roll')}</span>
               </button>
 
               {/* Teleport to Random Sticker */}
@@ -439,10 +439,10 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 type="button"
                 onClick={handleTeleportRandom}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 border border-purple-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                title="Teleport to a random sticker in the 1,000,000 collection"
+                title={t('teleport_random_sticker_title', 'Teleport to a random sticker in the 1,000,000 collection')}
               >
                 <Compass className="w-3.5 h-3.5" />
-                <span>🎲 Teleport (Random #)</span>
+                <span>🎲 {t('teleport_random', 'Teleport (Random #)')}</span>
               </button>
             </div>
           </div>
@@ -511,13 +511,13 @@ export const StickerShop: React.FC<StickerShopProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-theme-main flex items-center gap-2">
-                <span>Dynamic Meal Rewards & Waste Deductions</span>
+                <span>{t('dynamic_meal_rewards_title', 'Dynamic Meal Rewards & Waste Deductions')}</span>
                 <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-theme-primary/20 text-theme-primary border border-theme-primary/30">
-                  Core Rule
+                  {t('core_rule', 'Core Rule')}
                 </span>
               </h2>
               <p className="text-xs text-theme-muted">
-                The rarer the sticker you buy, the more points you get after each clean plate meal — but if you waste food, the heavier the points deduction!
+                {t('rarer_sticker_desc', 'The rarer the sticker you buy, the more points you get after each clean plate meal — but if you waste food, the heavier the points deduction!')}
               </p>
             </div>
           </div>
@@ -525,9 +525,9 @@ export const StickerShop: React.FC<StickerShopProps> = ({
           {/* Student's current active bonus stats */}
           <div className="flex items-center gap-2 bg-theme-card/80 border border-theme-card px-3 py-2 rounded-2xl shrink-0">
             <div className="text-right">
-              <span className="text-[10px] font-bold text-theme-muted block">Your Active Multiplier</span>
-              <span className="text-xs font-black text-emerald-400">+{userStickerModifiers.bonusCleanXp.toLocaleString()} Clean</span>
-              <span className="text-xs font-black text-rose-400 ml-1.5">-{userStickerModifiers.bonusWastePenalty.toLocaleString()} Waste</span>
+              <span className="text-[10px] font-bold text-theme-muted block">{t('your_active_multiplier', 'Your Active Multiplier')}</span>
+              <span className="text-xs font-black text-emerald-400">+{userStickerModifiers.bonusCleanXp.toLocaleString()} {t('clean', 'Clean')}</span>
+              <span className="text-xs font-black text-rose-400 ml-1.5">-{userStickerModifiers.bonusWastePenalty.toLocaleString()} {t('waste', 'Waste')}</span>
             </div>
           </div>
         </div>
@@ -544,19 +544,19 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider" style={{ color: config.accentColor }}>
-                    {r} Tier
+                    {t(r, r)} {t('tier', 'Tier')}
                   </span>
                   <span className="text-[10px] font-bold text-theme-muted">
-                    {countOwned} Owned
+                    {countOwned} {t('owned', 'Owned')}
                   </span>
                 </div>
                 <div className="space-y-0.5 text-xs">
                   <div className="flex justify-between font-bold text-emerald-400 text-[11px]">
-                    <span>🍽️ Clean Plate:</span>
+                    <span>🍽️ {t('clean_plate', 'Clean Plate')}:</span>
                     <span>+{config.cleanReward.toLocaleString()} XP</span>
                   </div>
                   <div className="flex justify-between font-bold text-rose-400 text-[11px]">
-                    <span>🗑️ Waste Penalty:</span>
+                    <span>🗑️ {t('waste_penalty', 'Waste Penalty')}:</span>
                     <span>-{config.wastePenalty.toLocaleString()} XP</span>
                   </div>
                 </div>
@@ -637,11 +637,11 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               onChange={(e) => setSortBy(e.target.value as SortOption)}
               className="bg-transparent text-theme-main font-medium focus:outline-none cursor-pointer"
             >
-              <option value="default" className="bg-theme-card text-theme-main">Default #</option>
-              <option value="price_asc" className="bg-theme-card text-theme-main">Price: Low to High</option>
-              <option value="price_desc" className="bg-theme-card text-theme-main">Price: High to Low</option>
-              <option value="rarity" className="bg-theme-card text-theme-main">Rarity First</option>
-              <option value="name" className="bg-theme-card text-theme-main">Name A-Z</option>
+              <option value="default" className="bg-theme-card text-theme-main">{t('sort_default', 'Default #')}</option>
+              <option value="price_asc" className="bg-theme-card text-theme-main">{t('sort_price_asc', 'Price: Low to High')}</option>
+              <option value="price_desc" className="bg-theme-card text-theme-main">{t('sort_price_desc', 'Price: High to Low')}</option>
+              <option value="rarity" className="bg-theme-card text-theme-main">{t('sort_rarity', 'Rarity First')}</option>
+              <option value="name" className="bg-theme-card text-theme-main">{t('sort_name', 'Name A-Z')}</option>
             </select>
           </div>
         </div>
@@ -686,7 +686,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main'
                 }`}
               >
-                All (1,000,000)
+                {t('all', 'All')} (1,000,000)
               </button>
               <button
                 onClick={() => setOwnershipFilter('unowned')}
@@ -696,7 +696,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main'
                 }`}
               >
-                Unowned ({(TOTAL_STICKERS_COUNT - totalCollectedCount).toLocaleString()})
+                {t('unowned', 'Unowned')} ({(TOTAL_STICKERS_COUNT - totalCollectedCount).toLocaleString()})
               </button>
               <button
                 onClick={() => setOwnershipFilter('owned')}
@@ -706,7 +706,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main'
                 }`}
               >
-                Owned ({totalCollectedCount.toLocaleString()})
+                {t('owned', 'Owned')} ({totalCollectedCount.toLocaleString()})
               </button>
             </div>
           )}
@@ -724,10 +724,10 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     : 'text-theme-muted hover:text-theme-main border border-transparent'
                 }`}
               >
-                <span>{rarity.charAt(0).toUpperCase() + rarity.slice(1)}</span>
+                <span>{t(rarity, rarity.charAt(0).toUpperCase() + rarity.slice(1))}</span>
                 {rarity !== 'all' && (
                   <span className="text-[9px] opacity-75 font-semibold">
-                    • {rarityConfigs[rarity].tierLabel}
+                    • {t(rarityConfigs[rarity].tierLabel, rarityConfigs[rarity].tierLabel)}
                   </span>
                 )}
                 <span className="text-[9px] opacity-70">({RARITY_COUNTS[rarity].toLocaleString()})</span>
@@ -746,7 +746,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
 
           {/* Page size selector */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-theme-muted/70">Per page:</span>
+            <span className="text-[11px] text-theme-muted/70">{t('per_page', 'Per page:')}</span>
             {[24, 32, 48, 64].map((size) => (
               <button
                 key={size}
@@ -837,7 +837,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-theme-muted uppercase tracking-wider">
-                  {sticker.category.replace('_', ' ')}
+                  {t(sticker.category.replace('_', ' '), sticker.category.replace('_', ' '))}
                 </span>
               </div>
 
@@ -867,24 +867,24 @@ export const StickerShop: React.FC<StickerShopProps> = ({
 
               {/* Sticker Details */}
               <div className="space-y-1.5 flex-1">
-                <h3 className="text-sm font-black text-theme-main line-clamp-1">{sticker.name}</h3>
+                <h3 className="text-sm font-black text-theme-main line-clamp-1">{t(sticker.name, sticker.name)}</h3>
                 <p className="text-xs text-theme-muted leading-relaxed line-clamp-2">
-                  {sticker.description}
+                  {t(sticker.description, sticker.description)}
                 </p>
 
                 <div className="pt-1 text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 shrink-0" />
-                  <span className="line-clamp-1">{sticker.unlockedWith}</span>
+                  <span className="line-clamp-1">{t(sticker.unlockedWith, sticker.unlockedWith)}</span>
                 </div>
 
                 {/* Dynamic Rarity Stakes */}
                 <div className="pt-1 flex items-center justify-between gap-1 text-[10px] font-bold">
                   <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                    <span>Clean:</span>
+                    <span>{t('clean', 'Clean')}:</span>
                     <span>+{(sticker.cleanReward || rarityConfigs[sticker.rarity]?.cleanReward || 150).toLocaleString()} XP</span>
                   </span>
                   <span className="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                    <span>Waste:</span>
+                    <span>{t('waste', 'Waste')}:</span>
                     <span>-{(sticker.wastePenalty || rarityConfigs[sticker.rarity]?.wastePenalty || 100).toLocaleString()} XP</span>
                   </span>
                 </div>
@@ -975,8 +975,8 @@ export const StickerShop: React.FC<StickerShopProps> = ({
       {totalPages > 1 && (
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 py-4 border-t border-theme-card mt-6">
           <div className="text-xs text-theme-muted">
-            Page <span className="font-bold text-theme-main">{safeCurrentPage.toLocaleString()}</span> of{' '}
-            <span className="font-bold text-theme-main">{totalPages.toLocaleString()}</span> ({totalMatchingCount.toLocaleString()} stickers)
+            {t('page', 'Page')} <span className="font-bold text-theme-main">{safeCurrentPage.toLocaleString()}</span> {t('of', 'of')}{' '}
+            <span className="font-bold text-theme-main">{totalPages.toLocaleString()}</span> ({totalMatchingCount.toLocaleString()} {t('stickers', 'stickers')})
           </div>
 
           {/* Page Buttons Range */}
@@ -986,7 +986,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               onClick={() => handlePageChange(1)}
               disabled={safeCurrentPage === 1}
               className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="First Page"
+              title={t('first_page', 'First Page')}
             >
               <ChevronsLeft className="w-4 h-4" />
             </button>
@@ -996,7 +996,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               onClick={() => handlePageChange(safeCurrentPage - 1)}
               disabled={safeCurrentPage === 1}
               className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="Previous Page"
+              title={t('previous_page', 'Previous Page')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -1034,7 +1034,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               onClick={() => handlePageChange(safeCurrentPage + 1)}
               disabled={safeCurrentPage === totalPages}
               className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="Next Page"
+              title={t('next_page', 'Next Page')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -1044,7 +1044,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               onClick={() => handlePageChange(totalPages)}
               disabled={safeCurrentPage === totalPages}
               className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="Last Page"
+              title={t('last_page', 'Last Page')}
             >
               <ChevronsRight className="w-4 h-4" />
             </button>
@@ -1054,7 +1054,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
           <div className="flex items-center gap-3 flex-wrap">
             {/* Jump to Page Form */}
             <form onSubmit={handleJumpToPage} className="flex items-center gap-1.5 text-xs">
-              <span className="text-theme-muted">Page:</span>
+              <span className="text-theme-muted">{t('page', 'Page')}:</span>
               <input
                 type="number"
                 min={1}
@@ -1068,13 +1068,13 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 type="submit"
                 className="px-2.5 py-1 rounded-xl bg-theme-card-subtle hover:bg-theme-primary hover:text-black border border-theme-card text-theme-main font-bold cursor-pointer transition-colors"
               >
-                Go
+                {t('go', 'Go')}
               </button>
             </form>
 
             {/* Jump to Sticker # Form */}
             <form onSubmit={handleJumpToStickerNumber} className="flex items-center gap-1.5 text-xs">
-              <span className="text-theme-muted">Sticker #:</span>
+              <span className="text-theme-muted">{t('sticker_num_label', 'Sticker #:')}</span>
               <input
                 type="text"
                 value={jumpStickerInput}
@@ -1086,7 +1086,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                 type="submit"
                 className="px-2.5 py-1 rounded-xl bg-theme-card-subtle hover:bg-theme-primary hover:text-black border border-theme-card text-theme-main font-bold cursor-pointer transition-colors"
               >
-                Jump
+                {t('jump', 'Jump')}
               </button>
             </form>
           </div>
@@ -1106,6 +1106,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               {/* Close Button */}
               <button
                 onClick={() => setSelectedStickerForModal(null)}
+                aria-label={t('close', 'Close')}
                 className="absolute top-4 right-4 p-2 rounded-full bg-theme-card-subtle text-theme-muted hover:text-theme-main border border-theme-card cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1115,7 +1116,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               <div className="flex items-center gap-2">
                 {getRarityBadge(selectedStickerForModal.rarity)}
                 <span className="text-xs font-bold text-theme-muted uppercase tracking-wider">
-                  {selectedStickerForModal.category.replace('_', ' ')} • #{selectedStickerForModal.id.replace('sticker_', '')}
+                  {t(selectedStickerForModal.category.replace('_', ' '), selectedStickerForModal.category.replace('_', ' '))} • #{selectedStickerForModal.id.replace('sticker_', '')}
                 </span>
               </div>
 
@@ -1136,40 +1137,40 @@ export const StickerShop: React.FC<StickerShopProps> = ({
 
               {/* Title & Description */}
               <div className="space-y-2 text-center">
-                <h3 className="text-xl font-black text-theme-main">{selectedStickerForModal.name}</h3>
+                <h3 className="text-xl font-black text-theme-main">{t(selectedStickerForModal.name, selectedStickerForModal.name)}</h3>
                 <p className="text-xs text-theme-muted leading-relaxed">
-                  {selectedStickerForModal.description}
+                  {t(selectedStickerForModal.description, selectedStickerForModal.description)}
                 </p>
                 <div className="pt-1 text-xs font-semibold text-emerald-400 flex items-center justify-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{selectedStickerForModal.unlockedWith}</span>
+                  <span>{t(selectedStickerForModal.unlockedWith, selectedStickerForModal.unlockedWith)}</span>
                 </div>
               </div>
 
               {/* Meal Multipliers Box */}
               <div className="bg-theme-card-subtle border border-theme-card rounded-2xl p-3.5 space-y-2 text-center">
                 <div className="flex items-center justify-between text-xs font-bold text-theme-main">
-                  <span>Dining Stakes Multiplier</span>
+                  <span>{t('dining_stakes_multiplier', 'Dining Stakes Multiplier')}</span>
                   <span className="uppercase text-[10px] px-2 py-0.5 rounded-full font-black" style={{ color: selectedStickerForModal.accentColor, backgroundColor: `${selectedStickerForModal.accentColor}15` }}>
-                    {selectedStickerForModal.rarity} tier
+                    {t(selectedStickerForModal.rarity, selectedStickerForModal.rarity)} {t('tier', 'tier')}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <span className="text-[10px] font-bold text-emerald-400 block">Clean Plate Reward</span>
+                    <span className="text-[10px] font-bold text-emerald-400 block">{t('clean_plate_reward', 'Clean Plate Reward')}</span>
                     <span className="text-sm font-black text-emerald-400">
                       +{(selectedStickerForModal.cleanReward || rarityConfigs[selectedStickerForModal.rarity]?.cleanReward || 150).toLocaleString()} XP
                     </span>
                   </div>
                   <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                    <span className="text-[10px] font-bold text-rose-400 block">Waste Penalty</span>
+                    <span className="text-[10px] font-bold text-rose-400 block">{t('waste_penalty', 'Waste Penalty')}</span>
                     <span className="text-sm font-black text-rose-400">
                       -{(selectedStickerForModal.wastePenalty || rarityConfigs[selectedStickerForModal.rarity]?.wastePenalty || 100).toLocaleString()} XP
                     </span>
                   </div>
                 </div>
                 <p className="text-[10px] text-theme-muted">
-                  Purchasing this sticker adds these stakes to every cafeteria meal!
+                  {t('purchasing_sticker_adds_stakes', 'Purchasing this sticker adds these stakes to every cafeteria meal!')}
                 </p>
               </div>
 
@@ -1200,7 +1201,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                       className="py-3 px-4 rounded-xl bg-theme-card-subtle text-theme-main border border-theme-card font-bold text-xs flex items-center gap-2 hover:border-theme-primary cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
-                      <span>Download PNG</span>
+                      <span>{t('download_png', 'Download PNG')}</span>
                     </button>
                   </>
                 ) : (
@@ -1220,8 +1221,8 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     <ShoppingBag className="w-4 h-4" />
                     <span>
                       {user.currentXp >= selectedStickerForModal.cost
-                        ? `Buy for ${selectedStickerForModal.cost.toLocaleString()} XP`
-                        : `Need ${(selectedStickerForModal.cost - user.currentXp).toLocaleString()} more XP`}
+                        ? `${t('buy_for', 'Buy for')} ${selectedStickerForModal.cost.toLocaleString()} XP`
+                        : `${t('shop_need_more_prefix', 'Need')} ${(selectedStickerForModal.cost - user.currentXp).toLocaleString()} ${t('more_xp', 'more XP')}`}
                     </span>
                   </button>
                 )}

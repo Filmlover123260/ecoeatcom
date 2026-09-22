@@ -180,7 +180,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
           {onOpenThemePicker && (
             <button
               onClick={onOpenThemePicker}
-              title="Change Color Theme"
+              title={t('change_color_theme', 'Change Color Theme')}
               className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-primary hover:bg-theme-card-subtle transition-colors cursor-pointer"
             >
               <Palette className="w-4 h-4" />
@@ -190,7 +190,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
           {/* Dark/Light Mode */}
           <button
             onClick={toggleDarkMode}
-            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            title={darkMode ? t('switch_light_mode', 'Switch to Light Mode') : t('switch_dark_mode', 'Switch to Dark Mode')}
             className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer"
           >
             {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
@@ -456,12 +456,12 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                           {GRADE_DIVISIONS.map((division) => (
                             <optgroup
                               key={division.name}
-                              label={division.label}
+                              label={t(division.label, division.label)}
                               className="bg-theme-card text-theme-main font-bold"
                             >
                               {division.grades.map((g) => (
                                 <option key={g} value={g} className="bg-theme-card text-theme-main font-medium">
-                                  {g}
+                                  {t(g, g)}
                                 </option>
                               ))}
                             </optgroup>
@@ -599,6 +599,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                   setIsForgotModalOpen(false);
                   setForgotPasswordSent(false);
                 }}
+                aria-label={t('close', 'Close')}
                 className="p-1 rounded-full text-theme-muted hover:text-theme-main cursor-pointer"
               >
                 ✕
@@ -611,7 +612,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                 <p className="font-bold text-sm">{t('auth_reset_sent_title', 'Password Reset Link Dispatched!')}</p>
                 <p className="text-theme-muted text-xs">
                   {t('auth_reset_sent_desc_prefix', 'We sent instructions to')}{' '}
-                  <span className="font-semibold text-theme-main">{forgotEmail || 'your email'}</span>
+                  <span className="font-semibold text-theme-main">{forgotEmail || t('your_email', 'your email')}</span>
                   {t('auth_reset_sent_desc_suffix', '. Follow the campus link to choose a new password.')}
                 </p>
                 <button

@@ -48,6 +48,7 @@ import { UserProfile, MealRecord, BadgeItem, DailyTipItem, CampusChallengeInfo, 
 import { initialBadges, GRADE_DIVISIONS } from '../data/mockData';
 import { CAMPUS_LINKS } from '../utils/urlHelper';
 import { getAcademicYearChallengeList, getAcademicYearPeriod } from '../data/academicYearChallenge';
+import { useLanguage } from '../context/LanguageContext';
 
 // 1. Edit Profile Modal
 interface EditProfileModalProps {
@@ -63,6 +64,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   user,
   onSave,
 }) => {
+  const { t } = useLanguage();
   const [name, setName] = useState(user.name);
   const [greetingName, setGreetingName] = useState(user.greetingName);
   const [grade, setGrade] = useState(user.grade);
@@ -91,12 +93,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const handleFileProcess = (file: File) => {
     setUploadError(null);
     if (!file.type.startsWith('image/')) {
-      setUploadError('Please select a valid image file (JPG, PNG, WebP, etc.)');
+      setUploadError(t('upload_err_invalid_type', 'Please select a valid image file (JPG, PNG, WebP, etc.)'));
       return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      setUploadError('Image size exceeds 8MB. Please choose a smaller image.');
+      setUploadError(t('upload_err_too_large', 'Image size exceeds 8MB. Please choose a smaller image.'));
       return;
     }
 
@@ -107,7 +109,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       }
     };
     reader.onerror = () => {
-      setUploadError('Failed to read image file. Please try again.');
+      setUploadError(t('upload_err_failed_read', 'Failed to read image file. Please try again.'));
     };
     reader.readAsDataURL(file);
   };
@@ -152,7 +154,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       <div className="bg-theme-card border-t sm:border border-theme-card rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[88vh] sm:max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         <div className="w-12 h-1.5 bg-theme-muted/40 rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-extrabold text-theme-main">Edit Student Profile</h3>
+          <h3 className="text-lg font-extrabold text-theme-main">{t("modal_edit_profile", "Edit Student Profile")}</h3>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle cursor-pointer"
@@ -164,10 +166,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         {/* Profile Picture Upload & Customization Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs uppercase font-bold text-theme-muted">Profile Picture</label>
+            <label className="text-xs uppercase font-bold text-theme-muted">{t("modal_profile_pic", "Profile Picture")}</label>
             {isCustomUploaded && (
               <span className="text-[10px] font-bold text-theme-primary bg-theme-primary-bg border border-theme-primary-border px-2 py-0.5 rounded-full">
-                Custom Photo Active
+                {t("modal_custom_photo_active", "Custom Photo Active")}
               </span>
             )}
           </div>
@@ -177,18 +179,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <div className="relative group shrink-0">
               <img
                 src={avatarUrl}
-                alt="Profile Preview"
+                alt={t('profile_preview', 'Profile Preview')}
                 className="w-20 h-20 rounded-full object-cover border-3 border-theme-primary shadow-md shadow-theme-glow"
                 referrerPolicy="no-referrer"
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                title="Change Photo"
+                title={t('modal_change_photo', 'Change Photo')}
                 className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-bold"
               >
                 <Camera className="w-4 h-4 mb-0.5" />
-                Change
+                {t("modal_change", "Change")}
               </button>
             </div>
 
@@ -201,7 +203,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 transition-all shadow-sm cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Photo</span>
+                  <span>{t("modal_upload_photo", "Upload Photo")}</span>
                 </button>
 
                 <button
@@ -211,7 +213,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-theme-card border border-theme-card text-theme-main font-bold text-xs hover:border-theme-primary transition-all cursor-pointer"
                 >
                   <Camera className="w-3.5 h-3.5 text-theme-primary" />
-                  <span>Take Photo</span>
+                  <span>{t("modal_take_photo", "Take Photo")}</span>
                 </button>
 
                 <button
@@ -220,12 +222,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main text-xs font-semibold transition-all cursor-pointer"
                 >
                   <LinkIcon className="w-3.5 h-3.5" />
-                  <span>Link</span>
+                  <span>{t("modal_link", "Link")}</span>
                 </button>
               </div>
 
               <p className="text-[11px] text-theme-muted">
-                Upload any personal image (PNG, JPG, WebP) from your device or camera.
+                {t("upload_image_hint", "Upload any personal image (PNG, JPG, WebP) from your device or camera.")}
               </p>
             </div>
           </div>
@@ -261,9 +263,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           >
             <ImageIcon className="w-5 h-5 text-theme-primary" />
             <p className="text-xs font-bold text-theme-main">
-              Drag & drop your picture here, or <span className="text-theme-primary underline">browse file</span>
+              {t("modal_drag_drop", "Drag & drop your picture here, or browse file")}
             </p>
-            <span className="text-[10px] text-theme-muted">Supports all image formats up to 8MB</span>
+            <span className="text-[10px] text-theme-muted">{t("modal_supports_formats", "Supports all image formats up to 8MB")}</span>
           </div>
 
           {/* Paste Image URL Input Box */}
@@ -271,7 +273,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <div className="flex gap-2 animate-in fade-in">
               <input
                 type="url"
-                placeholder="https://example.com/my-photo.jpg"
+                placeholder={t("modal_url_placeholder", "https://example.com/my-photo.jpg")}
                 value={imageUrlInput}
                 onChange={(e) => setImageUrlInput(e.target.value)}
                 className="flex-1 bg-theme-card-subtle border border-theme-card rounded-xl px-3.5 py-2 text-xs text-theme-main font-medium focus:outline-none focus:border-theme-primary"
@@ -281,7 +283,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 onClick={handleApplyUrl}
                 className="px-3.5 py-2 rounded-xl bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 cursor-pointer"
               >
-                Apply URL
+                {t("modal_apply_url", "Apply URL")}
               </button>
             </div>
           )}
@@ -299,7 +301,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               onClick={() => setShowPresets((prev) => !prev)}
               className="text-[11px] font-bold text-theme-muted hover:text-theme-main flex items-center gap-1 cursor-pointer"
             >
-              <span>{showPresets ? '▼ Hide Avatar Presets' : '▶ Or choose a sample avatar preset'}</span>
+              <span>{showPresets ? t('hide_avatar_presets', '▼ Hide Avatar Presets') : t('choose_avatar_preset', '▶ Or choose a sample avatar preset')}</span>
             </button>
 
             {showPresets && (
@@ -308,7 +310,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   <img
                     key={i}
                     src={url}
-                    alt={`Avatar preset ${i + 1}`}
+                    alt={`${t('avatar_preset', 'Avatar preset')} ${i + 1}`}
                     onClick={() => setAvatarUrl(url)}
                     className={`w-11 h-11 rounded-full object-cover cursor-pointer border-2 transition-all shrink-0 ${
                       avatarUrl === url ? 'border-theme-primary scale-110 shadow-md shadow-theme-glow' : 'border-transparent opacity-60 hover:opacity-100'
@@ -325,7 +327,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         <div className="space-y-4 pt-2 border-t border-theme-card">
           <div>
             <label className="text-xs uppercase font-bold text-theme-muted block mb-1">
-              Full Display Name
+              {t("modal_full_name", "Full Display Name")}
             </label>
             <input
               type="text"
@@ -337,7 +339,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           <div>
             <label className="text-xs uppercase font-bold text-theme-muted block mb-1">
-              Greeting Name (Dashboard)
+              {t("modal_greeting_name", "Greeting Name (Dashboard)")}
             </label>
             <input
               type="text"
@@ -349,7 +351,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs uppercase font-bold text-theme-muted block mb-1">Grade</label>
+              <label className="text-xs uppercase font-bold text-theme-muted block mb-1">{t("modal_grade", "Grade")}</label>
               <select
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
@@ -358,12 +360,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 {GRADE_DIVISIONS.map((division) => (
                   <optgroup
                     key={division.name}
-                    label={division.label}
+                    label={t(division.label, division.label)}
                     className="bg-slate-900 text-white font-bold"
                   >
                     {division.grades.map((g) => (
                       <option key={g} value={g} className="bg-slate-900 text-white font-medium">
-                        {g}
+                        {t(g, g)}
                       </option>
                     ))}
                   </optgroup>
@@ -372,22 +374,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs uppercase font-bold text-theme-muted block mb-1">Class Section</label>
+              <label className="text-xs uppercase font-bold text-theme-muted block mb-1">{t("modal_class_section", "Class Section")}</label>
               <select
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
                 className="w-full bg-theme-card-subtle border border-theme-card rounded-xl px-4 py-2.5 text-sm text-theme-main font-medium focus:outline-none focus:border-theme-primary cursor-pointer"
               >
-                <option value="A" className="bg-slate-900 text-white font-medium">Section A</option>
-                <option value="B" className="bg-slate-900 text-white font-medium">Section B</option>
-                <option value="C" className="bg-slate-900 text-white font-medium">Section C</option>
-                <option value="D" className="bg-slate-900 text-white font-medium">Section D</option>
+                <option value="A" className="bg-slate-900 text-white font-medium">{t("modal_section_a", "Section A")}</option>
+                <option value="B" className="bg-slate-900 text-white font-medium">{t("modal_section_b", "Section B")}</option>
+                <option value="C" className="bg-slate-900 text-white font-medium">{t("modal_section_c", "Section C")}</option>
+                <option value="D" className="bg-slate-900 text-white font-medium">{t("modal_section_d", "Section D")}</option>
               </select>
             </div>
           </div>
 
           <div className="bg-theme-card-subtle border border-theme-card p-3 rounded-xl flex items-center justify-between text-xs">
-            <span className="font-semibold text-theme-muted">Assigned Homeroom:</span>
+            <span className="font-semibold text-theme-muted">{t('assigned_homeroom', 'Assigned Homeroom')}:</span>
             <span className="font-extrabold text-theme-primary">{grade}-{section}</span>
           </div>
         </div>
@@ -397,7 +399,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             onClick={onClose}
             className="flex-1 py-3 rounded-full bg-theme-card-subtle text-theme-muted font-bold text-xs hover:text-theme-main cursor-pointer"
           >
-            Cancel
+            {t("cancel", "Cancel")}
           </button>
           <button
             onClick={() => {
@@ -413,7 +415,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             }}
             className="flex-1 py-3 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 shadow-md shadow-theme-glow cursor-pointer"
           >
-            Save Changes
+            {t("modal_save_changes", "Save Changes")}
           </button>
         </div>
       </div>
@@ -435,13 +437,14 @@ export const GreetingColorModal: React.FC<GreetingColorModalProps> = ({
   currentColor,
   onSelectColor,
 }) => {
+  const { t } = useLanguage();
   if (!isOpen) return null;
 
   const colorOptions = [
-    { id: 'auto', name: 'Auto Theme Color', previewClass: 'text-theme-main', hex: '#A3E635' },
-    { id: 'green', name: 'Eco Emerald', previewClass: 'text-emerald-500', hex: '#22C55E' },
-    { id: 'amber', name: 'Solar Amber', previewClass: 'text-amber-500', hex: '#F59E0B' },
-    { id: 'cyan', name: 'Ocean Cyan', previewClass: 'text-cyan-500', hex: '#06B6D4' },
+    { id: 'auto', name: t('color_auto', 'Auto Theme Color'), previewClass: 'text-theme-main', hex: '#A3E635' },
+    { id: 'green', name: t('color_green', 'Eco Emerald'), previewClass: 'text-emerald-500', hex: '#22C55E' },
+    { id: 'amber', name: t('color_amber', 'Solar Amber'), previewClass: 'text-amber-500', hex: '#F59E0B' },
+    { id: 'cyan', name: t('color_cyan', 'Ocean Cyan'), previewClass: 'text-cyan-500', hex: '#06B6D4' },
   ];
 
   return (
@@ -449,7 +452,7 @@ export const GreetingColorModal: React.FC<GreetingColorModalProps> = ({
       <div className="bg-theme-card border-t sm:border border-theme-card rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[88vh] sm:max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         <div className="w-12 h-1.5 bg-theme-muted/40 rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-extrabold text-theme-main">Greeting Accent Color</h3>
+          <h3 className="text-lg font-extrabold text-theme-main">{t("modal_greeting_accent_title", "Greeting Accent Color")}</h3>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full text-theme-muted hover:text-theme-main cursor-pointer"
@@ -459,7 +462,7 @@ export const GreetingColorModal: React.FC<GreetingColorModalProps> = ({
         </div>
 
         <p className="text-xs text-theme-muted">
-          Personalize the header greeting text style on your EcoEat dashboard.
+          {t("modal_greeting_accent_desc", "Personalize the header greeting text style on your EcoEat dashboard.")}
         </p>
 
         <div className="space-y-2">
@@ -493,6 +496,7 @@ export const ChangePasswordModal: React.FC<{ isOpen: boolean; onClose: () => voi
   isOpen,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [saved, setSaved] = useState(false);
@@ -506,7 +510,7 @@ export const ChangePasswordModal: React.FC<{ isOpen: boolean; onClose: () => voi
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KeyRound className="w-5 h-5 text-theme-primary" />
-            <h3 className="text-lg font-extrabold text-theme-main">Change Password</h3>
+            <h3 className="text-lg font-extrabold text-theme-main">{t("modal_pw_title", "Change Password")}</h3>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full text-theme-muted hover:text-theme-main cursor-pointer">
             <X className="w-5 h-5" />
@@ -518,20 +522,20 @@ export const ChangePasswordModal: React.FC<{ isOpen: boolean; onClose: () => voi
             <div className="w-12 h-12 rounded-full bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary mx-auto">
               <Check className="w-6 h-6" />
             </div>
-            <h4 className="text-base font-extrabold text-theme-main">Password Updated!</h4>
-            <p className="text-xs text-theme-muted">Your campus student credentials have been securely updated.</p>
+            <h4 className="text-base font-extrabold text-theme-main">{t("modal_pw_updated_title", "Password Updated!")}</h4>
+            <p className="text-xs text-theme-muted">{t("modal_pw_updated_desc", "Your campus student credentials have been securely updated.")}</p>
             <button
               onClick={onClose}
               className="mt-4 px-6 py-2.5 rounded-full bg-theme-primary text-black font-extrabold text-xs"
             >
-              Done
+              {t("done", "Done")}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <div>
               <label className="text-xs uppercase font-bold text-theme-muted block mb-1">
-                Current Password
+                {t("modal_current_pw", "Current Password")}
               </label>
               <input
                 type="password"
@@ -544,7 +548,7 @@ export const ChangePasswordModal: React.FC<{ isOpen: boolean; onClose: () => voi
 
             <div>
               <label className="text-xs uppercase font-bold text-theme-muted block mb-1">
-                New Password
+                {t("modal_new_pw", "New Password")}
               </label>
               <input
                 type="password"
@@ -559,7 +563,7 @@ export const ChangePasswordModal: React.FC<{ isOpen: boolean; onClose: () => voi
               onClick={() => setSaved(true)}
               className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 shadow-md shadow-theme-glow mt-2"
             >
-              Update Password
+              {t("modal_update_pw", "Update Password")}
             </button>
           </div>
         )}
@@ -576,6 +580,7 @@ interface MealDetailsModalProps {
 }
 
 export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onClose, meal }) => {
+  const { t } = useLanguage();
   if (!isOpen || !meal) return null;
 
   return (
@@ -588,10 +593,10 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
           <div className="flex items-center gap-2">
             <Utensils className="w-5 h-5 text-theme-primary" />
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-extrabold text-theme-main">{meal.title}</h3>
+              <h3 className="text-lg font-extrabold text-theme-main">{t(meal.title, meal.title)}</h3>
               {meal.customDishName && (
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                  Custom Dish
+                  {t("custom_dish", "Custom Dish")}
                 </span>
               )}
             </div>
@@ -609,13 +614,13 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
           <div className="relative rounded-2xl overflow-hidden border border-theme-card">
             <img
               src={meal.imageUrl}
-              alt={meal.title}
+              alt={t(meal.title, meal.title)}
               className="w-full h-44 object-cover"
               referrerPolicy="no-referrer"
             />
             {meal.afterImageUrl && (
               <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-                Pre-Meal Scan
+                {t("pre_meal_scan", "Pre-Meal Scan")}
               </span>
             )}
           </div>
@@ -623,12 +628,12 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
             <div className="relative rounded-2xl overflow-hidden border-2 border-theme-primary">
               <img
                 src={meal.afterImageUrl}
-                alt="Clean Plate Post-Dining"
+                alt={t("clean_plate_post_dining", "Clean Plate Post-Dining")}
                 className="w-full h-44 object-cover"
                 referrerPolicy="no-referrer"
               />
               <span className="absolute bottom-2 left-2 bg-theme-primary text-black text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-                Clean Plate (0g)
+                {t("clean_plate_0g", "Clean Plate (0g)")}
               </span>
             </div>
           )}
@@ -637,10 +642,10 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
         <div className="space-y-3.5">
           <div className="flex items-center justify-between text-xs font-semibold text-theme-muted">
             <span className="flex items-center gap-1.5">
-              <span>Logged: {meal.time}</span>
+              <span>{t("logged", "Logged")}: {meal.time}</span>
               {meal.ecoScore && (
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold text-[10px]">
-                  EcoScore {meal.ecoScore}
+                  {t("eco_score", "EcoScore")} {meal.ecoScore}
                 </span>
               )}
             </span>
@@ -651,26 +656,26 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
                   : 'bg-theme-primary text-black'
               }`}
             >
-              {meal.xp >= 0 ? `+${meal.xp} XP Earned` : `${meal.xp} XP Penalty`}
+              {meal.xp >= 0 ? `+${meal.xp} ${t("xp_earned", "XP Earned")}` : `${meal.xp} ${t("xp_penalty", "XP Penalty")}`}
             </span>
           </div>
 
           {/* Quick Metrics Grid */}
           <div className="grid grid-cols-4 gap-2 bg-theme-card-subtle p-3 rounded-2xl border border-theme-card text-center">
             <div>
-              <p className="text-[10px] text-theme-muted font-bold uppercase">Portion</p>
-              <p className="text-xs font-bold text-theme-main">{meal.portion}</p>
+              <p className="text-[10px] text-theme-muted font-bold uppercase">{t("portion", "Portion")}</p>
+              <p className="text-xs font-bold text-theme-main">{t(meal.portion, meal.portion)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-theme-muted font-bold uppercase">Calories</p>
+              <p className="text-[10px] text-theme-muted font-bold uppercase">{t("calories", "Calories")}</p>
               <p className="text-xs font-bold text-theme-main">{meal.calories || 440} kcal</p>
             </div>
             <div>
-              <p className="text-[10px] text-theme-muted font-bold uppercase">CO2 Saved</p>
+              <p className="text-[10px] text-theme-muted font-bold uppercase">{t("co2_saved", "CO2 Saved")}</p>
               <p className="text-xs font-bold text-theme-primary">~{meal.carbonSavedKg || 0.54}kg</p>
             </div>
             <div>
-              <p className="text-[10px] text-theme-muted font-bold uppercase">Water Saved</p>
+              <p className="text-[10px] text-theme-muted font-bold uppercase">{t("water_saved", "Water Saved")}</p>
               <p className="text-xs font-bold text-sky-400">~{meal.waterSavedLiters || 590}L</p>
             </div>
           </div>
@@ -679,24 +684,24 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
           {meal.nutrition && (
             <div className="space-y-1.5 bg-theme-card-subtle p-3 rounded-2xl border border-theme-card">
               <p className="text-xs font-bold text-theme-main flex items-center justify-between">
-                <span>Verified Nutrient Profile:</span>
-                <span className="text-[11px] text-theme-primary font-extrabold">Smart AI Verified</span>
+                <span>{t('verified_nutrient_profile', 'Verified Nutrient Profile:')}</span>
+                <span className="text-[11px] text-theme-primary font-extrabold">{t("smart_ai_verified", "Smart AI Verified")}</span>
               </p>
               <div className="grid grid-cols-4 gap-2 text-center pt-1">
                 <div className="bg-theme-card p-1.5 rounded-xl border border-theme-card">
-                  <p className="text-[9px] font-bold text-theme-muted uppercase">Protein</p>
+                  <p className="text-[9px] font-bold text-theme-muted uppercase">{t("protein", "Protein")}</p>
                   <p className="text-xs font-extrabold text-theme-main">{meal.nutrition.protein}g</p>
                 </div>
                 <div className="bg-theme-card p-1.5 rounded-xl border border-theme-card">
-                  <p className="text-[9px] font-bold text-theme-muted uppercase">Carbs</p>
+                  <p className="text-[9px] font-bold text-theme-muted uppercase">{t("carbs", "Carbs")}</p>
                   <p className="text-xs font-extrabold text-theme-main">{meal.nutrition.carbs}g</p>
                 </div>
                 <div className="bg-theme-card p-1.5 rounded-xl border border-theme-card">
-                  <p className="text-[9px] font-bold text-theme-muted uppercase">Fat</p>
+                  <p className="text-[9px] font-bold text-theme-muted uppercase">{t("fat", "Fat")}</p>
                   <p className="text-xs font-extrabold text-theme-main">{meal.nutrition.fat}g</p>
                 </div>
                 <div className="bg-theme-card p-1.5 rounded-xl border border-theme-card">
-                  <p className="text-[9px] font-bold text-theme-muted uppercase">Fiber</p>
+                  <p className="text-[9px] font-bold text-theme-muted uppercase">{t("fiber", "Fiber")}</p>
                   <p className="text-xs font-extrabold text-theme-main">{meal.nutrition.fiber}g</p>
                 </div>
               </div>
@@ -709,10 +714,10 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold text-theme-main flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
-                  <span>AI Detected Vitamins & Micronutrients:</span>
+                  <span>{t("detected_vitamins_minerals", "AI Detected Vitamins & Micronutrients:")}</span>
                 </p>
                 <span className="text-[10px] font-extrabold text-theme-primary bg-theme-primary/10 border border-theme-primary/30 px-2 py-0.5 rounded-full">
-                  Bioactive Profile
+                  {t("bioactive_profile", "Bioactive Profile")}
                 </span>
               </div>
 
@@ -724,7 +729,7 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
                       className="inline-flex items-center gap-1 text-[11px] font-bold bg-theme-primary/10 text-theme-primary border border-theme-primary/30 px-2.5 py-1 rounded-lg"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-theme-primary" />
-                      {vit}
+                      {t(vit, vit)}
                     </span>
                   ))}
                 </div>
@@ -735,10 +740,10 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
                   {meal.nutrition.vitaminDetails.map((vd, vIdx) => (
                     <div key={vIdx} className="bg-theme-card border border-theme-card rounded-xl p-2 text-[11px]">
                       <div className="flex justify-between font-extrabold text-theme-main">
-                        <span>{vd.name}</span>
+                        <span>{t(vd.name, vd.name)}</span>
                         <span className="text-theme-primary font-black">{vd.dailyValue} DV ({vd.amount})</span>
                       </div>
-                      <p className="text-theme-muted text-[10px] mt-0.5 leading-snug">{vd.benefit}</p>
+                      <p className="text-theme-muted text-[10px] mt-0.5 leading-snug">{t(vd.benefit, vd.benefit)}</p>
                     </div>
                   ))}
                 </div>
@@ -749,14 +754,14 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
           {/* Recognized Ingredients */}
           {meal.foodItems && meal.foodItems.length > 0 && (
             <div className="space-y-1.5 pt-1">
-              <p className="text-xs font-bold text-theme-main">Recognized Campus Ingredients:</p>
+              <p className="text-xs font-bold text-theme-main">{t("recognized_ingredients", "Recognized Campus Ingredients:")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {meal.foodItems.map((item, i) => (
                   <span
                     key={i}
                     className="bg-theme-card-subtle text-theme-main border border-theme-card text-xs px-2.5 py-1 rounded-full font-medium"
                   >
-                    {item}
+                    {t(item, item)}
                   </span>
                 ))}
               </div>
@@ -766,10 +771,10 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
           {/* Student Notes or Sustainability Tip */}
           {(meal.studentNotes || meal.sustainabilityFeedback) && (
             <div className="bg-theme-primary-bg border border-theme-primary-border p-3 rounded-2xl space-y-1">
-              <p className="text-[11px] font-bold text-theme-primary uppercase">Sustainability Feedback & Notes:</p>
+              <p className="text-[11px] font-bold text-theme-primary uppercase">{t("sustainability_feedback_notes", "Sustainability Feedback & Notes:")}</p>
               <p className="text-xs text-theme-main leading-relaxed">
                 {meal.studentNotes ? `"${meal.studentNotes}" — ` : ''}
-                {meal.sustainabilityFeedback || 'Great job minimizing food waste and choosing plant-forward dining!'}
+                {meal.sustainabilityFeedback ? t(meal.sustainabilityFeedback, meal.sustainabilityFeedback) : t('clean_plate_praise_default', 'Great job minimizing food waste and choosing plant-forward dining!')}
               </p>
             </div>
           )}
@@ -779,7 +784,7 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
           onClick={onClose}
           className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 transition-all shadow-md shadow-theme-glow cursor-pointer"
         >
-          Close Meal Details
+          {t("close_meal_details", "Close Meal Details")}
         </button>
       </div>
     </div>
@@ -800,6 +805,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
   challenge,
   onJoinChallenge,
 }) => {
+  const { t } = useLanguage();
   const allYearChallenges = getAcademicYearChallengeList();
   const currentPeriod = getAcademicYearPeriod();
   const [selectedYearCode, setSelectedYearCode] = useState<string>(challenge.academicYear || currentPeriod.code);
@@ -828,9 +834,9 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
             </div>
             <div>
               <p className="text-[10px] uppercase font-bold text-theme-primary tracking-wider">
-                {activeChallenge.title}
+                {t(activeChallenge.title, activeChallenge.title)}
               </p>
-              <h3 className="text-lg font-extrabold text-theme-main">{activeChallenge.subtitle}</h3>
+              <h3 className="text-lg font-extrabold text-theme-main">{t(activeChallenge.subtitle, activeChallenge.subtitle)}</h3>
             </div>
           </div>
           <button
@@ -846,10 +852,10 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
           <div className="flex items-center justify-between text-[11px] font-bold text-theme-muted">
             <span className="flex items-center gap-1">
               <Trophy className="w-3.5 h-3.5 text-theme-primary" />
-              <span>BBS Academic Year Challenges</span>
+              <span>{t("bbs_ay_challenges", "BBS Academic Year Challenges")}</span>
             </span>
             <span className="text-[10px] uppercase text-theme-primary font-black">
-              {isCurrentYear ? 'Current' : isPastYear ? 'Archived' : 'Upcoming'}
+              {isCurrentYear ? t("current", "Current") : isPastYear ? t("archived", "Archived") : t("upcoming", "Upcoming")}
             </span>
           </div>
 
@@ -879,26 +885,26 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-theme-primary shrink-0" />
             <span className="text-theme-main">
-              Academic Year {activeChallenge.academicYear} Goal
+              {t("academic_year_goal", "Academic Year {year} Goal").replace("{year}", activeChallenge.academicYear)}
             </span>
           </div>
           <span className="text-theme-primary text-[11px] font-extrabold flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5" />
-            {isCurrentYear ? 'Active Goal' : isPastYear ? 'Archived' : 'Upcoming Goal'}
+            {isCurrentYear ? t("active", "Active") : isPastYear ? t("archived", "Archived") : t("upcoming", "Upcoming")}
           </span>
         </div>
 
         {/* Description */}
-        <p className="text-xs text-theme-muted leading-relaxed">{activeChallenge.description}</p>
+        <p className="text-xs text-theme-muted leading-relaxed">{t(activeChallenge.description, activeChallenge.description)}</p>
 
         {/* Progress Bar Card */}
         <div className="space-y-2 bg-theme-card-subtle p-4 rounded-2xl border border-theme-card">
           <div className="flex justify-between text-xs font-bold text-theme-main">
             <span>
-              Progress: {activeChallenge.progressPercentage}%
+              {t("progress", "Progress")}: {activeChallenge.progressPercentage}%
             </span>
             <span className="text-theme-muted">
-              {activeChallenge.currentKg} / {activeChallenge.targetKg} kg Target
+              {activeChallenge.currentKg} / {activeChallenge.targetKg} kg {t("target", "Target")}
             </span>
           </div>
           <div className="w-full progress-theme-track h-3 rounded-full overflow-hidden p-0.5 border border-theme-card">
@@ -919,11 +925,11 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
               </span>
               <h4 className="text-xs uppercase tracking-wider font-bold text-theme-muted flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-theme-primary" />
-                <span>Real-Time Student Participants</span>
+                <span>{t("real_time_participants", "Real-Time Student Participants")}</span>
               </h4>
             </div>
             <span className="text-xs font-black text-theme-main">
-              {activeChallenge.studentsParticipating} {activeChallenge.studentsParticipating === 1 ? 'student' : 'students'}
+              {activeChallenge.studentsParticipating} {activeChallenge.studentsParticipating === 1 ? t("student", "student") : t("students", "students")}
             </span>
           </div>
 
@@ -933,12 +939,12 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
               {activeChallenge.hasJoined ? (
                 <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>You are actively participating in this challenge!</span>
+                  <span>{t("actively_participating_notice", "You are actively participating in this challenge!")}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-between w-full gap-3">
                   <div className="text-xs text-theme-muted">
-                    Join this challenge to divert food waste and earn XP!
+                    {t("join_challenge_notice", "Join this challenge to divert food waste and earn XP!")}
                   </div>
                   {onJoinChallenge && (
                     <button
@@ -946,7 +952,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
                       className="px-4 py-2 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer shadow-sm shadow-theme-glow flex items-center gap-1.5 shrink-0"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      <span>Join (+50 XP)</span>
+                      <span>{t("join_challenge", "Join Challenge")} (+50 XP)</span>
                     </button>
                   )}
                 </div>
@@ -957,7 +963,9 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
           {/* Real Participants List or empty state */}
           {activeChallenge.participantsList && activeChallenge.participantsList.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-[11px] font-bold text-theme-muted">Students participating in AY {activeChallenge.academicYear}:</p>
+              <p className="text-[11px] font-bold text-theme-muted">
+                {t("students_participating_ay", "Students participating in AY {year}:").replace("{year}", activeChallenge.academicYear)}
+              </p>
               <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
                 {activeChallenge.participantsList.map((p) => (
                   <div
@@ -980,8 +988,8 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
           ) : (
             <p className="text-[11px] text-theme-muted italic">
               {activeChallenge.studentsParticipating === 0
-                ? "0 students have joined yet. Be the first to join this academic year challenge!"
-                : `${activeChallenge.studentsParticipating} students joined.`}
+                ? t("zero_students_joined", "0 students have joined yet. Be the first to join this academic year challenge!")
+                : `${activeChallenge.studentsParticipating} ${t("students_joined", "students joined.")}`}
             </p>
           )}
         </div>
@@ -989,7 +997,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
         {/* Community Rewards List */}
         <div className="space-y-2">
           <h4 className="text-xs uppercase tracking-wider font-bold text-theme-muted">
-            School Community Rewards for AY {activeChallenge.academicYear}:
+            {t("school_community_rewards_ay", "School Community Rewards for AY {year}:").replace("{year}", activeChallenge.academicYear)}
           </h4>
           <div className="space-y-2">
             {activeChallenge.rewards.map((reward, i) => (
@@ -998,7 +1006,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
                 className="flex items-center gap-3 bg-theme-card-subtle border border-theme-card p-3 rounded-xl text-xs font-semibold text-theme-main"
               >
                 <Sparkles className="w-4 h-4 text-theme-primary shrink-0" />
-                <span>{reward}</span>
+                <span>{t(reward, reward)}</span>
               </div>
             ))}
           </div>
@@ -1008,17 +1016,17 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
         <div className="p-3.5 rounded-2xl bg-theme-card-subtle border border-theme-card space-y-2 text-xs">
           <div className="flex items-center gap-1.5 font-bold text-theme-main text-[11px]">
             <Info className="w-3.5 h-3.5 text-theme-primary" />
-            <span>How the Campus Challenge Works</span>
+            <span>{t("how_challenge_works", "How the Campus Challenge Works")}</span>
           </div>
           <div className="space-y-1.5 text-[11px] text-theme-muted leading-relaxed">
             <p>
-              • <strong>Eat Clean Plates</strong>: Finish your meals and log meal cards in the app to prevent food waste.
+              • <strong>{t("eat_clean_plates", "Eat Clean Plates")}</strong>: {t("eat_clean_plates_desc", "Finish your meals and log meal cards in the app to prevent food waste.")}
             </p>
             <p>
-              • <strong>Divert Food Scraps</strong>: Every gram of unavoidable food waste composted or diverted adds to the campus total.
+              • <strong>{t("divert_food_scraps", "Divert Food Scraps")}</strong>: {t("divert_food_scraps_desc", "Every gram of unavoidable food waste composted or diverted adds to the campus total.")}
             </p>
             <p>
-              • <strong>Unlock Community Rewards</strong>: Diverting food waste collectively unlocks new student amenities across the campus!
+              • <strong>{t("unlock_community_rewards", "Unlock Community Rewards")}</strong>: {t("unlock_community_rewards_desc", "Diverting food waste collectively unlocks new student amenities across the campus!")}
             </p>
           </div>
         </div>
@@ -1027,7 +1035,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({
           onClick={onClose}
           className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 shadow-md shadow-theme-glow cursor-pointer"
         >
-          {isCurrentYear ? "Got It, Let's Save Food!" : "Back to Active Challenge"}
+          {isCurrentYear ? t("got_it_keep_going", "Got It, Let's Save Food!") : t("back", "Back to Active Challenge")}
         </button>
       </div>
     </div>
@@ -1091,6 +1099,7 @@ interface BadgeDetailsModalProps {
 }
 
 export const BadgeDetailsModal: React.FC<BadgeDetailsModalProps> = ({ isOpen, onClose, badge }) => {
+  const { t } = useLanguage();
   if (!isOpen || !badge) return null;
 
   return (
@@ -1112,21 +1121,21 @@ export const BadgeDetailsModal: React.FC<BadgeDetailsModalProps> = ({ isOpen, on
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xl font-extrabold text-theme-main">{badge.name}</h3>
-          <p className="text-xs font-semibold text-theme-primary">{badge.category}</p>
+          <h3 className="text-xl font-extrabold text-theme-main">{t(badge.name, badge.name)}</h3>
+          <p className="text-xs font-semibold text-theme-primary">{t(badge.category, badge.category)}</p>
         </div>
 
-        <p className="text-xs text-theme-muted leading-relaxed px-2">{badge.description}</p>
+        <p className="text-xs text-theme-muted leading-relaxed px-2">{t(badge.description, badge.description)}</p>
 
         <div className="bg-theme-card-subtle p-3 rounded-2xl border border-theme-card flex items-center justify-between text-xs font-bold">
-          <span className="text-theme-muted">Status</span>
+          <span className="text-theme-muted">{t("status", "Status")}</span>
           <span className={badge.unlocked ? 'text-emerald-400 font-extrabold' : 'text-theme-muted'}>
-            {badge.unlocked ? `Unlocked (${badge.unlockedDate || 'Active'})` : 'Locked Milestone'}
+            {badge.unlocked ? `${t("unlocked", "Unlocked")} (${badge.unlockedDate || t("active", "Active")})` : t("status_locked", "Locked Milestone")}
           </span>
         </div>
 
         <div className="bg-theme-card-subtle p-3 rounded-2xl border border-theme-card flex items-center justify-between text-xs font-bold">
-          <span className="text-theme-muted">Reward XP</span>
+          <span className="text-theme-muted">{t("reward_xp", "Reward XP")}</span>
           <span className="text-theme-primary font-black">+{badge.xpReward} XP</span>
         </div>
 
@@ -1134,7 +1143,7 @@ export const BadgeDetailsModal: React.FC<BadgeDetailsModalProps> = ({ isOpen, on
           onClick={onClose}
           className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 transition-all shadow-md shadow-theme-glow cursor-pointer"
         >
-          {badge.unlocked ? 'Awesome!' : 'Got It, Keep Going!'}
+          {badge.unlocked ? t("awesome", "Awesome!") : t("got_it_keep_going", "Got It, Keep Going!")}
         </button>
       </div>
     </div>
@@ -1148,13 +1157,14 @@ export const BadgeGalleryModal: React.FC<{
   badges: BadgeItem[];
   onSelectBadge: (b: BadgeItem) => void;
 }> = ({ isOpen, onClose, badges, onSelectBadge }) => {
+  const { t } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   if (!isOpen) return null;
 
-  const categories = ['All', ...Array.from(new Set(badges.map((b) => b.category)))];
+  const categories: string[] = ['All', ...Array.from(new Set<string>(badges.map((b) => b.category)))];
   
   const unlockedBadges = badges.filter((b) => b.unlocked);
   const unlockedCount = unlockedBadges.length;
@@ -1190,16 +1200,16 @@ export const BadgeGalleryModal: React.FC<{
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-extrabold text-theme-main">Campus Badges Gallery</h3>
+              <h3 className="text-lg sm:text-xl font-extrabold text-theme-main">{t("campus_badges_gallery", "Campus Badges Gallery")}</h3>
               <p className="text-xs text-theme-muted">
-                {unlockedCount} of {badges.length} Unlocked ({completionPercent}%) • +{totalBadgeXpEarned} / {totalBadgeXpPossible} XP
+                {unlockedCount} {t("of", "of")} {badges.length} {t("unlocked", "Unlocked")} ({completionPercent}%) • +{totalBadgeXpEarned} / {totalBadgeXpPossible} XP
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-full text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle cursor-pointer transition-colors"
-            aria-label="Close Badges Gallery"
+            aria-label={t("close_badges_gallery", "Close Badges Gallery")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -1208,8 +1218,8 @@ export const BadgeGalleryModal: React.FC<{
         {/* Collection Progress Bar */}
         <div className="bg-theme-card-subtle border border-theme-card p-3 rounded-2xl space-y-1.5 shrink-0">
           <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-theme-muted">Collection Progress</span>
-            <span className="text-theme-primary">{unlockedCount} of {badges.length} Badges ({completionPercent}%)</span>
+            <span className="text-theme-muted">{t("collection_progress", "Collection Progress")}</span>
+            <span className="text-theme-primary">{unlockedCount} {t("of", "of")} {badges.length} {t("badges", "Badges")} ({completionPercent}%)</span>
           </div>
           <div className="w-full bg-slate-900/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-theme-card">
             <div
@@ -1225,7 +1235,7 @@ export const BadgeGalleryModal: React.FC<{
             <Search className="w-4 h-4 text-theme-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search badges by title, description, category..."
+              placeholder={t("search_badges_placeholder", "Search badges by title, description, category...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-theme-card-subtle border border-theme-card rounded-2xl pl-10 pr-4 py-2 text-xs text-theme-main placeholder:text-theme-muted focus:outline-none focus:border-theme-primary transition-all"
@@ -1235,7 +1245,7 @@ export const BadgeGalleryModal: React.FC<{
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme-main text-xs font-bold"
               >
-                Clear
+                {t("clear", "Clear")}
               </button>
             )}
           </div>
@@ -1249,7 +1259,7 @@ export const BadgeGalleryModal: React.FC<{
                   : 'text-theme-muted hover:text-theme-main'
               }`}
             >
-              All ({badges.length})
+              {t("all_badges", "All")} ({badges.length})
             </button>
             <button
               onClick={() => setStatusFilter('unlocked')}
@@ -1259,7 +1269,7 @@ export const BadgeGalleryModal: React.FC<{
                   : 'text-theme-muted hover:text-theme-main'
               }`}
             >
-              Unlocked ({unlockedCount})
+              {t("unlocked", "Unlocked")} ({unlockedCount})
             </button>
             <button
               onClick={() => setStatusFilter('locked')}
@@ -1269,7 +1279,7 @@ export const BadgeGalleryModal: React.FC<{
                   : 'text-theme-muted hover:text-theme-main'
               }`}
             >
-              Locked ({badges.length - unlockedCount})
+              {t("locked", "Locked")} ({badges.length - unlockedCount})
             </button>
           </div>
         </div>
@@ -1290,7 +1300,7 @@ export const BadgeGalleryModal: React.FC<{
                     : 'bg-theme-card-subtle text-theme-muted hover:text-theme-main border border-theme-card'
                 }`}
               >
-                <span>{cat}</span>
+                <span>{t(cat, cat)}</span>
                 <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
                   selectedCategory === cat ? 'bg-black/20 text-black' : 'bg-theme-card text-theme-muted'
                 }`}>
@@ -1306,8 +1316,8 @@ export const BadgeGalleryModal: React.FC<{
           {filteredBadges.length === 0 ? (
             <div className="text-center py-12 space-y-2 bg-theme-card-subtle rounded-2xl border border-theme-card my-auto">
               <Award className="w-8 h-8 text-theme-muted mx-auto opacity-50" />
-              <p className="text-sm font-bold text-theme-main">No badges match your filter</p>
-              <p className="text-xs text-theme-muted">Try clearing your search query or selecting "All" category</p>
+              <p className="text-sm font-bold text-theme-main">{t("no_badges_match", "No badges match your filter")}</p>
+              <p className="text-xs text-theme-muted">{t("try_clearing_filter", "Try clearing your search query or selecting \"All\" category")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
@@ -1329,13 +1339,13 @@ export const BadgeGalleryModal: React.FC<{
                     {renderModalBadgeIcon(b.icon, b.unlocked, 'w-5 h-5 sm:w-6 sm:h-6')}
                   </div>
                   <div className="w-full">
-                    <h4 className="text-xs font-bold text-theme-main truncate">{b.name}</h4>
-                    <p className="text-[10px] text-theme-muted truncate mt-0.5">{b.category}</p>
+                    <h4 className="text-xs font-bold text-theme-main truncate">{t(b.name, b.name)}</h4>
+                    <p className="text-[10px] text-theme-muted truncate mt-0.5">{t(b.category, b.category)}</p>
                   </div>
                   <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
                     b.unlocked ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-theme-card text-theme-muted border border-theme-card'
                   }`}>
-                    {b.unlocked ? 'Unlocked' : `+${b.xpReward} XP`}
+                    {b.unlocked ? t("unlocked", "Unlocked") : `+${b.xpReward} XP`}
                   </span>
                 </div>
               ))}
@@ -1352,6 +1362,7 @@ export const MealHallSpecialModal: React.FC<{ isOpen: boolean; onClose: () => vo
   isOpen,
   onClose,
 }) => {
+  const { t } = useLanguage();
   if (!isOpen) return null;
 
   return (
@@ -1361,7 +1372,7 @@ export const MealHallSpecialModal: React.FC<{ isOpen: boolean; onClose: () => vo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Utensils className="w-5 h-5 text-theme-primary" />
-            <h3 className="text-lg font-extrabold text-theme-main">Campus Meal Hall Special</h3>
+            <h3 className="text-lg font-extrabold text-theme-main">{t("modal_special_title", "Campus Meal Hall Special")}</h3>
           </div>
           <button onClick={onClose} className="text-theme-muted hover:text-theme-main cursor-pointer">
             <X className="w-5 h-5" />
@@ -1370,28 +1381,28 @@ export const MealHallSpecialModal: React.FC<{ isOpen: boolean; onClose: () => vo
 
         <img
           src="https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80"
-          alt="Garden Salad"
+          alt={t("special_salad_title", "Farm-Fresh Organic Garden Salad")}
           className="w-full h-44 rounded-2xl object-cover border border-theme-card"
           referrerPolicy="no-referrer"
         />
 
         <div className="space-y-2">
-          <h4 className="text-base font-bold text-theme-main">Farm-Fresh Organic Garden Salad</h4>
+          <h4 className="text-base font-bold text-theme-main">{t("special_salad_title", "Farm-Fresh Organic Garden Salad")}</h4>
           <p className="text-xs text-theme-muted leading-relaxed">
-            Locally harvested organic crisp lettuce, cherry tomatoes, cucumbers, toasted chickpeas, and house-made lemon tahini vinaigrette.
+            {t("special_salad_desc", "Locally harvested organic crisp lettuce, cherry tomatoes, cucumbers, toasted chickpeas, and house-made lemon tahini vinaigrette.")}
           </p>
         </div>
 
         <div className="bg-theme-card-subtle p-3 rounded-2xl border border-theme-card flex items-center justify-between text-xs">
-          <span className="text-theme-muted">Station: Dining Hall North 2</span>
-          <span className="text-theme-primary font-bold">100% Plant-Rich</span>
+          <span className="text-theme-muted">{t("special_salad_station", "Station: Dining Hall North 2")}</span>
+          <span className="text-theme-primary font-bold">{t("special_salad_plant_rich", "100% Plant-Rich")}</span>
         </div>
 
         <button
           onClick={onClose}
           className="w-full py-3.5 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90"
         >
-          Close Special
+          {t("modal_close_special", "Close Special")}
         </button>
       </div>
     </div>
@@ -1405,6 +1416,7 @@ export const InfoContentModal: React.FC<{
   title: string;
   content: string;
 }> = ({ isOpen, onClose, title, content }) => {
+  const { t } = useLanguage();
   if (!isOpen) return null;
 
   return (
@@ -1412,19 +1424,19 @@ export const InfoContentModal: React.FC<{
       <div className="bg-theme-card border-t sm:border border-theme-card rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[88vh] sm:max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         <div className="w-12 h-1.5 bg-theme-muted/40 rounded-full mx-auto sm:hidden -mt-1 mb-1 shrink-0" />
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-extrabold text-theme-main">{title}</h3>
+          <h3 className="text-lg font-extrabold text-theme-main">{t(title, title)}</h3>
           <button onClick={onClose} className="text-theme-muted hover:text-theme-main cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="text-xs text-theme-muted leading-relaxed space-y-3 whitespace-pre-line max-h-72 overflow-y-auto">
-          {content}
+          {t(content, content)}
         </div>
 
         {/* Official Campus References with absolute https:// paths */}
         <div className="pt-2 border-t border-theme-card/60 space-y-2">
-          <p className="text-[11px] font-bold text-theme-main">Official Campus Sustainability Links:</p>
+          <p className="text-[11px] font-bold text-theme-main">{t("official_sustainability_links", "Official Campus Sustainability Links:")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <a
               id="modal-link-bbs-portal"
@@ -1433,7 +1445,7 @@ export const InfoContentModal: React.FC<{
               rel="noopener noreferrer"
               className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
             >
-              <span>BBS PIK Portal</span>
+              <span>{t("bbs_portal", "BBS PIK Portal")}</span>
               <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
             <a
@@ -1443,7 +1455,7 @@ export const InfoContentModal: React.FC<{
               rel="noopener noreferrer"
               className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
             >
-              <span>Sustainability Charter</span>
+              <span>{t("sustainability_charter", "Sustainability Charter")}</span>
               <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
             <a
@@ -1453,7 +1465,7 @@ export const InfoContentModal: React.FC<{
               rel="noopener noreferrer"
               className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
             >
-              <span>Student Privacy</span>
+              <span>{t("student_privacy", "Student Privacy")}</span>
               <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
             <a
@@ -1463,7 +1475,7 @@ export const InfoContentModal: React.FC<{
               rel="noopener noreferrer"
               className="flex items-center justify-between p-2.5 rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-muted hover:text-theme-primary transition-colors cursor-pointer no-underline"
             >
-              <span>Terms of Service</span>
+              <span>{t("terms_of_service", "Terms of Service")}</span>
               <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
           </div>
@@ -1473,7 +1485,7 @@ export const InfoContentModal: React.FC<{
           onClick={onClose}
           className="w-full py-3 rounded-full bg-theme-primary text-black font-extrabold text-xs hover:opacity-90 cursor-pointer"
         >
-          Close
+          {t("close", "Close")}
         </button>
       </div>
     </div>
@@ -1487,6 +1499,7 @@ export const DailyTipDetailsModal: React.FC<{
   tip: DailyTipItem | null;
   onTipLearned?: (tip: DailyTipItem) => void;
 }> = ({ isOpen, onClose, tip, onTipLearned }) => {
+  const { t } = useLanguage();
   const [learned, setLearned] = useState(false);
 
   if (!isOpen || !tip) return null;
@@ -1536,14 +1549,14 @@ export const DailyTipDetailsModal: React.FC<{
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-theme-primary/20 text-theme-primary text-[10px] font-extrabold uppercase tracking-wider">
-                {tip.dayName} Eco Focus
+                {t(tip.dayName, tip.dayName)} {t("eco_focus", "Eco Focus")}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-theme-card-subtle border border-theme-card text-theme-muted text-[10px] font-bold">
-                {tip.category}
+                {t(tip.category, tip.category)}
               </span>
             </div>
             <h3 className="text-xl font-extrabold text-theme-main tracking-tight pt-1">
-              {tip.title}
+              {t(tip.title, tip.title)}
             </h3>
           </div>
           <button
@@ -1561,12 +1574,12 @@ export const DailyTipDetailsModal: React.FC<{
           </div>
           <div className="space-y-1.5">
             <p className="text-xs text-theme-main leading-relaxed font-medium">
-              {tip.description}
+              {t(tip.description, tip.description)}
             </p>
             {tip.impactStat && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-extrabold border border-emerald-500/20">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{tip.impactStat}</span>
+                <span>{t(tip.impactStat, tip.impactStat)}</span>
               </div>
             )}
           </div>
@@ -1577,7 +1590,7 @@ export const DailyTipDetailsModal: React.FC<{
           <div className="space-y-2">
             <h4 className="text-xs uppercase tracking-wider font-extrabold text-theme-main flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-theme-primary" />
-              <span>Actionable Steps to Take Today:</span>
+              <span>{t("actionable_steps_title", "Actionable Steps to Take Today:")}</span>
             </h4>
             <div className="space-y-2">
               {tip.actionableSteps.map((step, idx) => (
@@ -1588,7 +1601,7 @@ export const DailyTipDetailsModal: React.FC<{
                   <span className="w-5 h-5 rounded-full bg-theme-primary text-black font-extrabold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                     {idx + 1}
                   </span>
-                  <span className="leading-relaxed font-medium">{step}</span>
+                  <span className="leading-relaxed font-medium">{t(step, step)}</span>
                 </div>
               ))}
             </div>
@@ -1601,11 +1614,11 @@ export const DailyTipDetailsModal: React.FC<{
             <div className="flex items-center gap-2 text-amber-400">
               <Lightbulb className="w-4 h-4 shrink-0" />
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
-                Did You Know? (Eco Science Fact)
+                {t("did_you_know_title", "Did You Know? (Eco Science Fact)")}
               </span>
             </div>
             <p className="text-xs text-theme-main/90 leading-relaxed pl-6">
-              {tip.didYouKnow}
+              {t(tip.didYouKnow, tip.didYouKnow)}
             </p>
           </div>
         )}
@@ -1616,11 +1629,11 @@ export const DailyTipDetailsModal: React.FC<{
             <div className="flex items-center gap-2 text-theme-primary">
               <Utensils className="w-4 h-4 shrink-0" />
               <span className="text-[11px] font-extrabold uppercase tracking-wider">
-                BBS PIK Campus Dining Guide
+                {t("dining_guide_title", "BBS PIK Campus Dining Guide")}
               </span>
             </div>
             <p className="text-xs text-theme-muted leading-relaxed pl-6">
-              {tip.campusApplication}
+              {t(tip.campusApplication, tip.campusApplication)}
             </p>
           </div>
         )}
@@ -1638,12 +1651,12 @@ export const DailyTipDetailsModal: React.FC<{
             {learned ? (
               <>
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Tip Mastered! (+{tip.bonusXp || 20} XP Logged)</span>
+                <span>{t("tip_mastered_toast", "Tip Mastered! (+{xp} XP Logged)").replace("{xp}", String(tip.bonusXp || 20))}</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>Got It! I'll Practice This Today (+{tip.bonusXp || 20} XP)</span>
+                <span>{t("practice_today_btn", "Got It! I'll Practice This Today (+{xp} XP)").replace("{xp}", String(tip.bonusXp || 20))}</span>
               </>
             )}
           </button>

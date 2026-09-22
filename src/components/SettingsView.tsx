@@ -30,6 +30,7 @@ const DraggableGoalSlider: React.FC<DraggableGoalSliderProps> = ({
   onChange,
   id = 'slider-waste-goal',
 }) => {
+  const { t } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [dragValue, setDragValue] = useState(value);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -132,7 +133,7 @@ const DraggableGoalSlider: React.FC<DraggableGoalSliderProps> = ({
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="slider"
-        aria-label="Daily Food Saved Slider"
+        aria-label={t('daily_food_saved_slider', 'Daily Food Saved Slider')}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={clampedValue}
@@ -249,7 +250,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="space-y-0.5">
                 <h4 className="text-sm font-bold text-theme-main">{t('settings_edit_profile', 'Edit Profile & Picture')}</h4>
                 <p className="text-xs text-theme-muted">
-                  Greeting: {user.greetingName || 'Alex'} • {user.name}
+                  {t('greeting_label', 'Greeting')}: {user.greetingName || 'Alex'} • {user.name}
                 </p>
               </div>
             </div>
@@ -280,7 +281,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-0.5">
               <h4 className="text-sm font-bold text-theme-main">{t('settings_school_id', 'School ID')}</h4>
-              <p className="text-xs text-theme-muted">{settings.schoolName}</p>
+              <p className="text-xs text-theme-muted">{t(settings.schoolName, settings.schoolName)}</p>
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-theme-primary-bg border border-theme-primary-border text-xs font-bold text-theme-main">
               <ShieldCheck className="w-3.5 h-3.5 text-theme-primary" />
@@ -391,7 +392,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="space-y-0.5">
               <h4 className="text-sm font-bold text-theme-main">{t('settings_theme', 'Theme & Appearance')}</h4>
               <p className="text-xs text-theme-muted">
-                {activeTheme.name} • {activeTheme.category}
+                {t(activeTheme.name, activeTheme.name)} • {t(activeTheme.category, activeTheme.category)}
               </p>
             </div>
             <button
@@ -448,7 +449,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-bold text-theme-main">{t('settings_daily_goal', 'Daily Food Saved')}</h4>
-                <p className="text-xs text-theme-muted">Daily target of surplus food to save from disposal</p>
+                <p className="text-xs text-theme-muted">{t('daily_target_desc', 'Daily target of surplus food to save from disposal')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -456,8 +457,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   id="btn-decrease-food-saved"
                   onClick={() => onUpdateSettings({ dailyWasteGoal: Math.max(0, settings.dailyWasteGoal - 5) })}
                   className="w-8 h-8 flex items-center justify-center rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-main font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-xs"
-                  title="Decrease amount"
-                  aria-label="Decrease amount"
+                  title={t('decrease_amount', 'Decrease amount')}
+                  aria-label={t('decrease_amount', 'Decrease amount')}
                 >
                   −
                 </button>
@@ -469,8 +470,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   id="btn-increase-food-saved"
                   onClick={() => onUpdateSettings({ dailyWasteGoal: Math.min(100, settings.dailyWasteGoal + 5) })}
                   className="w-8 h-8 flex items-center justify-center rounded-xl bg-theme-card-subtle hover:bg-theme-card border border-theme-card text-theme-main font-bold text-sm transition-all active:scale-95 cursor-pointer shadow-xs"
-                  title="Increase amount"
-                  aria-label="Increase amount"
+                  title={t('increase_amount', 'Increase amount')}
+                  aria-label={t('increase_amount', 'Increase amount')}
                 >
                   +
                 </button>
@@ -486,14 +487,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(val) => onUpdateSettings({ dailyWasteGoal: val })}
             />
             <div className="flex justify-between text-[10px] text-theme-muted font-semibold">
-              <span>0g (Target)</span>
-              <span>50g (Middle)</span>
-              <span>100g (Ambitious)</span>
+              <span>0g ({t('target', 'Target')})</span>
+              <span>50g ({t('middle', 'Middle')})</span>
+              <span>100g ({t('ambitious', 'Ambitious')})</span>
             </div>
 
             {/* Quick Presets */}
             <div className="flex items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-theme-muted font-medium mr-1">Quick:</span>
+              <span className="text-[10px] text-theme-muted font-medium mr-1">{t('quick', 'Quick:')}</span>
               {[0, 25, 50, 75, 100].map((amount) => (
                 <button
                   key={amount}
@@ -612,8 +613,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className="p-4 sm:p-5 flex items-center justify-between hover:bg-theme-card-subtle transition-colors cursor-pointer no-underline"
           >
             <div className="space-y-0.5">
-              <h4 className="text-sm font-bold text-theme-main">BBS PIK Campus Portal</h4>
-              <p className="text-xs text-theme-muted">Official school sustainability & student center</p>
+              <h4 className="text-sm font-bold text-theme-main">{t('bbs_campus_portal', 'BBS PIK Campus Portal')}</h4>
+              <p className="text-xs text-theme-muted">{t('bbs_pik_campus_portal_desc', 'Official school sustainability & student center')}</p>
             </div>
             <ExternalLink className="w-4 h-4 text-theme-primary" />
           </a>
@@ -626,8 +627,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className="p-4 sm:p-5 flex items-center justify-between hover:bg-theme-card-subtle transition-colors cursor-pointer no-underline"
           >
             <div className="space-y-0.5">
-              <h4 className="text-sm font-bold text-theme-main">Campus Sustainability Charter</h4>
-              <p className="text-xs text-theme-muted">Food waste reduction & diversion guidelines</p>
+              <h4 className="text-sm font-bold text-theme-main">{t('campus_sustainability_charter', 'Campus Sustainability Charter')}</h4>
+              <p className="text-xs text-theme-muted">{t('campus_charter_desc', 'Food waste reduction & diversion guidelines')}</p>
             </div>
             <ExternalLink className="w-4 h-4 text-theme-primary" />
           </a>
