@@ -127,12 +127,13 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     setEditedDishName(finalFood);
     setCurrentStep(2);
     setIsLiveMode(true);
-    detectNutritionForDish(finalFood, portion);
+    setScanErrorMessage(null);
   };
   const [scanMode, setScanMode] = useState<ScanMode>('smart-macro');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scanErrorMessage, setScanErrorMessage] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [isLiveMode, setIsLiveMode] = useState(true);
   const [isFlashing, setIsFlashing] = useState(false);
@@ -562,6 +563,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     knownPreset?: (typeof samplePresetMeals)[0]
   ) => {
     setIsAnalyzing(true);
+    setScanErrorMessage(null);
     try {
       const response = await fetch('/api/analyze-meal', {
         method: 'POST',
@@ -572,60 +574,66 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           mealStage: type,
           portionSize: portion,
           foodCategory: selectedCategory?.name,
-          foodItem: selectedFood,
+          foodItem: customFoodInput.trim() ? customFoodInput.trim() : undefined,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        let errDetail = `Server returned ${response.status}`;
+        try {
+          const errJson = await response.json();
+          if (errJson?.message) errDetail = errJson.message;
+        } catch (_) {}
+        throw new Error(errDetail);
       }
 
       const result = await response.json();
+      if (result.success === false) {
+        throw new Error(result.message || 'AI scanner unable to process image.');
+      }
       
       if (type === 'before') {
-        const isNotFood = result.isFood === false || knownPreset?.isFood === false;
-        const isFruitRemnant = !!(result.isFinishedFruit || (knownPreset as any)?.isFinishedFruit);
+        const isNotFood = result.isFood === false || result.isPenalty === true;
+        const isFruitRemnant = !!result.isFinishedFruit;
         const parsed = {
-          dishName: isNotFood ? t('non_food_object_detected', 'Non-Food Object Detected') : result.dishName || selectedFood || knownPreset?.name || t('sustainable_campus_meal', 'Sustainable Campus Meal'),
-          foodCategory: result.foodCategory || selectedCategory?.name || (isFruitRemnant ? t('fresh_fruits', 'Fresh Fruits') : 'East Asian Cuisine'),
-          foodItem: result.foodItem || selectedFood || result.dishName || t('campus_meal', 'Campus Meal'),
+          dishName: isNotFood
+            ? (result.dishName || t('non_food_object_detected', 'Non-Food Object Detected'))
+            : (result.dishName || t('sustainable_campus_meal', 'Sustainable Campus Meal')),
+          foodCategory: result.foodCategory || selectedCategory?.name || (isFruitRemnant ? t('fresh_fruits', 'Fresh Fruits') : 'Campus Meal'),
+          foodItem: isNotFood ? 'Non-Food' : (result.dishName || result.foodItem || t('campus_meal', 'Campus Meal')),
           isFood: !isNotFood,
           isFinishedFruit: isFruitRemnant,
-          nonFoodReason: isNotFood ? (result.nonFoodReason || knownPreset?.nonFoodReason || t('non_edible_reason', 'Non-edible item detected instead of dining meal.')) : undefined,
+          nonFoodReason: isNotFood ? (result.nonFoodReason || t('non_edible_reason', 'Non-edible item detected instead of dining meal.')) : undefined,
           isPenalty: isNotFood,
           confidenceScore: result.confidenceScore || 96,
           portionEstimatedGrams: isNotFood ? 0 : result.portionEstimatedGrams || (portion === 'Small' ? 240 : portion === 'Large' ? 480 : 340),
-          estimatedCalories: isNotFood ? 0 : result.estimatedCalories || knownPreset?.calories || 440,
-          nutrition: isNotFood ? { protein: 0, carbs: 0, fat: 0, fiber: 0 } : result.nutrition || knownPreset?.nutrition || {
+          estimatedCalories: isNotFood ? 0 : result.estimatedCalories || 440,
+          nutrition: isNotFood ? { protein: 0, carbs: 0, fat: 0, fiber: 0, vitamins: [], vitaminDetails: [] } : result.nutrition || {
             protein: 20,
             carbs: 55,
             fat: 14,
             fiber: 8,
           },
-          foodItems: isNotFood ? [t('non_food_object_penalty', 'Non-Food Object (Penalty: -20 XP)')] : result.foodItems || knownPreset?.items || [t('mixed_campus_greens', 'Mixed Campus Greens'), t('quinoa', 'Quinoa'), t('roasted_veggies', 'Roasted Veggies')],
-          detectedZones: isNotFood ? [] : result.detectedZones || [
-            { label: t('plant_protein_tofu', 'Plant Protein & Tofu'), category: 'protein', confidence: 95, estimatedGrams: 90 },
-            { label: t('whole_grains_rice', 'Whole Grains & Rice'), category: 'grain', confidence: 94, estimatedGrams: 120 },
-            { label: t('fresh_campus_vegetables', 'Fresh Campus Vegetables'), category: 'vegetable', confidence: 98, estimatedGrams: 110 },
-          ],
+          foodItems: isNotFood ? [t('non_food_object_penalty', 'Non-Food Object (Penalty: -20 XP)')] : result.foodItems || [t('mixed_campus_greens', 'Mixed Campus Greens'), t('quinoa', 'Quinoa'), t('roasted_veggies', 'Roasted Veggies')],
+          detectedZones: isNotFood ? [] : result.detectedZones || [],
           carbonSavingsKg: isNotFood ? 0 : result.carbonSavingsKg || (portion === 'Small' ? 0.38 : portion === 'Large' ? 0.78 : 0.54),
           waterSavedLiters: isNotFood ? 0 : result.waterSavedLiters || (portion === 'Small' ? 420 : portion === 'Large' ? 860 : 590),
           ecoScore: isNotFood ? 'N/A' : result.ecoScore || 'A+',
           dietaryTags: isNotFood ? [t('non_food', 'Non-Food'), t('penalty_20_xp', 'Penalty -20 XP')] : result.dietaryTags || ['Plant-Rich', 'Low Carbon', 'High Fiber'],
           sustainabilityFeedback: isNotFood
-            ? t('non_food_feedback', '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.')
+            ? (result.sustainabilityFeedback || t('non_food_feedback', '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'))
             : isFruitRemnant
-            ? t('finished_fruit_feedback', '🍎 Finished fruit detected! You enjoyed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.')
+            ? (result.sustainabilityFeedback || t('finished_fruit_feedback', '🍎 Finished fruit detected! You enjoyed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'))
             : result.sustainabilityFeedback || t('plant_forward_potential_desc', 'Well-balanced plant-forward meal with zero food waste potential!'),
           xpEarned: isNotFood ? -20 : result.xpEarned || (portion === 'Large' ? 40 : 35),
         };
         setAnalysisResult(parsed);
         setEditedDishName(parsed.dishName);
-        setEditedFoodItems([...parsed.foodItems]);
+        setEditedFoodItems([...(parsed.foodItems || [])]);
       } else {
-        const isFruitRemnant = !!(result.isFinishedFruit || (knownPreset as any)?.isFinishedFruit);
-        const isClean = (result.cleanPlateVerified !== false) && (knownPreset?.cleanPlateVerified !== false);
-        const wasteGrams = isClean ? 0 : (result.wasteGrams || knownPreset?.wasteGrams || 160);
+        const isFruitRemnant = !!result.isFinishedFruit;
+        const isClean = result.cleanPlateVerified !== false && !result.isPenalty;
+        const wasteGrams = isClean ? 0 : (result.wasteGrams || 160);
         const parsedAfter = {
           dishName: isFruitRemnant ? t('finished_fruit_verification', 'Finished Fruit Verification') : isClean ? t('clean_plate_verification', 'Clean Plate Verification') : t('unfinished_plate_waste_detected', 'Unfinished Plate Waste Detected'),
           cleanPlateVerified: isClean,
@@ -654,76 +662,54 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         setAfterAnalysisResult(parsedAfter);
       }
     } catch (error: any) {
-      console.log('Using real-time fallback meal analysis:', error?.message || 'Handled');
-      if (type === 'before') {
-        const isNotFood = knownPreset?.isFood === false;
-        const isFruitRemnant = (knownPreset as any)?.isFinishedFruit || false;
-        const isSmall = portion === 'Small';
-        const isLarge = portion === 'Large';
-        const fallback = {
-          dishName: isNotFood ? t('non_food_object_detected', 'Non-Food Object Detected') : knownPreset ? knownPreset.name : isSmall ? t('garden_harvest_salad', 'Garden Harvest Salad & Herb Tofu') : isLarge ? t('mediterranean_quinoa_bowl', 'Mediterranean Roasted Quinoa & Protein Bowl') : t('healthy_campus_protein_bowl', 'Healthy Campus Protein Bowl'),
-          isFood: !isNotFood,
-          isFinishedFruit: isFruitRemnant,
-          nonFoodReason: isNotFood ? (knownPreset?.nonFoodReason || t('stationery_non_food_reason', 'Stationery / non-food detected instead of dining meal')) : undefined,
-          isPenalty: isNotFood,
-          confidenceScore: 94,
-          portionEstimatedGrams: isNotFood ? 0 : isSmall ? 240 : isLarge ? 480 : 340,
-          estimatedCalories: isNotFood ? 0 : knownPreset?.calories || (isSmall ? 310 : isLarge ? 620 : 440),
-          nutrition: isNotFood ? { protein: 0, carbs: 0, fat: 0, fiber: 0 } : knownPreset?.nutrition || {
-            protein: isSmall ? 14 : isLarge ? 28 : 22,
-            carbs: isSmall ? 35 : isLarge ? 72 : 54,
-            fat: isSmall ? 9 : isLarge ? 18 : 13,
-            fiber: isSmall ? 6 : isLarge ? 12 : 9,
-          },
-          foodItems: isNotFood ? [t('non_food_object_penalty', 'Non-Food Object (Penalty: -20 XP)')] : knownPreset?.items || [t('crisp_mixed_greens', 'Crisp Mixed Greens'), t('roasted_chickpeas', 'Herb Roasted Chickpeas'), t('steamed_broccoli', 'Steamed Broccoli'), t('organic_quinoa', 'Organic Quinoa'), t('cherry_tomatoes', 'Cherry Tomatoes')],
-          detectedZones: isNotFood ? [] : [
-            { label: t('plant_protein_chickpeas_tofu', 'Plant Protein (Chickpeas & Tofu)'), category: 'protein', confidence: 94, estimatedGrams: isSmall ? 70 : isLarge ? 140 : 100 },
-            { label: t('ancient_grains_quinoa_rice', 'Ancient Grains (Quinoa & Rice)'), category: 'grain', confidence: 93, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 120 },
-            { label: t('fresh_campus_vegetables', 'Fresh Campus Vegetables'), category: 'vegetable', confidence: 97, estimatedGrams: isSmall ? 80 : isLarge ? 160 : 110 },
-          ],
-          carbonSavingsKg: isNotFood ? 0 : isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
-          waterSavedLiters: isNotFood ? 0 : isSmall ? 420 : isLarge ? 860 : 590,
-          ecoScore: isNotFood ? 'N/A' : 'A+',
-          dietaryTags: isNotFood ? [t('non_food', 'Non-Food'), t('penalty_20_xp', 'Penalty: -20 XP')] : isFruitRemnant ? [t('finished_fruit', 'Finished Fruit'), t('zero_waste', 'Zero Waste'), t('natural_compost', 'Natural Compost')] : ['Plant-Rich', 'Low Carbon', 'Campus Sourced', 'High Fiber'],
-          sustainabilityFeedback: isNotFood
-            ? t('non_food_feedback', '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.')
-            : isFruitRemnant
-            ? t('finished_fruit_feedback', '🍎 Finished fruit detected! You consumed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.')
-            : t('plant_forward_feedback', 'High nutrient-density plant-forward meal! Diverts approx 0.54kg CO2e compared to average high-carbon cafeteria dishes.'),
-          xpEarned: isNotFood ? -20 : (isLarge ? 40 : 35),
-        };
-        setAnalysisResult(fallback);
-        setEditedDishName(fallback.dishName);
-        setEditedFoodItems([...fallback.foodItems]);
+      console.error('AI meal analysis error:', error?.message || error);
+      if (knownPreset) {
+        // Only if an explicit sample preset was provided
+        if (type === 'before') {
+          const isNotFood = knownPreset?.isFood === false;
+          const isFruitRemnant = (knownPreset as any)?.isFinishedFruit || false;
+          const isSmall = portion === 'Small';
+          const isLarge = portion === 'Large';
+          const fallback = {
+            dishName: isNotFood ? t('non_food_object_detected', 'Non-Food Object Detected') : knownPreset.name,
+            isFood: !isNotFood,
+            isFinishedFruit: isFruitRemnant,
+            nonFoodReason: isNotFood ? (knownPreset?.nonFoodReason || t('stationery_non_food_reason', 'Stationery / non-food detected instead of dining meal')) : undefined,
+            isPenalty: isNotFood,
+            confidenceScore: 94,
+            portionEstimatedGrams: isNotFood ? 0 : isSmall ? 240 : isLarge ? 480 : 340,
+            estimatedCalories: isNotFood ? 0 : knownPreset?.calories || (isSmall ? 310 : isLarge ? 620 : 440),
+            nutrition: isNotFood ? { protein: 0, carbs: 0, fat: 0, fiber: 0 } : knownPreset?.nutrition || {
+              protein: isSmall ? 14 : isLarge ? 28 : 22,
+              carbs: isSmall ? 35 : isLarge ? 72 : 54,
+              fat: isSmall ? 9 : isLarge ? 18 : 13,
+              fiber: isSmall ? 6 : isLarge ? 12 : 9,
+            },
+            foodItems: isNotFood ? [t('non_food_object_penalty', 'Non-Food Object (Penalty: -20 XP)')] : knownPreset?.items || [t('crisp_mixed_greens', 'Crisp Mixed Greens'), t('roasted_chickpeas', 'Herb Roasted Chickpeas')],
+            detectedZones: isNotFood ? [] : [
+              { label: t('plant_protein_chickpeas_tofu', 'Plant Protein (Chickpeas & Tofu)'), category: 'protein', confidence: 94, estimatedGrams: isSmall ? 70 : isLarge ? 140 : 100 },
+            ],
+            carbonSavingsKg: isNotFood ? 0 : isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
+            waterSavedLiters: isNotFood ? 0 : isSmall ? 420 : isLarge ? 860 : 590,
+            ecoScore: isNotFood ? 'N/A' : 'A+',
+            dietaryTags: isNotFood ? [t('non_food', 'Non-Food'), t('penalty_20_xp', 'Penalty: -20 XP')] : isFruitRemnant ? [t('finished_fruit', 'Finished Fruit'), t('zero_waste', 'Zero Waste')] : ['Plant-Rich', 'Low Carbon'],
+            sustainabilityFeedback: isNotFood
+              ? t('non_food_feedback', '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.')
+              : isFruitRemnant
+              ? t('finished_fruit_feedback', '🍎 Finished fruit detected! You consumed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.')
+              : t('plant_forward_feedback', 'High nutrient-density plant-forward meal! Diverts approx 0.54kg CO2e compared to average high-carbon cafeteria dishes.'),
+            xpEarned: isNotFood ? -20 : (isLarge ? 40 : 35),
+          };
+          setAnalysisResult(fallback);
+          setEditedDishName(fallback.dishName);
+          setEditedFoodItems([...fallback.foodItems]);
+        }
       } else {
-        const isFruitRemnant = (knownPreset as any)?.isFinishedFruit || false;
-        const isClean = knownPreset?.cleanPlateVerified !== false;
-        const wasteGrams = isClean ? 0 : (knownPreset?.wasteGrams || 160);
-        setAfterAnalysisResult({
-          dishName: isFruitRemnant ? t('finished_fruit_verification', 'Finished Fruit Verification') : isClean ? t('clean_plate_verification', 'Clean Plate Verification') : t('unfinished_plate_waste_detected', 'Unfinished Plate Waste Detected'),
-          cleanPlateVerified: isClean,
-          isFinishedFruit: isFruitRemnant,
-          cleanPlateConfidence: 99,
-          confidenceScore: 99,
-          wasteGrams: wasteGrams,
-          remainingWasteGrams: wasteGrams,
-          foodSavedKg: isClean ? (isFruitRemnant ? 0.25 : 0.35) : 0,
-          carbonSavingsKg: isClean ? 0.54 : -0.35,
-          waterSavedLiters: isClean ? (isFruitRemnant ? 120 : 590) : 0,
-          bonusXp: isClean ? 30 : -25,
-          xpEarned: isClean ? 35 : -25,
-          isPenalty: !isClean,
-          congratulationsMessage: isFruitRemnant
-            ? t('finished_fruit_congrats', '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Natural peels & cores composted!')
-            : isClean
-            ? t('clean_plate_diverted_congrats', 'Clean Plate Verified! 100% food diverted from campus waste.')
-            : t('unfinished_food_detected_title', '⚠️ Unfinished Food Detected! Leftover food creates landfill waste.'),
-          sustainabilityFeedback: isFruitRemnant
-            ? t('finished_fruit_compost_desc', 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.')
-            : isClean
-            ? t('clean_plate_zero_scraps_desc', 'Outstanding! Zero scraps detected on the dining tray. Bonus XP granted!')
-            : t('unfinished_scraps_desc', 'Unfinished meal scraps produce landfill emissions. A -25 XP penalty has been deducted.'),
-        });
+        setScanErrorMessage(
+          error?.message || t('ai_scanner_error_message', 'AI Scanner could not verify the photo. Please ensure clear lighting, point directly at your meal or fruit, and try again.')
+        );
+        setIsLiveMode(true);
+        startCamera(facingMode);
       }
     } finally {
       setIsAnalyzing(false);
@@ -1164,7 +1150,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{selectedCategory?.icon}</span>
                   <span className="text-sm sm:text-base font-black text-theme-main">
-                    {customFoodInput.trim() || selectedFood || selectedCategory?.popularFoods[0]}
+                    {customFoodInput.trim() ? customFoodInput : t(selectedFood || selectedCategory?.popularFoods[0], selectedFood || selectedCategory?.popularFoods[0])}
                   </span>
                 </div>
                 <p className="text-xs text-theme-muted">
@@ -1401,6 +1387,29 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         </p>
       </div>
 
+      {/* AI Scanner Error / Guidance Banner */}
+      {scanErrorMessage && (
+        <div className="bg-rose-950/90 border-2 border-rose-500 rounded-2xl p-4 text-center space-y-2 animate-in fade-in mx-2">
+          <div className="flex items-center justify-center gap-2 text-rose-300 font-extrabold text-sm">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+            <span>{t('scanner_notice', 'AI Scanner Notice')}</span>
+          </div>
+          <p className="text-xs text-rose-200 leading-relaxed">{scanErrorMessage}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setScanErrorMessage(null);
+              setIsLiveMode(true);
+              startCamera(facingMode);
+            }}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all inline-flex items-center gap-1.5"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>{t('try_again', 'Try Scanning Again')}</span>
+          </button>
+        </div>
+      )}
+
       {/* Shutter Button & Controls Row */}
       <div className="flex items-center justify-center gap-6 pt-1">
         {/* Upload from Gallery Button */}
@@ -1466,40 +1475,6 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
             <Sparkles className="w-5 h-5 text-theme-primary" />
           )}
         </button>
-      </div>
-
-      {/* Quick Interactive AI Vision Demo Scenarios */}
-      <div className="pt-2 pb-1 text-center space-y-2">
-        <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-theme-muted">
-          <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
-          <span>{t('try_demo_scenarios', 'Try AI Scanner Demo Scenarios:')}</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-          {samplePresetMeals.map((preset) => {
-            const isFruit = (preset as any).isFinishedFruit;
-            return (
-              <button
-                key={preset.name}
-                type="button"
-                onClick={() => handleSelectPreset(preset)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                  isFruit
-                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 ring-1 ring-amber-500/30'
-                    : preset.cleanPlateVerified
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
-                    : preset.isPenalty && preset.isFood
-                    ? 'bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25'
-                    : preset.isFood === false
-                    ? 'bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25'
-                    : 'bg-theme-card text-theme-main border-theme-card hover:border-theme-primary'
-                }`}
-              >
-                <span>{isFruit ? '🍎' : preset.cleanPlateVerified ? '✨' : preset.isPenalty && preset.isFood ? '⚠️' : preset.isFood === false ? '❌' : '🥗'}</span>
-                <span>{t(preset.name.split('(')[0].trim(), preset.name.split('(')[0].trim())}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
     </>
   )}
@@ -1675,7 +1650,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                     key={i}
                     className="bg-theme-primary-bg text-theme-primary border border-theme-primary-border text-[11px] px-2.5 py-0.5 rounded-full font-bold"
                   >
-                    #{tag}
+                    #{t(tag, tag)}
                   </span>
                 ))}
               </div>

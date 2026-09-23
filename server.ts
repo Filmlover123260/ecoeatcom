@@ -479,78 +479,20 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
       process.env.AI_STUDIO_API_KEY;
 
     if (!apiKey) {
-      // Return rich, intelligent fallback analysis when API key is not configured
-      const isFruit =
-        (foodCategory && (foodCategory.toLowerCase().includes('fruit') || foodCategory.toLowerCase().includes('vegetable'))) ||
-        ['apple', 'banana', 'orange', 'strawberry', 'watermelon', 'grape', 'mango', 'blueberry', 'peach', 'produce', 'salad', 'peel', 'core', 'rind', 'pit'].some((f) =>
-          ((foodItem || '')).toLowerCase().includes(f)
-        );
-      const isFinishedFruitRemnant = ['peel', 'core', 'rind', 'pit', 'finish', 'eaten'].some((f) =>
-        ((foodItem || '')).toLowerCase().includes(f)
-      );
+      return res.status(500).json({
+        success: false,
+        error: 'missing_api_key',
+        message: 'Gemini API key is not configured on the server.',
+      });
+    }
 
-      if (stage === 'before') {
-        const dishTitle = foodItem || (isFinishedFruitRemnant ? 'Finished Apple (Core & Peels)' : isFruit ? 'Fresh Fruit & Produce' : isSmall ? 'Garden Harvest Salad & Herb Tofu' : isLarge ? 'Mediterranean Roasted Harvest & Grain Bowl' : 'Healthy Campus Protein Bowl');
-        const calculatedNutr = calculateNutritionFallback(dishTitle, portionSize, foodCategory);
-        return res.json({
-          success: true,
-          isMock: true,
-          isFood: true,
-          isFinishedFruit: isFinishedFruitRemnant,
-          isPenalty: false,
-          dishName: dishTitle,
-          foodCategory: foodCategory || (isFruit ? 'Fresh Fruits' : 'East Asian Cuisine'),
-          foodItem: dishTitle,
-          confidenceScore: 97,
-          portionEstimatedGrams: isFruit ? (isSmall ? 130 : isLarge ? 260 : 180) : isSmall ? 240 : isLarge ? 480 : 350,
-          estimatedCalories: calculatedNutr.calories,
-          nutrition: calculatedNutr,
-          foodItems: [dishTitle, ...(isFruit ? ['100% Edible Fruit', 'Natural Compostable Fiber'] : ['Steamed Organic Grains', 'Herb Roasted Vegetables', 'Fresh Campus Greens'])],
-          detectedZones: [
-            { label: dishTitle, category: isFruit ? 'fruit' : 'protein', confidence: 96, estimatedGrams: isFruit ? (isSmall ? 130 : isLarge ? 260 : 180) : isSmall ? 70 : isLarge ? 140 : 100 },
-          ],
-          carbonSavingsKg: isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
-          waterSavedLiters: isFruit ? 80 : isSmall ? 420 : isLarge ? 860 : 590,
-          ecoScore: 'A+',
-          dietaryTags: isFinishedFruitRemnant
-            ? ['Finished Fruit', 'Zero Waste', 'Natural Compost']
-            : isFruit
-            ? ['Fresh Produce', 'Plant-Rich', 'Zero Cooking Carbon']
-            : [foodCategory || 'Campus Meal', 'Plant-Rich', 'Low Carbon', 'High Fiber'],
-          sustainabilityFeedback: isFinishedFruitRemnant
-            ? '🍎 Finished fruit detected! You consumed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'
-            : isFruit
-            ? `🍎 High nutrient fresh fruit! ${dishTitle} delivers ${calculatedNutr.vitamins[0] || 'essential vitamins'} and requires zero cooking carbon.`
-            : `High nutrient-density ${foodCategory || 'campus'} meal! Provides ${calculatedNutr.protein}g protein and diverts approx 0.54kg CO2e.`,
-          xpEarned: isLarge ? 40 : 35,
-        });
-      } else {
-        return res.json({
-          success: true,
-          isMock: true,
-          isFood: true,
-          isFinishedFruit: isFruit,
-          isPenalty: false,
-          dishName: isFruit ? 'Finished Fruit Verification' : 'Clean Plate Verification',
-          cleanPlateVerified: true,
-          cleanPlateConfidence: 99,
-          confidenceScore: 99,
-          cleanlinessConfidence: 99,
-          wasteGrams: 0,
-          remainingWasteGrams: 0,
-          foodSavedKg: isFruit ? 0.25 : 0.35,
-          carbonSavingsKg: isFruit ? 0.45 : 0.54,
-          waterSavedLiters: isFruit ? 120 : 590,
-          bonusXp: 30,
-          xpEarned: 35,
-          congratulationsMessage: isFruit
-            ? '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Peels & cores composted!'
-            : 'Clean plate 100% verified! Zero organic scraps sent to landfill.',
-          sustainabilityFeedback: isFruit
-            ? 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.'
-            : 'Outstanding dedication! You prevented 0.35kg of food waste and claimed maximum clean plate streak multiplier.',
-        });
-      }
+    const resolved = await resolveImageToInlineData(rawImage, mimeType);
+    if (!resolved || !resolved.data) {
+      return res.status(400).json({
+        success: false,
+        error: 'invalid_image',
+        message: 'No image data detected. Please position your camera at your food and try again.',
+      });
     }
 
     const ai = new GoogleGenAI({
@@ -564,148 +506,152 @@ const analyzeMealHandler = async (req: express.Request, res: express.Response) =
 
     let prompt = '';
     if (stage === 'before') {
-      prompt = `You are EcoEat's expert campus nutrition and sustainable dining AI vision model.
-Analyze this food/meal photo (student selected portion: ${portionSize}).
-${foodCategory ? `The student specified their food category/cuisine: "${foodCategory}".` : ''}
-${foodItem ? `The student specified the food item they are eating is: "${foodItem}".` : ''}
-Use this context to accurately identify the food item, fresh fruit, vegetable, finished fruit, or prepared dish and calculate its nutritional, macro, and carbon metrics.
+      prompt = `You are EcoEat's campus dining and AI vision auditor.
+Analyze this photo taken by a student with their smartphone camera in the campus dining hall.
 
-FOOD DETECTION & FINISHED FRUIT GUIDELINES:
-1. Genuine Food, Fresh Fruits & Finished Produce:
-- If the image shows edible items, fresh fruits (e.g. apple, banana, watermelon, orange, citrus, berries, etc.), vegetables, salads, snacks, plated meals, bowls, or beverages:
-  Set "isFood": true, "isPenalty": false.
-- CRITICAL — DETECTING FINISHED FRUITS & PRODUCE:
-  If the image shows a finished fruit, such as an apple core, apple stem/seeds, banana peel, orange/citrus peels or rinds, watermelon or melon rind, peach/plum pit, mango stone, or empty fruit container/napkin:
-  * Recognize this as a valid, finished fresh fruit! Set "isFood": true, "isFinishedFruit": true, "isPenalty": false.
-  * DO NOT classify banana peels, apple cores, or fruit rinds as non-food or trash! They are the natural compostable remnants of a 100% finished whole fruit snack.
-  * Set "dishName": descriptive name (e.g. "Finished Apple (Core Remaining)", "Finished Banana (Peel Remaining)", "Finished Fresh Fruit").
-  * Set "sustainabilityFeedback": "🍎 Finished fruit verified! You consumed 100% of the edible fruit, diverting food from landfill. Natural peels and cores are compostable organic material."
-  * Note: It is completely normal for a student to hold a fruit or fruit peel in their hand, or place it on a dining table, tray, or desk. As long as food, fruit, or fruit remnants are present, classify it as genuine food!
+=======================================================
+STRICT RULE 1: NON-FOOD, FACE, PERSON, OR OBJECT DETECTION (CHECK THIS FIRST!)
+=======================================================
+You MUST inspect the entire image for non-food items BEFORE classifying any food:
+- If this image displays a human face, selfie, person, head, portrait, eyes, mouth, nose, or skin closeup
+- If this image displays a body part (hand, fingers, arm, leg) with NO edible food in it
+- If this image displays a computer screen, laptop, keyboard, smartphone, monitor, TV
+- If this image displays classroom or desk items: notebooks, pens, pencils, books, paper, backpack
+- If this image displays a room wall, floor, ceiling, furniture, bed, vehicle, clothes, shoes
+- If this image displays plastic bottles, keys, electronics, or non-edible objects
 
-2. Non-Food Objects:
-ONLY classify as non-food if there is ABSOLUTELY NO edible food, fruit, produce, finished fruit peel/core, or beverage visible in the image (e.g. pure selfie with no food, empty wall, laptop screen, keyboard, shoes, notebook, pen):
-Set:
-- "isFood": false
-- "nonFoodReason": "No edible food or produce detected in the frame"
-- "isPenalty": true
-- "xpEarned": -20
-- "dishName": "Non-Food Object Detected"
-- "confidenceScore": 98
-- "portionEstimatedGrams": 0
-- "estimatedCalories": 0
-- "nutrition": { "protein": 0, "carbs": 0, "fat": 0, "fiber": 0 }
-- "foodItems": []
-- "detectedZones": []
-- "carbonSavingsKg": 0
-- "waterSavedLiters": 0
-- "ecoScore": "N/A"
-- "dietaryTags": ["Not Food"]
-- "sustainabilityFeedback": "⚠️ Non-food item detected. Point your camera at a meal, fruit, or dining plate to scan and log eco points."
+IF A HUMAN FACE, PERSON, SELFIE, OR NON-FOOD OBJECT IS IN FOCUS OR NO EDIBLE FOOD IS PRESENT:
+YOU MUST IMMEDIATELY SET:
+{
+  "isFood": false,
+  "isFinishedFruit": false,
+  "isPenalty": true,
+  "dishName": "Non-Food Detected: [Specify what is actually seen, e.g. Human Face / Selfie, Laptop Screen, Desk Stationery, Clothing]",
+  "nonFoodReason": "Identified [actual item or face seen] instead of an edible campus meal or fresh fruit.",
+  "confidenceScore": 99,
+  "portionEstimatedGrams": 0,
+  "estimatedCalories": 0,
+  "nutrition": { "protein": 0, "carbs": 0, "fat": 0, "fiber": 0, "vitamins": [], "vitaminDetails": [] },
+  "foodItems": [],
+  "detectedZones": [],
+  "carbonSavingsKg": 0,
+  "waterSavedLiters": 0,
+  "ecoScore": "N/A",
+  "dietaryTags": ["Non-Food"],
+  "sustainabilityFeedback": "⚠️ Non-food item detected. EcoEat awards XP only for genuine dining meals, plates, or fresh fruit.",
+  "xpEarned": -20
+}
 
-If it IS genuine food or finished fruit:
-Set "isFood": true, "isPenalty": false.
-Provide a precise, comprehensive breakdown of the meal.
+=======================================================
+STRICT RULE 2: GENUINE FOOD & FRESH FRUIT RECOGNITION
+=======================================================
+ONLY if the photo ACTUALLY contains edible food, a prepared meal, dining plate/bowl, beverage, whole fruit, or compostable fruit remnants:
+- Disregard any user hints if they do not match the photo! Classify what you ACTUALLY see in the photo:
+${foodCategory ? `(Category hint was "${foodCategory}")` : ''}
+${foodItem ? `(Dish hint was "${foodItem}" - WARNING: Only use if this is actually what is in the picture!)` : ''}
 
-Respond STRICTLY with a valid JSON object matching this exact schema:
+A. Finished Fruit Remnants (Compostable peel/core):
+If the image shows natural remnants of a finished fruit (such as an apple core, banana peel, watermelon rind, citrus peel, or fruit pit):
+- Set "isFood": true, "isFinishedFruit": true, "isPenalty": false.
+- Set "dishName": descriptive name (e.g. "Finished Apple (Core Remaining)", "Finished Banana (Peel Remaining)").
+- Set "sustainabilityFeedback": "🍎 Finished fruit verified! 100% of edible fruit enjoyed. Natural peels/cores are organic compost, not waste."
+
+B. Fresh Whole Fruit / Produce:
+If the image shows a fresh whole apple, banana, orange, watermelon slice, berries, or produce:
+- Set "isFood": true, "isFinishedFruit": false, "isPenalty": false.
+- Set "dishName": specific fruit name (e.g. "Fresh Apple", "Fresh Banana", "Fruit Salad").
+
+C. Prepared Meals & Dining Dishes:
+If the image shows a plated meal, rice bowl, noodle dish, soup, salad, sandwich, protein:
+- Identify the ACTUAL dish (e.g., "Nasi Goreng with Fried Egg", "Chicken Caesar Salad", "Tofu & Vegetable Stir-Fry", "Pasta Primavera").
+- Set "isFood": true, "isFinishedFruit": false, "isPenalty": false.
+
+Respond STRICTLY with a valid JSON object matching this schema:
 {
   "isFood": boolean,
   "isFinishedFruit": boolean,
-  "nonFoodReason": string (if not food, otherwise empty ""),
+  "nonFoodReason": string,
   "isPenalty": boolean,
-  "dishName": "descriptive name of the dish or finished fruit (e.g. Fresh Honeycrisp Apple or Finished Apple Core)",
+  "dishName": string,
   "confidenceScore": number (80 to 99),
-  "portionEstimatedGrams": number (approximate total meal or fruit weight in grams, 0 if not food),
-  "estimatedCalories": number (total kcal, 0 if not food),
+  "portionEstimatedGrams": number,
+  "estimatedCalories": number,
   "nutrition": {
-    "protein": number (in grams),
-    "carbs": number (in grams),
-    "fat": number (in grams),
-    "fiber": number (in grams),
-    "vitamins": ["string array of detected vitamins with % DV and mg/mcg amounts, e.g. 'Vitamin C (85% DV - 76mg)', 'Vitamin A (40% DV)', 'Iron (20% DV)', 'Calcium (15% DV)'"],
+    "protein": number,
+    "carbs": number,
+    "fat": number,
+    "fiber": number,
+    "vitamins": ["string array with % DV e.g. 'Vitamin C (85% DV - 76mg)'"],
     "vitaminDetails": [
       {
-        "name": "string (e.g. Vitamin C)",
-        "amount": "string (e.g. 76mg)",
-        "dailyValue": "string (e.g. 85%)",
-        "benefit": "string (e.g. Antioxidant & immune defense)"
+        "name": string,
+        "amount": string,
+        "dailyValue": string,
+        "benefit": string
       }
     ]
   },
-  "foodItems": ["list of recognized ingredients/components"],
+  "foodItems": ["list of visible components"],
   "detectedZones": [
     {
-      "label": "name of component",
+      "label": string,
       "category": "protein" | "grain" | "vegetable" | "fruit" | "dairy" | "dressing" | "other",
-      "confidence": number (80 to 99),
+      "confidence": number,
       "estimatedGrams": number
     }
   ],
-  "carbonSavingsKg": number (estimated kg CO2e saved vs high-carbon baseline, 0 if not food),
-  "waterSavedLiters": number (estimated liters of water saved, 0 if not food),
+  "carbonSavingsKg": number,
+  "waterSavedLiters": number,
   "ecoScore": "A+" | "A" | "B+" | "B" | "N/A",
-  "dietaryTags": ["e.g. Plant-Rich", "Fresh Fruit", "Zero Waste", "Low Carbon"],
-  "sustainabilityFeedback": "concise, inspiring eco advice celebrating the meal or finished fruit, or non-food penalty notice",
-  "xpEarned": number (positive 30 to 45 if valid food, or -20 if non-food penalty)
+  "dietaryTags": ["string"],
+  "sustainabilityFeedback": string,
+  "xpEarned": number (35 to 45 for food, or -20 for non-food)
 }`;
     } else {
       prompt = `You are EcoEat's campus clean plate & finished dining verification AI vision model.
-Analyze this post-dining photo to verify whether the meal or fruit was completed.
-${foodCategory ? `The initial food category was: "${foodCategory}".` : ''}
-${foodItem ? `The initial food item was: "${foodItem}".` : ''}
+Analyze this post-dining photo taken by a student to verify if they finished their meal.
 
-CRITICAL RULES FOR FINISHED FRUITS & PRODUCE:
-1. Recognizing Finished Fruits:
-- Students regularly eat whole fresh fruits (such as an apple, banana, orange, clementine, watermelon, melon, peach, pear, plum, mango, avocado, berries, etc.).
-- When fresh fruit is completely finished and eaten, NATURAL INEDIBLE REMNANTS naturally remain:
-  * Apple core, apple stem, or seeds
-  * Banana peel
-  * Orange, clementine, tangerine, or citrus rinds / peels
-  * Watermelon rind, melon rind, or cantaloupe rinds
-  * Mango pit / skin, avocado stone / skin
-  * Peach, plum, or cherry pits & stems
-  * Grape stems, strawberry green tops / calyx
-  * Empty fruit wrapper, peel on a napkin, or an empty bowl/plate where fruit was served.
-- THESE NATURAL REMNANTS ARE 100% INEDIBLE AND ARE NEVER CONSIDERED FOOD WASTE!
-- When you see an apple core, banana peel, citrus rinds, watermelon rind, or empty fruit plate:
-  YOU MUST VERIFY THIS AS 100% FINISHED:
-  * "isFood": true
-  * "isFinishedFruit": true
-  * "cleanPlateVerified": true
-  * "isPenalty": false
-  * "wasteGrams": 0
-  * "remainingWasteGrams": 0
-  * "foodSavedKg": 0.25
-  * "bonusXp": 30
-  * "xpEarned": 35
-  * "dishName": "Finished Fruit Verification"
-  * "congratulationsMessage": "🍎 Finished Fruit 100% Verified! All edible fruit enjoyed. Natural peels & cores are compostable, not edible waste."
-  * "sustainabilityFeedback": "Incredible job eating all of your fresh fruit! Zero edible waste sent to landfill, preserving campus resources."
+=======================================================
+STRICT RULE 1: NON-DINING, NON-FOOD, OR FACE DETECTION
+=======================================================
+- If this photo shows a human face, selfie, person, wall, shoes, laptop, desk stationery, or non-dining items:
+  YOU MUST SET:
+  "isFood": false,
+  "isPenalty": true,
+  "cleanPlateVerified": false,
+  "dishName": "Non-Dining Photo: [Name object or face seen]",
+  "confidenceScore": 99,
+  "wasteGrams": 0,
+  "remainingWasteGrams": 0,
+  "foodSavedKg": 0,
+  "carbonSavingsKg": 0,
+  "waterSavedLiters": 0,
+  "bonusXp": -20,
+  "xpEarned": -20,
+  "congratulationsMessage": "⚠️ Non-dining image detected! Please capture your actual dining plate or finished fruit tray.",
+  "sustainabilityFeedback": "EcoEat clean plate verification requires a photo of your dining tray or plate."
 
-2. Standard Clean Plate Verification:
-- If a dining plate, bowl, or tray is clean, empty, or has only minimal trace crumbs / sauce (< 15g):
-  "cleanPlateVerified": true, "wasteGrams": 0, "isPenalty": false, "bonusXp": 30, "xpEarned": 35.
-  "congratulationsMessage": "Clean Plate 100% Verified! Zero edible scraps left behind."
+=======================================================
+STRICT RULE 2: VERIFY CLEAN PLATE OR FINISHED FRUIT
+=======================================================
+- Clean Plate: If dining plate, bowl, or container is empty, clean, or has only trace residue (< 15g):
+  "cleanPlateVerified": true, "isFood": true, "isPenalty": false, "wasteGrams": 0, "foodSavedKg": 0.35, "bonusXp": 30, "xpEarned": 35.
+- Finished Fruit: If natural inedible fruit remnants remain (apple core, banana peel, citrus rind, melon rind, pits):
+  "cleanPlateVerified": true, "isFood": true, "isFinishedFruit": true, "isPenalty": false, "wasteGrams": 0, "foodSavedKg": 0.25, "bonusXp": 30, "xpEarned": 35.
+- Unfinished Food Waste: If significant edible food remains uneaten (> 15g edible food left):
+  "cleanPlateVerified": false, "isFood": true, "isPenalty": true, "wasteGrams": number, "bonusXp": -25, "xpEarned": -25.
 
-3. Significant Unfinished Food Waste:
-- ONLY flag as unfinished if there is significant edible food abandoned (> 15g uneaten edible food, large untouched fruit slices, leftover half-meals):
-  "cleanPlateVerified": false, "isPenalty": true, "wasteGrams": number (e.g. 140), "bonusXp": -25, "xpEarned": -25.
-  "congratulationsMessage": "⚠️ Unfinished Food Detected! Leftover edible food creates landfill waste."
-
-4. Non-Dining Photos:
-- If completely unrelated to food, dining, or fruit (e.g. wall, shoes, laptop keyboard):
-  "isFood": false, "isPenalty": true, "xpEarned": -20.
-
-Respond STRICTLY with a valid JSON object matching this exact schema:
+Respond STRICTLY with valid JSON matching:
 {
-  "dishName": "Clean Plate Verification" or "Finished Fruit Verification",
+  "dishName": string,
   "isFood": boolean,
   "isFinishedFruit": boolean,
   "isPenalty": boolean,
-  "cleanPlateVerified": boolean (true if clean or finished fruit, false if unfinished scraps),
-  "cleanPlateConfidence": number (80 to 100),
-  "cleanlinessConfidence": number (80 to 100),
-  "confidenceScore": number (80 to 100),
-  "wasteGrams": number (0 for clean plate or finished fruit, > 0 for unfinished scraps),
+  "cleanPlateVerified": boolean,
+  "cleanPlateConfidence": number,
+  "cleanlinessConfidence": number,
+  "confidenceScore": number,
+  "wasteGrams": number,
   "remainingWasteGrams": number,
   "foodSavedKg": number,
   "carbonSavingsKg": number,
@@ -717,163 +663,91 @@ Respond STRICTLY with a valid JSON object matching this exact schema:
 }`;
     }
 
-    const parts: any[] = [{ text: prompt }];
+    const parts = [
+      {
+        inlineData: {
+          mimeType: resolved.mimeType,
+          data: resolved.data,
+        },
+      },
+      { text: prompt },
+    ];
 
-    if (rawImage) {
-      const resolved = await resolveImageToInlineData(rawImage, mimeType);
-      if (resolved && resolved.data) {
-        parts.push({
-          inlineData: {
-            mimeType: resolved.mimeType,
-            data: resolved.data,
-          },
-        });
-      }
-    }
-
-    const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+    const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
     let response: any = null;
     let lastError: any = null;
 
     for (const modelName of modelsToTry) {
-      try {
-        const generatePromise = ai.models.generateContent({
-          model: modelName,
-          contents: parts,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const generatePromise = ai.models.generateContent({
+            model: modelName,
+            contents: {
+              parts: parts,
+            },
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
 
-        // 10s timeout to allow fast responsive vision processing
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Model timeout')), 10000)
-        );
+          // 22-second timeout to allow complete, high-quality multimodal analysis
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Model timeout')), 22000)
+          );
 
-        response = await Promise.race([generatePromise, timeoutPromise]);
-        if (response && response.text) {
+          response = await Promise.race([generatePromise, timeoutPromise]);
+          if (response && response.text) {
+            break;
+          }
+        } catch (modelErr: any) {
+          lastError = modelErr;
+          const isTransient =
+            modelErr?.status === 503 ||
+            modelErr?.status === 429 ||
+            modelErr?.message?.includes('503') ||
+            modelErr?.message?.includes('demand') ||
+            modelErr?.message?.includes('429');
+
+          if (isTransient && attempt === 0) {
+            console.log(`[Gemini Vision] ${modelName} transient spike (${modelErr?.status || 503}), retrying in 1200ms...`);
+            await new Promise((r) => setTimeout(r, 1200));
+            continue;
+          }
+          console.log(`[Gemini Vision] ${modelName} error on attempt ${attempt + 1}:`, modelErr?.status || modelErr?.message);
           break;
         }
-      } catch (modelErr: any) {
-        lastError = modelErr;
-        const isBusy =
-          modelErr?.status === 503 ||
-          modelErr?.status === 429 ||
-          modelErr?.message?.includes('503') ||
-          modelErr?.message?.includes('demand') ||
-          modelErr?.message?.includes('429');
-        if (isBusy) {
-          console.log(`[Gemini Vision] ${modelName} experiencing temporary high demand, rotating model...`);
-        } else {
-          console.log(`[Gemini Vision] ${modelName} unavailable, rotating to next candidate...`);
-        }
-        continue;
+      }
+      if (response && response.text) {
+        break;
       }
     }
 
     if (response && response.text) {
       const text = response.text.trim();
-      const sanitized = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      const sanitized = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
       const parsed = JSON.parse(sanitized);
 
-      if (parsed && parsed.nutrition) {
-        if (!parsed.nutrition.vitamins || !Array.isArray(parsed.nutrition.vitamins) || parsed.nutrition.vitamins.length === 0) {
-          const enrichNutr = calculateNutritionFallback(parsed.dishName || foodItem || 'Campus Meal', portionSize, foodCategory);
-          parsed.nutrition.vitamins = enrichNutr.vitamins;
-          parsed.nutrition.vitaminDetails = enrichNutr.vitaminDetails;
+      if (parsed.isFood !== false && !parsed.isPenalty) {
+        if (parsed.nutrition) {
+          if (!parsed.nutrition.vitamins || !Array.isArray(parsed.nutrition.vitamins) || parsed.nutrition.vitamins.length === 0) {
+            const enrichNutr = calculateNutritionFallback(parsed.dishName || foodItem || 'Campus Meal', portionSize, foodCategory);
+            parsed.nutrition.vitamins = enrichNutr.vitamins;
+            parsed.nutrition.vitaminDetails = enrichNutr.vitaminDetails;
+          }
         }
       }
 
       return res.json({ success: true, ...parsed, text: sanitized });
     }
 
-    throw lastError || new Error('All models temporarily busy');
+    throw lastError || new Error('All vision models temporarily unavailable');
   } catch (err: any) {
-    console.log('Utilizing real-time smart fallback analysis for meal verification');
-
-    if (mealStage === 'before') {
-      const isFruitOrVeg =
-        (foodCategory && (foodCategory.toLowerCase().includes('fruit') || foodCategory.toLowerCase().includes('vegetable'))) ||
-        ['apple', 'banana', 'orange', 'strawberry', 'watermelon', 'grape', 'mango', 'blueberry', 'peach', 'produce', 'salad', 'peel', 'core', 'rind', 'pit'].some((f) =>
-          (foodItem || '').toLowerCase().includes(f)
-        );
-      const isFinishedFruitRemnant = ['peel', 'core', 'rind', 'pit', 'finish', 'eaten'].some((f) =>
-        (foodItem || '').toLowerCase().includes(f)
-      );
-
-      const chosenName = foodItem || (isFinishedFruitRemnant ? 'Finished Apple (Core & Peels)' : isFruitOrVeg ? 'Fresh Fruit & Produce' : isSmall ? 'Garden Harvest Bowl & Tofu' : isLarge ? 'Mediterranean Roasted Quinoa Bowl' : 'Fresh Campus Protein Bowl');
-      const calculatedNutr = calculateNutritionFallback(chosenName, portionSize, foodCategory);
-
-      const result = {
-        success: true,
-        fallback: true,
-        isFood: true,
-        isFinishedFruit: isFinishedFruitRemnant,
-        isPenalty: false,
-        dishName: chosenName,
-        confidenceScore: 96,
-        portionEstimatedGrams: isFruitOrVeg ? (isSmall ? 130 : isLarge ? 260 : 180) : isSmall ? 240 : isLarge ? 480 : 350,
-        estimatedCalories: calculatedNutr.calories,
-        nutrition: calculatedNutr,
-        foodItems: isFruitOrVeg ? [chosenName, '100% Edible Fruit', 'Compostable Natural Fiber'] : ['Crisp Mixed Greens', 'Herb Roasted Chickpeas', 'Steamed Broccoli', 'Organic Quinoa', 'Cherry Tomatoes'],
-        detectedZones: [
-          {
-            label: chosenName,
-            category: isFruitOrVeg ? 'fruit' : 'protein',
-            confidence: 96,
-            estimatedGrams: isFruitOrVeg ? (isSmall ? 130 : isLarge ? 260 : 180) : isSmall ? 70 : isLarge ? 140 : 100,
-          },
-        ],
-        carbonSavingsKg: isSmall ? 0.38 : isLarge ? 0.78 : 0.54,
-        waterSavedLiters: isFruitOrVeg ? 80 : isSmall ? 420 : isLarge ? 860 : 590,
-        ecoScore: 'A+',
-        dietaryTags: isFinishedFruitRemnant
-          ? ['Finished Fruit', 'Zero Waste', 'Natural Compost']
-          : isFruitOrVeg
-          ? ['Fresh Produce', 'Plant-Rich', 'High Fiber', 'Zero Cooking Carbon']
-          : ['Plant-Rich', 'High Fiber', 'Low Carbon'],
-        sustainabilityFeedback: isFinishedFruitRemnant
-          ? '🍎 Finished fruit detected! You consumed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'
-          : isFruitOrVeg
-          ? `🍎 Outstanding choice picking fresh produce! ${chosenName} provides ${calculatedNutr.vitamins[0] || 'vital vitamins'} with zero cooking emissions.`
-          : `Balanced sustainable meal choice! Provides ${calculatedNutr.protein}g of protein and prevents 0.54kg CO2e emissions.`,
-        xpEarned: isLarge ? 40 : 35,
-      };
-      return res.json({ ...result, text: JSON.stringify(result) });
-    } else {
-      const isFruit =
-        (foodCategory && (foodCategory.toLowerCase().includes('fruit') || foodCategory.toLowerCase().includes('vegetable'))) ||
-        ['apple', 'banana', 'orange', 'strawberry', 'watermelon', 'grape', 'mango', 'blueberry', 'peach', 'produce', 'salad', 'peel', 'core', 'rind', 'pit', 'fruit'].some((f) =>
-          (foodItem || '').toLowerCase().includes(f)
-        );
-
-      const result = {
-        success: true,
-        fallback: true,
-        isFood: true,
-        isFinishedFruit: isFruit,
-        isPenalty: false,
-        dishName: isFruit ? 'Finished Fruit Verification' : 'Clean Plate Verification',
-        cleanPlateVerified: true,
-        cleanPlateConfidence: 99,
-        confidenceScore: 99,
-        cleanlinessConfidence: 99,
-        wasteGrams: 0,
-        remainingWasteGrams: 0,
-        foodSavedKg: isFruit ? 0.25 : 0.35,
-        carbonSavingsKg: isFruit ? 0.45 : 0.54,
-        waterSavedLiters: isFruit ? 120 : 590,
-        bonusXp: 30,
-        xpEarned: 35,
-        congratulationsMessage: isFruit
-          ? '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Peels & cores composted!'
-          : 'Clean Plate Verified! 100% food diverted from campus waste.',
-        sustainabilityFeedback: isFruit
-          ? 'Superb job finishing your whole fruit! Consuming fresh fruit raw generates zero cooking carbon and diverts natural peels to compost.'
-          : 'Outstanding! Zero scraps detected on the dining tray. Bonus XP granted!',
-      };
-      return res.json({ ...result, text: JSON.stringify(result) });
-    }
+    console.error('[Gemini Vision] Vision processing error:', err?.message || err);
+    return res.status(503).json({
+      success: false,
+      error: 'ai_vision_unavailable',
+      message: 'The AI scanner is momentarily experiencing high demand. Please hold your camera steady and scan again.',
+    });
   }
 };
 
