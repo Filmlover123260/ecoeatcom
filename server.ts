@@ -514,17 +514,21 @@ STRICT RULE 1: NON-FOOD, FACE, PERSON, OR OBJECT DETECTION (CHECK THIS FIRST!)
 =======================================================
 You MUST inspect the entire image for non-food items BEFORE classifying any food:
 - If this image displays a human face, selfie, person, head, portrait, eyes, mouth, nose, or skin closeup
-- If this image displays a body part (hand, fingers, arm, leg) with NO edible food in it
+- If this image displays a body part (hand, fingers, arm, leg) with NO edible food or fruit in it
 - If this image displays a computer screen, laptop, keyboard, smartphone, monitor, TV
 - If this image displays classroom or desk items: notebooks, pens, pencils, books, paper, backpack
 - If this image displays a room wall, floor, ceiling, furniture, bed, vehicle, clothes, shoes
 - If this image displays plastic bottles, keys, electronics, or non-edible objects
+
+CRITICAL CLARIFICATION FOR HANDS / FINGERS:
+If a hand or fingers are holding, peeling, opening, or splitting a fruit or meal (e.g. fingers holding a split-open orange, peeled banana, sliced watermelon, split apple, or avocado half), THIS IS 100% VALID FOOD. Do NOT classify an image as non-food simply because human fingers or a hand are holding or peeling the fruit!
 
 IF A HUMAN FACE, PERSON, SELFIE, OR NON-FOOD OBJECT IS IN FOCUS OR NO EDIBLE FOOD IS PRESENT:
 YOU MUST IMMEDIATELY SET:
 {
   "isFood": false,
   "isFinishedFruit": false,
+  "isSplitFruit": false,
   "isPenalty": true,
   "dishName": "Non-Food Detected: [Specify what is actually seen, e.g. Human Face / Selfie, Laptop Screen, Desk Stationery, Clothing]",
   "nonFoodReason": "Identified [actual item or face seen] instead of an edible campus meal or fresh fruit.",
@@ -543,33 +547,93 @@ YOU MUST IMMEDIATELY SET:
 }
 
 =======================================================
-STRICT RULE 2: GENUINE FOOD & FRESH FRUIT RECOGNITION
+STRICT RULE 2: GENUINE FOOD, SPLIT FRUITS & FRESH PRODUCE RECOGNITION
 =======================================================
-ONLY if the photo ACTUALLY contains edible food, a prepared meal, dining plate/bowl, beverage, whole fruit, or compostable fruit remnants:
+ONLY if the photo ACTUALLY contains edible food, a split-open or whole fruit, a prepared meal, dining plate/bowl, beverage, or compostable fruit remnants:
 - Disregard any user hints if they do not match the photo! Classify what you ACTUALLY see in the photo:
 ${foodCategory ? `(Category hint was "${foodCategory}")` : ''}
 ${foodItem ? `(Dish hint was "${foodItem}" - WARNING: Only use if this is actually what is in the picture!)` : ''}
 
-A. Finished Fruit Remnants (Compostable peel/core):
-If the image shows natural remnants of a finished fruit (such as an apple core, banana peel, watermelon rind, citrus peel, or fruit pit):
-- Set "isFood": true, "isFinishedFruit": true, "isPenalty": false.
-- Set "dishName": descriptive name (e.g. "Finished Apple (Core Remaining)", "Finished Banana (Peel Remaining)").
-- Set "sustainabilityFeedback": "🍎 Finished fruit verified! 100% of edible fruit enjoyed. Natural peels/cores are organic compost, not waste."
+A. SPLIT-OPEN, CUT, HALVED, SLICED, OR PEELED FRUITS (HIGH PRIORITY):
+Students frequently cut, slice, wedge, crack, peel, bite, or split open fresh fruit before or while dining:
+- SPLIT-OPEN ORANGES & CITRUS: Orange, clementine, tangerine, mandarin, grapefruit, lemon, or lime split in half, peeled open, or pulled into segments.
+- SPLIT-OPEN APPLES & PEARS: Apple or pear cut in half, quartered, sliced into wedges, or bitten open exposing the inner flesh, core, or seeds.
+- PEELED & SPLIT BANANAS: Banana peeled open (partially or fully), split down the middle, or broken in half.
+- SLICED & SPLIT WATERMELON / MELON: Watermelon cut open into wedges/slices, or cantaloupe / honeydew halved or scooped.
+- SPLIT AVOCADOS: Avocado sliced in half, showing the round pit or smooth green flesh.
+- SPLIT MANGOS & PAPAYAS: Mango sliced in half or diced/scored in hedgehog style; papaya cut in half showing dark seeds and vibrant orange flesh.
+- SPLIT DRAGONFRUIT (PITAYA): Dragonfruit sliced or split open showing speckled white or magenta flesh with tiny black seeds.
+- SPLIT POMEGRANATES: Pomegranate broken or split open showing clusters of ruby-red seeds/arils.
+- OTHER SPLIT / HALVED FRUITS: Split passionfruit, halved kiwi (showing green/gold flesh and seeds), cracked coconut (showing white flesh), halved peaches, plums, apricots, figs, guavas, berries, or mixed fresh fruit salad.
 
-B. Fresh Whole Fruit / Produce:
-If the image shows a fresh whole apple, banana, orange, watermelon slice, berries, or produce:
-- Set "isFood": true, "isFinishedFruit": false, "isPenalty": false.
-- Set "dishName": specific fruit name (e.g. "Fresh Apple", "Fresh Banana", "Fruit Salad").
+WHEN ANY SPLIT-OPEN, HALVED, OR SLICED FRUIT IS PRESENT:
+- Set "isFood": true
+- Set "isSplitFruit": true
+- Set "isFinishedFruit": false
+- Set "isPenalty": false
+- Set "dishName": Accurate name recognizing the split fruit (e.g. "Split Fresh Orange", "Sliced Watermelon Wedge", "Split Honeycrisp Apple", "Peeled Fresh Banana", "Split Dragonfruit", "Halved Fresh Avocado", "Split Open Pomegranate", "Cut Fresh Kiwi", "Split Tropical Mango").
+- Set "portionEstimatedGrams": estimated weight of the split fruit portion (e.g. 120g - 280g).
+- Set "estimatedCalories": estimated natural calories of the fruit (e.g. 60 - 140 kcal).
+- Set "nutrition": Provide realistic natural macro & micronutrients, highlighting essential vitamins:
+  * "protein": ~1 - 2g
+  * "carbs": ~15 - 30g (natural fruit sugars)
+  * "fat": ~0 - 1g (or ~15g if avocado)
+  * "fiber": ~3 - 6g (high prebiotic fiber)
+  * "vitamins": e.g. ["Vitamin C (85% DV - 75mg)", "Potassium (320mg)", "Folate (12% DV)"]
+  * "vitaminDetails": detailed vitamin benefits (immune support, antioxidant defense, cellular health)
+- Set "foodItems": [name of the fruit, "100% Raw Edible Fruit", "Natural Plant Fiber"]
+- Set "detectedZones": [{ "label": "name of fruit", "category": "fruit", "confidence": 97, "estimatedGrams": 180 }]
+- Set "carbonSavingsKg": 0.45 (fresh raw fruit requires zero cooking energy, saving carbon)
+- Set "waterSavedLiters": 120
+- Set "ecoScore": "A+"
+- Set "dietaryTags": ["Fresh Fruit", "Split Fruit", "Raw Produce", "Zero Carbon", "High Fiber"]
+- Set "sustainabilityFeedback": "🍎 Fresh split fruit verified! Consuming raw seasonal fruit provides direct hydration and vitamins while generating zero cooking carbon emissions."
+- Set "xpEarned": 35
 
-C. Prepared Meals & Dining Dishes:
+B. FINISHED APPLES, PEARS, BANANAS & COMPOSTABLE FRUIT REMNANTS (100% EDIBLE FRUIT CONSUMED):
+CRITICAL MANDATORY INSTRUCTION: Students frequently finish eating an apple, pear, or banana and take a photo of what remains:
+- APPLE'S CENTER / CORE: When an apple is eaten down to its central core, seeds, and stem.
+- PEAR'S CENTER / CORE: When a pear is eaten down to its central core, seeds, and stem.
+- BANANA PEEL: When a banana has been eaten leaving only the yellow or spotted peel.
+- CITRUS PEELS / RIND: Orange, mandarin, grapefruit, or lemon peels leftover after eating the fruit.
+- WATERMELON / MELON RINDS: Clean green or white rinds leftover after eating the sweet melon flesh.
+- AVOCADO PEEL & PIT: Empty avocado skins/peels and pit after scooping out the flesh.
+- FRUIT PITS / STONES: Peach, plum, apricot, mango, or cherry pits/stones with all fruit consumed.
+
+DO NOT PENALIZE! DO NOT DEDUCT POINTS!
+Natural fruit cores, centers, seeds, stems, and peels are INEDIBLE, ORGANIC COMPOSTABLE MATTER, NOT FOOD WASTE.
+When an apple center/core, pear center/core, banana peel, or fruit peel is present:
+- Set "isFood": true
+- Set "isFinishedFruit": true
+- Set "isSplitFruit": false
+- Set "isPenalty": false
+- Set "dishName": descriptive name (e.g. "Finished Apple (Core & Center Consumed)", "Finished Pear (Center & Stem Remaining)", "Finished Banana (Peel Remaining - 100% Eaten)").
+- Set "portionEstimatedGrams": 0 (edible portion 100% finished)
+- Set "estimatedCalories": estimated fruit calories enjoyed (e.g. 95 kcal for apple, 100 kcal for pear, 105 kcal for banana)
+- Set "nutrition": natural fruit nutrition profile (vitamins C, A, potassium, fiber)
+- Set "foodItems": ["100% Edible Fruit Consumed", "Organic Compostable Core / Peel"]
+- Set "carbonSavingsKg": 0.45
+- Set "waterSavedLiters": 120
+- Set "ecoScore": "A+"
+- Set "dietaryTags": ["Finished Fruit", "Zero Waste", "100% Eaten", "Compostable Peel/Core"]
+- Set "sustainabilityFeedback": "🍎 Finished fruit verified! 100% of edible fruit enjoyed. Natural apple/pear centers and banana peels are organic compost, not edible waste. Zero penalty!"
+- Set "xpEarned": 35
+
+C. Fresh Whole Fruit / Produce:
+If the image shows an uncut fresh whole apple, banana, pear, orange, watermelon slice, berries, or produce:
+- Set "isFood": true, "isFinishedFruit": false, "isSplitFruit": false, "isPenalty": false.
+- Set "dishName": specific fruit name (e.g. "Fresh Apple", "Fresh Pear", "Fresh Banana", "Fruit Salad").
+
+D. Prepared Meals & Dining Dishes:
 If the image shows a plated meal, rice bowl, noodle dish, soup, salad, sandwich, protein:
 - Identify the ACTUAL dish (e.g., "Nasi Goreng with Fried Egg", "Chicken Caesar Salad", "Tofu & Vegetable Stir-Fry", "Pasta Primavera").
-- Set "isFood": true, "isFinishedFruit": false, "isPenalty": false.
+- Set "isFood": true, "isFinishedFruit": false, "isSplitFruit": false, "isPenalty": false.
 
 Respond STRICTLY with a valid JSON object matching this schema:
 {
   "isFood": boolean,
   "isFinishedFruit": boolean,
+  "isSplitFruit": boolean,
   "nonFoodReason": string,
   "isPenalty": boolean,
   "dishName": string,
@@ -632,13 +696,66 @@ STRICT RULE 1: NON-DINING, NON-FOOD, OR FACE DETECTION
   "sustainabilityFeedback": "EcoEat clean plate verification requires a photo of your dining tray or plate."
 
 =======================================================
-STRICT RULE 2: VERIFY CLEAN PLATE OR FINISHED FRUIT
+STRICT RULE 2: VERIFY CLEAN PLATE OR FINISHED FRUIT (APPLES, PEARS, BANANAS, CORES & PEELS)
 =======================================================
-- Clean Plate: If dining plate, bowl, or container is empty, clean, or has only trace residue (< 15g):
-  "cleanPlateVerified": true, "isFood": true, "isPenalty": false, "wasteGrams": 0, "foodSavedKg": 0.35, "bonusXp": 30, "xpEarned": 35.
-- Finished Fruit: If natural inedible fruit remnants remain (apple core, banana peel, citrus rind, melon rind, pits):
-  "cleanPlateVerified": true, "isFood": true, "isFinishedFruit": true, "isPenalty": false, "wasteGrams": 0, "foodSavedKg": 0.25, "bonusXp": 30, "xpEarned": 35.
-- Unfinished Food Waste: If significant edible food remains uneaten (> 15g edible food left):
+CRITICAL ZERO-PENALTY POLICY FOR APPLES, PEARS, BANANAS & FRUIT PEELS:
+DO NOT DEDUCT SOMEONE'S POINTS JUST BECAUSE THEY LEFT THE APPLE'S CENTER, THE PEAR'S CENTER, OR THE BANANA PEEL!
+- If the photo shows an APPLE'S CENTER / CORE (the seeds, stem, and fibrous core leftover after eating an apple): 100% FINISHED FRUIT!
+- If the photo shows a PEAR'S CENTER / CORE (the seeds, stem, and fibrous core leftover after eating a pear): 100% FINISHED FRUIT!
+- If the photo shows a BANANA PEEL (the banana was completely eaten, leaving the yellow/brown peel): 100% FINISHED FRUIT!
+- If the photo shows citrus peels (orange, tangerine, lemon), watermelon rinds, melon rinds, or fruit stones/pits: 100% FINISHED FRUIT!
+
+IN ALL THESE FINISHED FRUIT CASES:
+* "cleanPlateVerified": true
+* "isFood": true
+* "isFinishedFruit": true
+* "isFinishedPlateRemnants": false
+* "remnantType": "fruit_core_peel"
+* "isPenalty": false
+* "wasteGrams": 0  <-- MUST BE 0! Inedible peels, centers, and cores are NOT food waste!
+* "remainingWasteGrams": 0
+* "foodSavedKg": 0.25
+* "carbonSavingsKg": 0.54
+* "waterSavedLiters": 120
+* "bonusXp": 30
+* "xpEarned": 35
+* "dishName": "Finished Apple (Core Composted)" / "Finished Pear (Center Composted)" / "Finished Banana (Peel Composted)" / "Finished Fruit Verification"
+* "congratulationsMessage": "🍎 Finished Fruit 100% Verified! Zero edible food wasted. The apple center, pear center, or banana peel is 100% compostable!"
+* "sustainabilityFeedback": "Awesome job finishing your fruit! Leaving the apple center, pear center, or banana peel is natural and healthy—these are inedible compostable fibers, completely diverted from landfill."
+
+=======================================================
+STRICT RULE 3: INEDIBLE REMNANTS & TRACE LEFTOVERS POLICY (BONES, RICE GRAINS, NOODLE BITS, FOOD SPECKS)
+=======================================================
+CRITICAL ZERO-PENALTY POLICY FOR FINISHED PLATES WITH BONES, RICE GRAINS, NOODLE BITS, OR FOOD SPECKS:
+WHEN THE USER FINISHES THEIR MEAL, DETECT BONES, LITTLE BITS OF GRAINS OF RICE, BITS OF NOODLES, OR BITS OF FOOD LEFT ON THEIR PLATE AS A FINISHED PLATE!
+- BONES: Chicken bones (wings, drumsticks), fish bones, meat/rib bones, seafood shells (prawn shells, clam shells), or cartilage leftover after consuming meat. Inedible bones and shells are NOT food waste! A plate with bones leftover from dining is a 100% FINISHED PLATE!
+- LITTLE BITS OF GRAINS OF RICE: Stray grains of rice sticking to the surface, rim, or crevices of a plate or rice bowl are natural dining remnants. This is a 100% FINISHED PLATE!
+- BITS OF NOODLES: Short noodle segments, broken noodle bits, or trace noodle strands remaining in the bottom of a noodle bowl or plate are natural dining remnants. This is a 100% FINISHED PLATE!
+- BITS OF FOOD: Small food specks, trace crumbs, sauce smears, herb/scallion garnishes, chili seeds, or minor food bits (< 35g) remaining on an eaten plate are natural dining remnants. This is a 100% FINISHED PLATE!
+
+IN ALL THESE FINISHED PLATE CASES (empty plate, bones, rice grains, noodle bits, or trace food bits):
+* "cleanPlateVerified": true
+* "isFood": true
+* "isFinishedFruit": false
+* "isFinishedPlateRemnants": true (or false if completely empty plate)
+* "remnantType": "bones" | "rice_grains" | "noodles" | "food_bits" | "empty_clean"
+* "isPenalty": false
+* "wasteGrams": 0  <-- MUST BE 0! Inedible bones, scattered grains of rice, noodle bits, and food specks are NOT penalizable food waste!
+* "remainingWasteGrams": 0
+* "foodSavedKg": 0.35
+* "carbonSavingsKg": 0.54
+* "waterSavedLiters": 350
+* "bonusXp": 30
+* "xpEarned": 35
+* "dishName": "Finished Plate (Bones Cleared)" / "Finished Plate (Rice Grains Diverted)" / "Finished Plate (Noodle Bits Diverted)" / "Finished Plate (Trace Bits Diverted)" / "Clean Plate Verification"
+* "congratulationsMessage": "🍽️ Finished Plate 100% Verified! Zero edible food wasted. Bones, stray rice grains, noodle bits, or trace food bits are natural dining remnants!"
+* "sustainabilityFeedback": "Terrific job finishing your meal! Bones, stray grains of rice, noodle bits, or minor food specks are natural dining remnants, not food waste. Full clean plate points and diversion bonus awarded!"
+
+- Clean Plate (Empty Plate): If dining plate, bowl, or container is completely empty and clean:
+  "cleanPlateVerified": true, "isFood": true, "isFinishedFruit": false, "isFinishedPlateRemnants": false, "remnantType": "empty_clean", "isPenalty": false, "wasteGrams": 0, "foodSavedKg": 0.35, "bonusXp": 30, "xpEarned": 35.
+
+- Unfinished Food Waste: ONLY if substantial, significant EDIBLE portions of food remain uneaten (e.g., half an uneaten sandwich, major leftover pile of rice > 35g, untouched noodle portion, large intact uneaten cutlet).
+  NEVER penalize for bones, stray grains of rice, noodle bits, minor food specks, or fruit cores/peels:
   "cleanPlateVerified": false, "isFood": true, "isPenalty": true, "wasteGrams": number, "bonusXp": -25, "xpEarned": -25.
 
 Respond STRICTLY with valid JSON matching:
@@ -646,6 +763,8 @@ Respond STRICTLY with valid JSON matching:
   "dishName": string,
   "isFood": boolean,
   "isFinishedFruit": boolean,
+  "isFinishedPlateRemnants": boolean,
+  "remnantType": "bones" | "rice_grains" | "noodles" | "food_bits" | "fruit_core_peel" | "empty_clean" | "none",
   "isPenalty": boolean,
   "cleanPlateVerified": boolean,
   "cleanPlateConfidence": number,
@@ -726,6 +845,100 @@ Respond STRICTLY with valid JSON matching:
       const text = response.text.trim();
       const sanitized = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
       const parsed = JSON.parse(sanitized);
+
+      // GUARANTEE ZERO PENALTIES FOR FINISHED APPLES, PEARS, BANANAS & INEDIBLE PEELS/CORES
+      const checkText = `${parsed.dishName || ''} ${parsed.sustainabilityFeedback || ''} ${parsed.nonFoodReason || ''} ${parsed.congratulationsMessage || ''} ${JSON.stringify(parsed.foodItems || [])} ${foodItem || ''} ${foodCategory || ''}`.toLowerCase();
+      
+      const isFruitCoreOrPeel =
+        parsed.isFinishedFruit === true ||
+        /apple.*(core|center)|pear.*(core|center)|banana.*(peel|skin)|(core|center|peel|rind|skin).*(apple|pear|banana|fruit|citrus|orange|watermelon|melon)/i.test(checkText) ||
+        /\b(apple\s*core|pear\s*core|banana\s*peel|apple\s*center|pear\s*center|banana\s*skin|fruit\s*peel|citrus\s*peel|watermelon\s*rind)\b/i.test(checkText);
+
+      if (isFruitCoreOrPeel) {
+        parsed.isFood = true;
+        parsed.isFinishedFruit = true;
+        parsed.isFinishedPlateRemnants = false;
+        parsed.remnantType = 'fruit_core_peel';
+        parsed.isPenalty = false;
+        delete parsed.nonFoodReason;
+
+        if (mealStage === 'after') {
+          parsed.cleanPlateVerified = true;
+          parsed.wasteGrams = 0;
+          parsed.remainingWasteGrams = 0;
+          parsed.cleanPlateConfidence = parsed.cleanPlateConfidence || 99;
+          parsed.cleanlinessConfidence = parsed.cleanlinessConfidence || 99;
+          parsed.foodSavedKg = parsed.foodSavedKg || 0.25;
+          parsed.carbonSavingsKg = Math.max(parsed.carbonSavingsKg || 0, 0.54);
+          parsed.waterSavedLiters = Math.max(parsed.waterSavedLiters || 0, 120);
+          parsed.bonusXp = 30;
+          parsed.xpEarned = 35;
+          parsed.dishName = parsed.dishName && !/penalty|waste|non-dining/i.test(parsed.dishName)
+            ? parsed.dishName
+            : 'Finished Fruit Verification';
+          parsed.congratulationsMessage = parsed.congratulationsMessage || '🍎 Finished Fruit 100% Verified! Zero edible food wasted. The apple center, pear center, or banana peel is 100% compostable!';
+          parsed.sustainabilityFeedback = parsed.sustainabilityFeedback || 'Awesome job finishing your fruit! Leaving the apple center, pear center, or banana peel is natural and healthy—these are compostable fibers, completely diverted from landfill.';
+        } else {
+          parsed.portionEstimatedGrams = parsed.portionEstimatedGrams || 0;
+          parsed.xpEarned = Math.max(parsed.xpEarned || 0, 35);
+          parsed.sustainabilityFeedback = parsed.sustainabilityFeedback || '🍎 Finished fruit detected! 100% of the edible fruit was consumed. Natural cores, centers, and peels are organic compost, not edible waste.';
+        }
+      }
+
+      // GUARANTEE ZERO PENALTIES FOR FINISHED PLATES WITH BONES, RICE GRAINS, NOODLE BITS, OR FOOD SPECKS
+      const isBoneOrTraceRemnant =
+        !isFruitCoreOrPeel && (
+          parsed.isFinishedPlateRemnants === true ||
+          /\b(bone|bones|chicken\s*bone|fish\s*bone|meat\s*bone|rib\s*bone|wings?\s*bone|drumstick\s*bone|shell|shells|prawn\s*shell|shrimp\s*tail|cartilage)\b/i.test(checkText) ||
+          /\b(grain|grains|rice\s*grain|rice\s*grains|grains?\s*of\s*rice|stray\s*rice|rice\s*residue|rice\s*bits?)\b/i.test(checkText) ||
+          /\b(noodle\s*bit|noodle\s*bits|bits?\s*of\s*noodles?|noodle\s*strand|noodle\s*strands|pasta\s*bit|pasta\s*bits|noodle\s*fragment|noodle\s*fragments)\b/i.test(checkText) ||
+          /\b(bits?\s*of\s*food|food\s*bit|food\s*bits|trace\s*food|food\s*speck|food\s*specks|crumbs?|sauce\s*smear|garnish|herb\s*speck)\b/i.test(checkText) ||
+          (/finished\s*(plate|meal|dish)|empty\s*(plate|bowl)/i.test(checkText) && (parsed.wasteGrams || 0) < 40)
+        );
+
+      if (isBoneOrTraceRemnant && mealStage === 'after') {
+        parsed.isFood = true;
+        parsed.cleanPlateVerified = true;
+        parsed.isFinishedPlateRemnants = true;
+        parsed.isPenalty = false;
+        parsed.wasteGrams = 0;
+        parsed.remainingWasteGrams = 0;
+        delete parsed.nonFoodReason;
+
+        // Classify remnant type
+        if (/\b(bone|bones|cartilage|shell|shells)\b/i.test(checkText)) {
+          parsed.remnantType = 'bones';
+        } else if (/\b(rice|grain|grains)\b/i.test(checkText)) {
+          parsed.remnantType = 'rice_grains';
+        } else if (/\b(noodle|noodles|pasta|strand|strands)\b/i.test(checkText)) {
+          parsed.remnantType = 'noodles';
+        } else {
+          parsed.remnantType = 'food_bits';
+        }
+
+        parsed.cleanPlateConfidence = parsed.cleanPlateConfidence || 99;
+        parsed.cleanlinessConfidence = parsed.cleanlinessConfidence || 99;
+        parsed.foodSavedKg = parsed.foodSavedKg || 0.35;
+        parsed.carbonSavingsKg = Math.max(parsed.carbonSavingsKg || 0, 0.54);
+        parsed.waterSavedLiters = Math.max(parsed.waterSavedLiters || 0, 350);
+        parsed.bonusXp = 30;
+        parsed.xpEarned = 35;
+
+        if (!parsed.dishName || /penalty|waste|unfinished|non-dining/i.test(parsed.dishName)) {
+          if (parsed.remnantType === 'bones') {
+            parsed.dishName = 'Finished Plate (Bones Cleared)';
+          } else if (parsed.remnantType === 'rice_grains') {
+            parsed.dishName = 'Finished Plate (Rice Grains Diverted)';
+          } else if (parsed.remnantType === 'noodles') {
+            parsed.dishName = 'Finished Plate (Noodle Bits Diverted)';
+          } else {
+            parsed.dishName = 'Finished Plate (Trace Bits Diverted)';
+          }
+        }
+
+        parsed.congratulationsMessage = parsed.congratulationsMessage || '🍽️ Finished Plate 100% Verified! Zero edible food wasted. Bones, stray rice grains, noodle bits, or trace food bits are natural dining remnants!';
+        parsed.sustainabilityFeedback = parsed.sustainabilityFeedback || 'Terrific job finishing your meal! Bones, stray grains of rice, noodle bits, or minor food specks are natural dining remnants, not food waste. Full clean plate points and diversion bonus awarded!';
+      }
 
       if (parsed.isFood !== false && !parsed.isPenalty) {
         if (parsed.nutrition) {

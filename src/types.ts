@@ -103,6 +103,10 @@ export interface MealRecord {
   cleanPlatePercentage?: number;
   cleanPlate?: boolean;
   isFood?: boolean;
+  isSplitFruit?: boolean;
+  isFinishedFruit?: boolean;
+  isFinishedPlateRemnants?: boolean;
+  remnantType?: string;
   isPenalty?: boolean;
   penaltyReason?: string;
   foodItems?: string[];
@@ -122,6 +126,10 @@ export interface ScanAnalysisResult {
   foodCategory?: string;
   foodItem?: string;
   isFood?: boolean;
+  isSplitFruit?: boolean;
+  isFinishedFruit?: boolean;
+  isFinishedPlateRemnants?: boolean;
+  remnantType?: string;
   nonFoodReason?: string;
   confidenceScore: number;
   portionEstimatedGrams: number;

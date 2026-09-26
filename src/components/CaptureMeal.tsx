@@ -466,14 +466,16 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
     if (type === 'before') {
       const isNotFood = preset.isFood === false;
       const isFruitRemnant = (preset as any).isFinishedFruit || preset.tags?.includes('Finished Fruit');
+      const isSplitFruit = !isNotFood && (!!(preset as any).isSplitFruit || preset.tags?.includes('Split Fruit'));
       const isSmall = portion === 'Small';
       const isLarge = portion === 'Large';
       const dishTitle = isNotFood ? t('non_food_object_detected', 'Non-Food Object Detected') : (selectedFood || preset.name || t('sustainable_campus_meal', 'Sustainable Campus Meal'));
       const parsed = {
         dishName: dishTitle,
-        foodCategory: isFruitRemnant ? t('fresh_fruits', 'Fresh Fruits') : (selectedCategory?.name || 'East Asian Cuisine'),
+        foodCategory: (isFruitRemnant || isSplitFruit) ? t('fresh_fruits', 'Fresh Fruits') : (selectedCategory?.name || 'East Asian Cuisine'),
         foodItem: selectedFood || dishTitle,
         isFood: !isNotFood,
+        isSplitFruit: isSplitFruit,
         isFinishedFruit: isFruitRemnant,
         nonFoodReason: isNotFood ? (preset.nonFoodReason || t('stationery_non_food_reason', 'Stationery / non-food detected instead of dining meal.')) : undefined,
         isPenalty: isNotFood,
@@ -507,29 +509,43 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       setEditedFoodItems([...parsed.foodItems]);
     } else {
       const isFruitRemnant = (preset as any).isFinishedFruit || preset.tags?.includes('Finished Fruit');
+      const isFinishedRemnants = (preset as any).isFinishedPlateRemnants || preset.tags?.includes('Finished Plate');
+      const remnantType = (preset as any).remnantType || (isFruitRemnant ? 'fruit_core_peel' : isFinishedRemnants ? 'bones' : 'empty_clean');
       const isClean = preset.cleanPlateVerified !== false;
       const wasteGrams = isClean ? 0 : (preset.wasteGrams || 160);
       const parsedAfter = {
-        dishName: isFruitRemnant ? t('finished_fruit_verification', 'Finished Fruit Verification') : isClean ? t('clean_plate_verification', 'Clean Plate Verification') : t('unfinished_plate_waste_detected', 'Unfinished Plate Waste Detected'),
+        dishName: isFruitRemnant
+          ? t('finished_fruit_verification', 'Finished Fruit Verification')
+          : isFinishedRemnants
+          ? (preset.name || t('finished_plate_verification', 'Finished Plate Verification'))
+          : isClean
+          ? t('clean_plate_verification', 'Clean Plate Verification')
+          : t('unfinished_plate_waste_detected', 'Unfinished Plate Waste Detected'),
         cleanPlateVerified: isClean,
         isFinishedFruit: isFruitRemnant,
+        isFinishedPlateRemnants: isFinishedRemnants,
+        remnantType: remnantType,
         cleanPlateConfidence: 99,
         confidenceScore: 99,
         wasteGrams: wasteGrams,
         remainingWasteGrams: wasteGrams,
         foodSavedKg: isClean ? (isFruitRemnant ? 0.25 : 0.35) : 0,
         carbonSavingsKg: isClean ? 0.54 : -0.35,
-        waterSavedLiters: isClean ? (isFruitRemnant ? 120 : 590) : 0,
+        waterSavedLiters: isClean ? (isFruitRemnant ? 120 : 350) : 0,
         bonusXp: isClean ? 30 : -25,
         xpEarned: isClean ? 35 : -25,
         isPenalty: !isClean,
         congratulationsMessage: isFruitRemnant
-          ? t('finished_fruit_congrats', '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Natural peels & cores composted!')
+          ? t('finished_fruit_congrats', '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. The apple center, pear center, or banana peel is natural compost, not waste!')
+          : isFinishedRemnants
+          ? t('finished_plate_congrats', '🍽️ Finished Plate 100% Verified! Zero edible food wasted. Bones, stray rice grains, noodle bits, or trace food specks are natural dining remnants!')
           : isClean
           ? t('clean_plate_congrats', 'Clean plate 100% verified! Zero scraps sent to landfill.')
           : t('unfinished_food_detected_title', '⚠️ Unfinished Food Detected! Leftovers sent to landfill produce methane.'),
         sustainabilityFeedback: isFruitRemnant
-          ? t('finished_fruit_compost_desc', 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.')
+          ? t('finished_fruit_compost_desc', 'Superb job finishing your fruit! The apple core/center, pear center, or banana peel is natural compostable organic fiber, diverted completely from landfill waste. Zero penalty applied!')
+          : isFinishedRemnants
+          ? t('finished_plate_remnants_desc', 'Outstanding job finishing your meal! Bones, stray grains of rice, noodle bits, or minor food specks are natural dining remnants, not food waste. Full clean plate bonus applied!')
           : isClean
           ? t('clean_plate_prevented_desc', 'Outstanding! You prevented food waste and claimed maximum clean plate streak multiplier.')
           : t('unfinished_scraps_desc', 'Leftover food scraps waste valuable resources and emit landfill greenhouse gases. A -25 XP penalty has been applied.'),
@@ -593,15 +609,30 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
       }
       
       if (type === 'before') {
-        const isNotFood = result.isFood === false || result.isPenalty === true;
-        const isFruitRemnant = !!result.isFinishedFruit;
+        const lowerRes = `${result.dishName || ''} ${result.sustainabilityFeedback || ''} ${result.nonFoodReason || ''} ${result.foodItem || ''} ${JSON.stringify(result.foodItems || [])}`.toLowerCase();
+        
+        // Zero-penalty recognition for finished apples, pears, bananas, cores, centers, and peels
+        const isFruitCoreOrPeel =
+          result.isFinishedFruit === true ||
+          /apple.*(core|center)|pear.*(core|center)|banana.*(peel|skin)|(core|center|peel|rind|skin).*(apple|pear|banana|fruit|citrus|orange|watermelon|melon)/i.test(lowerRes) ||
+          /\b(apple\s*core|pear\s*core|banana\s*peel|apple\s*center|pear\s*center|banana\s*skin|fruit\s*peel|citrus\s*peel|watermelon\s*rind)\b/i.test(lowerRes);
+
+        const isNotFood = !isFruitCoreOrPeel && (result.isFood === false || result.isPenalty === true);
+        const isFruitRemnant = isFruitCoreOrPeel || !!result.isFinishedFruit;
+        const isSplitFruit = !isNotFood && !isFruitRemnant && (
+          !!result.isSplitFruit ||
+          (result.dishName && /split|halved|sliced|cut open|peeled|wedge|segment/i.test(result.dishName) &&
+           /fruit|apple|orange|citrus|banana|melon|watermelon|avocado|mango|dragonfruit|papaya|pomegranate|kiwi|grapefruit|peach|plum|pear|berry/i.test(result.dishName)) ||
+          (result.foodCategory && /fruit/i.test(result.foodCategory) && result.dishName && /split|halved|sliced|cut open|peeled|wedge/i.test(result.dishName))
+        );
         const parsed = {
           dishName: isNotFood
             ? (result.dishName || t('non_food_object_detected', 'Non-Food Object Detected'))
             : (result.dishName || t('sustainable_campus_meal', 'Sustainable Campus Meal')),
-          foodCategory: result.foodCategory || selectedCategory?.name || (isFruitRemnant ? t('fresh_fruits', 'Fresh Fruits') : 'Campus Meal'),
+          foodCategory: (isFruitRemnant || isSplitFruit) ? t('fresh_fruits', 'Fresh Fruits') : (result.foodCategory || selectedCategory?.name || 'Campus Meal'),
           foodItem: isNotFood ? 'Non-Food' : (result.dishName || result.foodItem || t('campus_meal', 'Campus Meal')),
           isFood: !isNotFood,
+          isSplitFruit: isSplitFruit,
           isFinishedFruit: isFruitRemnant,
           nonFoodReason: isNotFood ? (result.nonFoodReason || t('non_edible_reason', 'Non-edible item detected instead of dining meal.')) : undefined,
           isPenalty: isNotFood,
@@ -623,7 +654,9 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
           sustainabilityFeedback: isNotFood
             ? (result.sustainabilityFeedback || t('non_food_feedback', '⚠️ Non-food item detected. EcoEat requires real dining scans. A -20 XP penalty applies.'))
             : isFruitRemnant
-            ? (result.sustainabilityFeedback || t('finished_fruit_feedback', '🍎 Finished fruit detected! You enjoyed 100% of the edible fruit. Natural peels and cores are organic compost, not edible waste.'))
+            ? (result.sustainabilityFeedback || t('finished_fruit_feedback', '🍎 Finished fruit detected! You enjoyed 100% of the edible fruit. Natural apple/pear centers and banana peels are organic compost, not edible waste.'))
+            : isSplitFruit
+            ? (result.sustainabilityFeedback || t('split_fruit_feedback', '🍎 Fresh split fruit verified! Consuming raw seasonal fruit provides direct hydration and vitamins while generating zero cooking carbon emissions.'))
             : result.sustainabilityFeedback || t('plant_forward_potential_desc', 'Well-balanced plant-forward meal with zero food waste potential!'),
           xpEarned: isNotFood ? -20 : result.xpEarned || (portion === 'Large' ? 40 : 35),
         };
@@ -631,30 +664,79 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
         setEditedDishName(parsed.dishName);
         setEditedFoodItems([...(parsed.foodItems || [])]);
       } else {
-        const isFruitRemnant = !!result.isFinishedFruit;
-        const isClean = result.cleanPlateVerified !== false && !result.isPenalty;
+        const lowerAfter = `${result.dishName || ''} ${result.sustainabilityFeedback || ''} ${result.congratulationsMessage || ''} ${result.nonFoodReason || ''}`.toLowerCase();
+        const initialMealFruit = /apple|pear|banana|fruit|citrus|melon|orange/i.test(analysisResult?.dishName || '') || analysisResult?.isFinishedFruit;
+        
+        // Zero-penalty policy: apple's center, pear's center, or banana peel MUST NEVER deduct points
+        const isFruitCoreOrPeel =
+          result.isFinishedFruit === true ||
+          /apple.*(core|center)|pear.*(core|center)|banana.*(peel|skin)|(core|center|peel|rind|skin).*(apple|pear|banana|fruit|citrus|orange|watermelon|melon)/i.test(lowerAfter) ||
+          /\b(apple\s*core|pear\s*core|banana\s*peel|apple\s*center|pear\s*center|banana\s*skin|fruit\s*peel|citrus\s*peel|watermelon\s*rind)\b/i.test(lowerAfter) ||
+          (initialMealFruit && (/core|center|peel|rind|skin|remnant|finished/i.test(lowerAfter) || result.cleanPlateVerified));
+
+        const isFruitRemnant = isFruitCoreOrPeel || !!result.isFinishedFruit;
+
+        // Zero-penalty policy: bones, little bits of grains of rice, bits of noodles, or bits of food left on plate
+        const isBoneOrTraceRemnant =
+          !isFruitRemnant && (
+            result.isFinishedPlateRemnants === true ||
+            /\b(bone|bones|chicken\s*bone|fish\s*bone|meat\s*bone|rib\s*bone|wings?\s*bone|drumstick\s*bone|shell|shells|prawn\s*shell|shrimp\s*tail|cartilage)\b/i.test(lowerAfter) ||
+            /\b(grain|grains|rice\s*grain|rice\s*grains|grains?\s*of\s*rice|stray\s*rice|rice\s*residue|rice\s*bits?)\b/i.test(lowerAfter) ||
+            /\b(noodle\s*bit|noodle\s*bits|bits?\s*of\s*noodles?|noodle\s*strand|noodle\s*strands|pasta\s*bit|pasta\s*bits|noodle\s*fragment|noodle\s*fragments)\b/i.test(lowerAfter) ||
+            /\b(bits?\s*of\s*food|food\s*bit|food\s*bits|trace\s*food|food\s*speck|food\s*specks|crumbs?|sauce\s*smear|garnish|herb\s*speck)\b/i.test(lowerAfter) ||
+            (/finished\s*(plate|meal|dish)|empty\s*(plate|bowl)/i.test(lowerAfter) && (result.wasteGrams || 0) < 40)
+          );
+
+        let detectedRemnantType: string = result.remnantType || 'empty_clean';
+        if (isFruitRemnant) {
+          detectedRemnantType = 'fruit_core_peel';
+        } else if (isBoneOrTraceRemnant) {
+          if (/\b(bone|bones|cartilage|shell|shells)\b/i.test(lowerAfter)) {
+            detectedRemnantType = 'bones';
+          } else if (/\b(rice|grain|grains)\b/i.test(lowerAfter)) {
+            detectedRemnantType = 'rice_grains';
+          } else if (/\b(noodle|noodles|pasta|strand|strands)\b/i.test(lowerAfter)) {
+            detectedRemnantType = 'noodles';
+          } else {
+            detectedRemnantType = 'food_bits';
+          }
+        }
+
+        const isClean = isFruitRemnant || isBoneOrTraceRemnant ? true : (result.cleanPlateVerified !== false && !result.isPenalty);
         const wasteGrams = isClean ? 0 : (result.wasteGrams || 160);
         const parsedAfter = {
-          dishName: isFruitRemnant ? t('finished_fruit_verification', 'Finished Fruit Verification') : isClean ? t('clean_plate_verification', 'Clean Plate Verification') : t('unfinished_plate_waste_detected', 'Unfinished Plate Waste Detected'),
+          dishName: isFruitRemnant
+            ? (result.dishName && !/penalty|waste|non-dining/i.test(result.dishName) ? result.dishName : t('finished_fruit_verification', 'Finished Fruit Verification'))
+            : isBoneOrTraceRemnant
+            ? (result.dishName && !/penalty|waste|non-dining/i.test(result.dishName) ? result.dishName : t('finished_plate_verification', 'Finished Plate Verification'))
+            : isClean
+            ? t('clean_plate_verification', 'Clean Plate Verification')
+            : t('unfinished_plate_waste_detected', 'Unfinished Plate Waste Detected'),
           cleanPlateVerified: isClean,
           isFinishedFruit: isFruitRemnant,
+          isFinishedPlateRemnants: isBoneOrTraceRemnant,
+          remnantType: detectedRemnantType,
           cleanPlateConfidence: result.cleanPlateConfidence || result.cleanlinessConfidence || 99,
           confidenceScore: result.confidenceScore || 99,
           wasteGrams: wasteGrams,
           remainingWasteGrams: wasteGrams,
           foodSavedKg: isClean ? (result.foodSavedKg || (isFruitRemnant ? 0.25 : 0.35)) : 0,
           carbonSavingsKg: isClean ? (result.carbonSavingsKg || 0.54) : -0.35,
-          waterSavedLiters: isClean ? (result.waterSavedLiters || (isFruitRemnant ? 120 : 590)) : 0,
+          waterSavedLiters: isClean ? (result.waterSavedLiters || (isFruitRemnant ? 120 : 350)) : 0,
           bonusXp: isClean ? (result.bonusXp || 30) : -25,
           xpEarned: isClean ? (result.xpEarned || 35) : -25,
           isPenalty: !isClean,
           congratulationsMessage: isFruitRemnant
-            ? (result.congratulationsMessage || t('finished_fruit_congrats', '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. Natural peels & cores composted!'))
+            ? (result.congratulationsMessage || t('finished_fruit_congrats', '🍎 Finished Fruit 100% Verified! Zero edible fruit wasted. The apple center, pear center, or banana peel is natural compost, not waste!'))
+            : isBoneOrTraceRemnant
+            ? (result.congratulationsMessage || t('finished_plate_congrats', '🍽️ Finished Plate 100% Verified! Zero edible food wasted. Bones, stray rice grains, noodle bits, or trace food specks are natural dining remnants!'))
             : isClean
             ? (result.congratulationsMessage || t('clean_plate_congrats', 'Clean plate 100% verified! Zero scraps sent to landfill.'))
             : t('unfinished_food_detected_title', '⚠️ Unfinished Food Detected! Leftovers sent to landfill produce methane.'),
           sustainabilityFeedback: isFruitRemnant
-            ? (result.sustainabilityFeedback || t('finished_fruit_compost_desc', 'Superb job finishing your fruit! Inedible peels, rinds, and cores are natural compostable fibers, diverted completely from landfill waste.'))
+            ? (result.sustainabilityFeedback || t('finished_fruit_compost_desc', 'Superb job finishing your fruit! The apple core/center, pear center, or banana peel is natural compostable organic fiber, diverted completely from landfill waste. Zero penalty applied!'))
+            : isBoneOrTraceRemnant
+            ? (result.sustainabilityFeedback || t('finished_plate_remnants_desc', 'Outstanding job finishing your meal! Bones, stray grains of rice, noodle bits, or minor food specks are natural dining remnants, not food waste. Full clean plate bonus applied!'))
             : isClean
             ? (result.sustainabilityFeedback || t('clean_plate_prevented_desc', 'Outstanding! You prevented food waste and claimed maximum clean plate streak multiplier.'))
             : t('unfinished_scraps_desc', 'Leftover food scraps waste valuable resources and emit landfill greenhouse gases. A -25 XP penalty has been applied.'),
@@ -812,6 +894,10 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
             : t('leftover_methane_warning', 'Leftover food scraps generate landfill methane. Clean your plate or choose smaller portions.')),
       studentNotes: studentNotes || undefined,
       cleanPlate: isClean,
+      isSplitFruit: analysisResult?.isSplitFruit,
+      isFinishedFruit: analysisResult?.isFinishedFruit || afterAnalysisResult?.isFinishedFruit,
+      isFinishedPlateRemnants: afterAnalysisResult?.isFinishedPlateRemnants,
+      remnantType: afterAnalysisResult?.remnantType,
       wasteGrams: isClean ? 0 : (afterAnalysisResult?.wasteGrams || 160),
       cleanPlatePercentage: isClean ? (afterAnalysisResult?.cleanPlateConfidence || 99) : 40,
       isPenalty: !isClean,
@@ -1105,41 +1191,6 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
             </div>
           </div>
 
-          {/* Planned Portion Selector */}
-          <div className="bg-theme-card border border-theme-card rounded-3xl p-5 sm:p-6 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-theme-muted">
-                  {t('planned_portion_size', 'Planned Portion Size')}
-                </span>
-                <p className="text-sm font-extrabold text-theme-main">
-                  {portion === 'Small' ? t('portion_small_desc', 'Small / Light Plate (~240g)') : portion === 'Large' ? t('portion_large_desc', 'Large / Hearty Plate (~480g)') : t('portion_regular_desc', 'Regular Campus Plate (~350g)')}
-                </p>
-              </div>
-              <span className="text-xs font-black text-theme-primary px-2.5 py-1 rounded-full bg-theme-primary-bg border border-theme-primary-border">
-                {portion === 'Small' ? '+35 XP' : portion === 'Large' ? '+40 XP' : '+35 XP'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {(['Small', 'Regular', 'Large'] as PortionSize[]).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  id={`portion-btn-${p.toLowerCase()}`}
-                  onClick={() => setPortion(p)}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
-                    portion === p
-                      ? 'border-theme-primary bg-theme-primary-bg text-theme-primary font-black shadow-sm'
-                      : 'border-theme-card bg-theme-card-subtle text-theme-muted hover:text-theme-main hover:bg-theme-card'
-                  }`}
-                >
-                  {p === 'Small' ? t('portion_small', 'Small') : p === 'Large' ? t('portion_large', 'Large') : t('portion_regular', 'Regular')}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Summary & Continue CTA */}
           <div className="bg-theme-card border-2 border-theme-primary/60 rounded-3xl p-5 sm:p-6 shadow-md space-y-4">
             <div className="flex items-center justify-between">
@@ -1154,7 +1205,7 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-theme-muted">
-                  {t(selectedCategory?.name, selectedCategory?.name)} • {portion === 'Small' ? t('portion_small', 'Small') : portion === 'Large' ? t('portion_large', 'Large') : t('portion_regular', 'Regular')} {t('portion', 'Portion')}
+                  {t(selectedCategory?.name, selectedCategory?.name)}
                 </p>
               </div>
             </div>
@@ -1553,6 +1604,11 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                       <span>🍎</span>
                       <span>{t('finished_fruit_detected', 'Finished Fruit Detected')}</span>
                     </span>
+                  ) : analysisResult.isSplitFruit ? (
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span>🔪 🍎</span>
+                      <span>{t('split_fruit_detected', 'Split Fruit Detected')}</span>
+                    </span>
                   ) : (
                     <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                       {analysisResult.confidenceScore || 96}% {t('match', 'Match')}
@@ -1946,26 +2002,48 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
             </div>
           </div>
         ) : (
-          /* Clean Plate / Finished Fruit 100% Zero Waste Success Card */
+          /* Clean Plate / Finished Fruit / Finished Plate Remnants 100% Zero Waste Success Card */
           <div className="bg-theme-card border-2 border-theme-primary rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-theme-primary-bg border border-theme-primary-border flex items-center justify-center text-theme-primary text-2xl">
-                {afterAnalysisResult?.isFinishedFruit ? '🍎' : <CheckCircle className="w-7 h-7 fill-current/30" />}
+                {afterAnalysisResult?.isFinishedFruit ? (
+                  '🍎'
+                ) : afterAnalysisResult?.isFinishedPlateRemnants ? (
+                  afterAnalysisResult?.remnantType === 'bones' ? '🦴' :
+                  afterAnalysisResult?.remnantType === 'rice_grains' ? '🍚' :
+                  afterAnalysisResult?.remnantType === 'noodles' ? '🍜' : '🍽️'
+                ) : (
+                  <CheckCircle className="w-7 h-7 fill-current/30" />
+                )}
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   <span className="text-[11px] uppercase tracking-wider font-extrabold text-theme-primary">
                     {afterAnalysisResult?.isFinishedFruit
                       ? '🍎 ' + t('finished_fruit_verified', 'Finished Fruit 100% Verified')
+                      : afterAnalysisResult?.isFinishedPlateRemnants
+                      ? '🍽️ ' + t('finished_plate_verified', 'Finished Plate 100% Verified')
                       : t('clean_plate_verified', 'Clean Plate 100% Verified')}
                   </span>
                   <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                    {afterAnalysisResult?.isFinishedFruit ? t('zero_edible_waste', '0g Edible Waste') : t('zero_scraps', '0g Scraps')}
+                    {afterAnalysisResult?.isFinishedFruit
+                      ? t('zero_edible_waste', '0g Edible Waste')
+                      : afterAnalysisResult?.isFinishedPlateRemnants
+                      ? (afterAnalysisResult?.remnantType === 'bones'
+                          ? t('remnants_bones_badge', '🦴 Inedible Bones (0g Waste)')
+                          : afterAnalysisResult?.remnantType === 'rice_grains'
+                          ? t('remnants_rice_badge', '🍚 Stray Rice Grains (0g Waste)')
+                          : afterAnalysisResult?.remnantType === 'noodles'
+                          ? t('remnants_noodles_badge', '🍜 Noodle Bits (0g Waste)')
+                          : t('remnants_food_bits_badge', '✨ Trace Food Bits (0g Waste)'))
+                      : t('zero_scraps', '0g Scraps')}
                   </span>
                 </div>
                 <h3 className="text-xl font-extrabold text-theme-main">
                   {afterAnalysisResult?.isFinishedFruit
                     ? t('finished_fruit_title', 'All Fruit Eaten • Peels Composted')
+                    : afterAnalysisResult?.isFinishedPlateRemnants
+                    ? t('finished_plate_title', 'Meal Finished • Natural Remnants Diverted')
                     : t('zero_waste_achieved', 'Zero Waste Achieved')}
                 </h3>
               </div>
@@ -1991,16 +2069,30 @@ export const CaptureMeal: React.FC<CaptureMealProps> = ({
                 <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-theme-primary">
                   <img
                     src={capturedAfterImage}
-                    alt={t('clean_plate_after', 'Clean plate or finished fruit after dining')}
+                    alt={t('clean_plate_after', 'Clean plate or finished meal after dining')}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
                   <span className="absolute bottom-1 left-1 bg-theme-primary text-black text-[9px] font-extrabold px-1.5 py-0.5 rounded">
-                    {afterAnalysisResult?.isFinishedFruit ? `🍎 ${t('finished_fruit_0g', 'Finished Fruit (0g)')}` : t('clean_plate_0g', 'Clean Plate (0g)')}
+                    {afterAnalysisResult?.isFinishedFruit
+                      ? `🍎 ${t('finished_fruit_0g', 'Finished Fruit (0g)')}`
+                      : afterAnalysisResult?.isFinishedPlateRemnants
+                      ? `🍽️ ${t('finished_plate_0g', 'Finished Plate (0g)')}`
+                      : t('clean_plate_0g', 'Clean Plate (0g)')}
                   </span>
                 </div>
                 <p className="text-[10px] text-theme-primary font-bold">
-                  {afterAnalysisResult?.isFinishedFruit ? t('fruit_eaten_diverted', '100% Fruit Eaten (Peels Composted)') : t('waste_diverted_100', '100% Waste Diverted')}
+                  {afterAnalysisResult?.isFinishedFruit
+                    ? t('fruit_eaten_diverted', '100% Fruit Eaten (Peels Composted)')
+                    : afterAnalysisResult?.isFinishedPlateRemnants
+                    ? (afterAnalysisResult?.remnantType === 'bones'
+                        ? t('bones_diverted_desc', '100% Meat Eaten (Bones Diverted)')
+                        : afterAnalysisResult?.remnantType === 'rice_grains'
+                        ? t('rice_diverted_desc', '100% Rice Finished (0g Waste)')
+                        : afterAnalysisResult?.remnantType === 'noodles'
+                        ? t('noodles_diverted_desc', '100% Noodles Finished (0g Waste)')
+                        : t('trace_diverted_desc', '100% Meal Finished (Trace Scraps Diverted)'))
+                    : t('waste_diverted_100', '100% Waste Diverted')}
                 </p>
               </div>
             </div>

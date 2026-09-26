@@ -633,7 +633,11 @@ export const MealDetailsModal: React.FC<MealDetailsModalProps> = ({ isOpen, onCl
                 referrerPolicy="no-referrer"
               />
               <span className="absolute bottom-2 left-2 bg-theme-primary text-black text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-                {t("clean_plate_0g", "Clean Plate (0g)")}
+                {meal.isFinishedFruit
+                  ? `🍎 ${t("finished_fruit_0g", "Finished Fruit (0g)")}`
+                  : meal.isFinishedPlateRemnants
+                  ? `🍽️ ${t("finished_plate_0g", "Finished Plate (0g)")}`
+                  : t("clean_plate_0g", "Clean Plate (0g)")}
               </span>
             </div>
           )}
