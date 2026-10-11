@@ -26,8 +26,13 @@ import {
   Tag,
   Grid,
   Compass,
+  ArrowRightLeft,
+  MapPin,
+  Send,
+  Radio,
+  MessageSquare,
 } from 'lucide-react';
-import { UserProfile, StickerItem, StickerCategory, StickerRarity } from '../types';
+import { UserProfile, StickerItem, StickerCategory, StickerRarity, LeaderboardUser, StickerTradeItem } from '../types';
 import {
   allStickersCatalog,
   getStickerById,
@@ -42,14 +47,22 @@ import {
 } from '../data/stickersData';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import {
+  subscribeToUserTrades,
+  subscribeToAllOpenTrades,
+  respondToStickerTrade,
+} from '../lib/campusSyncService';
+import { StickerTradeModal } from './StickerTradeModal';
 
 interface StickerShopProps {
   user: UserProfile;
   onBuySticker: (sticker: StickerItem) => void;
   onEquipSticker: (stickerId: string | null) => void;
   onNavigateToCapture: () => void;
+  allUsers?: LeaderboardUser[];
+  onOpenCampusLocationRadar?: () => void;
+  onUserStickersChanged?: (updatedStickers: string[]) => void;
 }
-
 type SortOption = 'default' | 'price_asc' | 'price_desc' | 'rarity' | 'name';
 type OwnershipOption = 'all' | 'unowned' | 'owned';
 
@@ -58,6 +71,9 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   onBuySticker,
   onEquipSticker,
   onNavigateToCapture,
+  allUsers = [],
+  onOpenCampusLocationRadar,
+  onUserStickersChanged,
 }) => {
   const { t } = useLanguage();
   const { darkMode } = useTheme();
@@ -69,12 +85,20 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   }, [user.purchasedStickers, user.showcaseStickerId]);
 
   // Navigation & Filtering State
-  const [activeTab, setActiveTab] = useState<'shop' | 'album'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'album' | 'trade'>('shop');
   const [selectedCategory, setSelectedCategory] = useState<StickerCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [rarityFilter, setRarityFilter] = useState<'all' | StickerRarity>('all');
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipOption>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
+
+  // Trade Hub State
+  const [incomingTrades, setIncomingTrades] = useState<StickerTradeItem[]>([]);
+  const [outgoingTrades, setOutgoingTrades] = useState<StickerTradeItem[]>([]);
+  const [allOpenTrades, setAllOpenTrades] = useState<StickerTradeItem[]>([]);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [selectedPartnerForTrade, setSelectedPartnerForTrade] = useState<LeaderboardUser | null>(null);
+  const [respondingTradeId, setRespondingTradeId] = useState<string | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +110,64 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   const [selectedStickerForModal, setSelectedStickerForModal] = useState<StickerItem | null>(null);
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [isRollingMystery, setIsRollingMystery] = useState(false);
+  const [shopNotice, setShopNotice] = useState<string | null>(null);
+
+  // Real-time listener for student sticker trades
+  useEffect(() => {
+    const userId = user.id || localStorage.getItem('ecoeat_user_uid') || '';
+    if (!userId) return;
+
+    const unsubUserTrades = subscribeToUserTrades(userId, (incoming, outgoing) => {
+      setIncomingTrades(incoming);
+      setOutgoingTrades(outgoing);
+    });
+
+    const unsubOpenTrades = subscribeToAllOpenTrades((trades) => {
+      setAllOpenTrades(trades);
+    });
+
+    return () => {
+      unsubUserTrades();
+      unsubOpenTrades();
+    };
+  }, [user.id]);
+
+  const handleRespondTrade = async (tradeId: string, action: 'accept' | 'decline' | 'cancel') => {
+    setRespondingTradeId(tradeId);
+    try {
+      const result = await respondToStickerTrade(tradeId, action, user);
+      if (result.success) {
+        if (action === 'accept') {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 },
+          });
+          setShopNotice('🎉 Sticker trade completed successfully! Your sticker album has been updated.');
+          const trade = incomingTrades.find((t) => t.id === tradeId);
+          if (trade && onUserStickersChanged) {
+            const currentList = user.purchasedStickers || [];
+            const updated = currentList.filter((id) => id !== trade.requestedStickerId);
+            if (!updated.includes(trade.offeredStickerId)) {
+              updated.push(trade.offeredStickerId);
+            }
+            onUserStickersChanged(updated);
+          }
+        } else if (action === 'decline') {
+          setShopNotice('Declined sticker trade offer.');
+        } else {
+          setShopNotice('Cancelled trade offer.');
+        }
+        setTimeout(() => setShopNotice(null), 4000);
+      } else {
+        setShopNotice(result.error || 'Failed to update trade.');
+      }
+    } catch (err: any) {
+      setShopNotice(err?.message || 'Trade operation error.');
+    } finally {
+      setRespondingTradeId(null);
+    }
+  };
 
   // Purchased IDs set for fast O(1) lookup
   const purchasedIds = useMemo(() => {
@@ -256,9 +338,13 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   const handleRollMysterySticker = () => {
     const minRequiredXp = rarityConfigs.common.minCost;
     if (user.currentXp < minRequiredXp) {
-      alert(
-        `You need at least ${minRequiredXp.toLocaleString()} XP to roll a mystery sticker! Finish a meal to earn XP.`
+      setShopNotice(
+        t(
+          'need_min_xp_mystery',
+          'You need at least {xp} XP to roll a mystery sticker! Finish a meal to earn XP.'
+        ).replace('{xp}', minRequiredXp.toLocaleString())
       );
+      setTimeout(() => setShopNotice(null), 4000);
       return;
     }
 
@@ -272,7 +358,13 @@ export const StickerShop: React.FC<StickerShopProps> = ({
         handlePurchase(randomPick);
         setSelectedStickerForModal(randomPick);
       } else {
-        alert('Could not find an unowned sticker within your current XP budget! Save up more XP.');
+        setShopNotice(
+          t(
+            'no_unowned_sticker_budget',
+            'Could not find an unowned sticker within your current XP budget! Save up more XP.'
+          )
+        );
+        setTimeout(() => setShopNotice(null), 4000);
       }
     }, 600);
   };
@@ -382,6 +474,22 @@ export const StickerShop: React.FC<StickerShopProps> = ({
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {shopNotice && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-between gap-3 shadow-lg animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{shopNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShopNotice(null)}
+            className="p-1 rounded-full text-amber-300 hover:text-white cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Hero / Header Section */}
       <div className="relative overflow-hidden rounded-3xl bg-theme-card border border-theme-card p-6 sm:p-8 shadow-xl">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-theme-primary/10 blur-3xl pointer-events-none" />
@@ -606,6 +714,26 @@ export const StickerShop: React.FC<StickerShopProps> = ({
               {totalCollectedCount}
             </span>
           </button>
+
+          <button
+            id="tab-btn-sticker-trade"
+            onClick={() => {
+              setActiveTab('trade');
+            }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'trade'
+                ? 'bg-theme-primary text-black shadow-sm font-extrabold'
+                : 'text-theme-muted hover:text-theme-main'
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+            <span>{t('shop_tab_trade', 'Sticker Trades')}</span>
+            {incomingTrades.filter((t) => t.status === 'pending').length > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white font-extrabold animate-pulse">
+                {incomingTrades.filter((t) => t.status === 'pending').length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Search Bar & Sorting */}
@@ -647,8 +775,308 @@ export const StickerShop: React.FC<StickerShopProps> = ({
         </div>
       </div>
 
-      {/* Category Pills & Filters */}
-      <div className="space-y-3" ref={gridTopRef}>
+      {/* Trade Hub vs Catalog / Album Grid */}
+      {activeTab === 'trade' ? (
+        <div className="space-y-6 pt-2">
+          {/* Top Banner with Actions */}
+          <div className="bg-theme-card border border-theme-card rounded-3xl p-5 sm:p-6 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🤝</span>
+                <h3 className="text-base sm:text-lg font-black text-theme-main">
+                  {t('campus_trade_hub_title', 'Campus Sticker Trading Hub')}
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  {t('peer_to_peer', 'Peer-to-Peer')}
+                </span>
+              </div>
+              <p className="text-xs text-theme-muted max-w-xl">
+                {t(
+                  'trade_hub_summary',
+                  'Trade collectible stickers with students at campus dining halls! Swapping stickers keeps your collection fresh and unlocks collaborative eco multiplier bonuses.'
+                )}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+              {onOpenCampusLocationRadar && (
+                <button
+                  type="button"
+                  onClick={onOpenCampusLocationRadar}
+                  className="px-4 py-2.5 rounded-xl bg-theme-card-subtle border border-theme-card hover:border-theme-primary text-theme-main font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                >
+                  <MapPin className="w-4 h-4 text-theme-primary" />
+                  <span>{t('view_student_locations', 'Campus Location Radar')}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPartnerForTrade(null);
+                  setIsTradeModalOpen(true);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-theme-primary text-black font-extrabold text-xs flex items-center gap-2 shadow-md shadow-theme-glow hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                <span>+ {t('propose_new_trade', 'Propose Trade')}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3.5 bg-theme-card rounded-2xl border border-theme-card">
+              <span className="text-theme-muted font-bold text-[11px] block">{t('incoming_offers', 'Incoming Offers')}</span>
+              <span className="text-xl font-black text-amber-400">{incomingTrades.filter((t) => t.status === 'pending').length}</span>
+            </div>
+            <div className="p-3.5 bg-theme-card rounded-2xl border border-theme-card">
+              <span className="text-theme-muted font-bold text-[11px] block">{t('sent_offers', 'Sent Offers')}</span>
+              <span className="text-xl font-black text-theme-main">{outgoingTrades.length}</span>
+            </div>
+            <div className="p-3.5 bg-theme-card rounded-2xl border border-theme-card">
+              <span className="text-theme-muted font-bold text-[11px] block">{t('completed_trades', 'Completed Swaps')}</span>
+              <span className="text-xl font-black text-emerald-400">
+                {incomingTrades.filter((t) => t.status === 'completed').length + outgoingTrades.filter((t) => t.status === 'completed').length}
+              </span>
+            </div>
+            <div className="p-3.5 bg-theme-card rounded-2xl border border-theme-card">
+              <span className="text-theme-muted font-bold text-[11px] block">{t('campus_traders_online', 'Students Trading')}</span>
+              <span className="text-xl font-black text-theme-primary">{allUsers.length}</span>
+            </div>
+          </div>
+
+          {/* Incoming Trade Proposals */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-extrabold text-theme-main flex items-center gap-2">
+                <span>📥 {t('incoming_trade_proposals', 'Incoming Trade Proposals')}</span>
+                {incomingTrades.filter((t) => t.status === 'pending').length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                    {incomingTrades.filter((t) => t.status === 'pending').length} Action Required
+                  </span>
+                )}
+              </h4>
+            </div>
+
+            {incomingTrades.filter((t) => t.status === 'pending').length === 0 ? (
+              <div className="p-6 text-center bg-theme-card-subtle rounded-2xl border border-theme-card space-y-1.5 text-xs">
+                <p className="text-theme-muted">
+                  {t('no_incoming_trades', 'No incoming trade proposals right now.')}
+                </p>
+                <p className="text-[11px] text-theme-muted/70">
+                  {t(
+                    'propose_trade_hint',
+                    'Meet peers in the cafeteria or browse the campus student directory below to propose your first trade!'
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {incomingTrades
+                  .filter((t) => t.status === 'pending')
+                  .map((trade) => {
+                    const isResponding = respondingTradeId === trade.id;
+                    return (
+                      <div
+                        key={trade.id}
+                        className="p-4 bg-theme-card rounded-2xl border-2 border-theme-primary/50 shadow-md space-y-3"
+                      >
+                        {/* Student Proposer */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            {trade.senderAvatar && (
+                              <img src={trade.senderAvatar} alt="" className="w-8 h-8 rounded-xl object-cover" />
+                            )}
+                            <div>
+                              <h5 className="text-xs font-bold text-theme-main leading-tight">{trade.senderName}</h5>
+                              <span className="text-[10px] text-theme-muted flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-theme-primary" />
+                                {trade.senderLocationName || 'BBS PIK Campus'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            Pending
+                          </span>
+                        </div>
+
+                        {/* Trade Swap Visual */}
+                        <div className="p-3 bg-theme-card-subtle rounded-xl border border-theme-card flex items-center justify-between gap-2 text-xs">
+                          <div className="text-center sm:text-left flex-1">
+                            <span className="text-[10px] font-bold text-emerald-400 block mb-0.5">They Offer</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">{trade.offeredStickerEmoji}</span>
+                              <div className="truncate">
+                                <strong className="text-xs text-theme-main block truncate">{trade.offeredStickerName}</strong>
+                                <span className="text-[10px] text-theme-muted capitalize">{trade.offeredStickerRarity}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <ArrowRightLeft className="w-4 h-4 text-theme-primary shrink-0" />
+
+                          <div className="text-center sm:text-right flex-1">
+                            <span className="text-[10px] font-bold text-amber-400 block mb-0.5">They Want</span>
+                            <div className="flex items-center gap-2 justify-end">
+                              <div className="truncate text-right">
+                                <strong className="text-xs text-theme-main block truncate">{trade.requestedStickerName}</strong>
+                                <span className="text-[10px] text-theme-muted capitalize">{trade.requestedStickerRarity}</span>
+                              </div>
+                              <span className="text-2xl">{trade.requestedStickerEmoji}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Note & Meetup */}
+                        {(trade.message || trade.meetupLocation) && (
+                          <div className="text-[11px] text-theme-muted bg-theme-card-subtle/50 p-2 rounded-xl border border-theme-card/50 space-y-0.5">
+                            {trade.meetupLocation && (
+                              <p>📍 <strong>Meetup:</strong> {trade.meetupLocation}</p>
+                            )}
+                            {trade.message && (
+                              <p>💬 "{trade.message}"</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-theme-card">
+                          <button
+                            type="button"
+                            onClick={() => handleRespondTrade(trade.id, 'decline')}
+                            disabled={isResponding}
+                            className="px-3 py-1.5 rounded-xl bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main text-xs font-bold transition-all cursor-pointer"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRespondTrade(trade.id, 'accept')}
+                            disabled={isResponding}
+                            className="px-4 py-1.5 rounded-xl bg-emerald-500 text-black text-xs font-black shadow-sm hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Accept Swap (+30 XP)</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
+          {/* Sent Trade Offers */}
+          {outgoingTrades.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-extrabold text-theme-main">
+                📤 {t('sent_trade_proposals', 'Sent Proposals')} ({outgoingTrades.length})
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {outgoingTrades.map((trade) => (
+                  <div
+                    key={trade.id}
+                    className="p-3.5 bg-theme-card rounded-2xl border border-theme-card shadow-xs flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-theme-main">To {trade.receiverName}</span>
+                        <span className={`text-[9px] font-extrabold uppercase px-2 py-0.2 rounded-full ${
+                          trade.status === 'completed'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : trade.status === 'declined'
+                            ? 'bg-rose-500/20 text-rose-400'
+                            : 'bg-amber-500/20 text-amber-400'
+                        }`}>
+                          {trade.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-theme-muted truncate">
+                        Offering {trade.offeredStickerEmoji} {trade.offeredStickerName} for {trade.requestedStickerEmoji} {trade.requestedStickerName}
+                      </p>
+                    </div>
+
+                    {trade.status === 'pending' && (
+                      <button
+                        type="button"
+                        onClick={() => handleRespondTrade(trade.id, 'cancel')}
+                        className="px-2.5 py-1 rounded-xl bg-theme-card-subtle text-theme-muted hover:text-theme-main border border-theme-card text-[11px] font-bold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Campus Open Student Traders Directory */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-extrabold text-theme-main">
+                  🏫 {t('campus_student_traders', 'Students on Campus Ready to Trade')}
+                </h4>
+                <p className="text-xs text-theme-muted">
+                  {t('select_student_to_trade_desc', 'Tap any student to view their location and initiate a sticker swap.')}
+                </p>
+              </div>
+
+              {onOpenCampusLocationRadar && (
+                <button
+                  type="button"
+                  onClick={onOpenCampusLocationRadar}
+                  className="text-xs font-bold text-theme-primary hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{t('view_all_locations', 'View Locations Map')}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {allUsers
+                .filter((u) => u.uid !== user.id)
+                .map((u) => {
+                  return (
+                    <div
+                      key={u.uid}
+                      className="p-3.5 bg-theme-card rounded-2xl border border-theme-card hover:border-theme-primary/50 shadow-xs flex items-center justify-between gap-3 group transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img src={u.avatar} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                        <div className="truncate">
+                          <h5 className="text-xs font-bold text-theme-main truncate group-hover:text-theme-primary transition-colors">
+                            {u.name}
+                          </h5>
+                          <span className="text-[10px] text-theme-muted truncate block">
+                            📍 {u.locationName || 'BBS Dining Hall'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPartnerForTrade(u);
+                          setIsTradeModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-theme-primary/15 hover:bg-theme-primary text-theme-primary hover:text-black font-extrabold text-[11px] transition-all cursor-pointer whitespace-nowrap shrink-0"
+                      >
+                        🤝 Trade
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Category Pills & Filters */}
+          <div className="space-y-3" ref={gridTopRef}>
         {/* Category Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {categories.map((cat) => (
@@ -1092,6 +1520,8 @@ export const StickerShop: React.FC<StickerShopProps> = ({
           </div>
         </div>
       )}
+        </>
+      )}
 
       {/* Inspect & Sticker Details Modal */}
       <AnimatePresence>
@@ -1198,10 +1628,24 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDownloadSticker(selectedStickerForModal)}
-                      className="py-3 px-4 rounded-xl bg-theme-card-subtle text-theme-main border border-theme-card font-bold text-xs flex items-center gap-2 hover:border-theme-primary cursor-pointer"
+                      className="py-3 px-3.5 rounded-xl bg-theme-card-subtle text-theme-main border border-theme-card font-bold text-xs flex items-center gap-1.5 hover:border-theme-primary cursor-pointer"
+                      title={t('download_png', 'Download PNG')}
                     >
                       <Download className="w-4 h-4" />
-                      <span>{t('download_png', 'Download PNG')}</span>
+                      <span>PNG</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStickerForModal(null);
+                        setIsTradeModalOpen(true);
+                      }}
+                      className="py-3 px-3.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-xs flex items-center gap-1.5 hover:bg-amber-500/30 cursor-pointer shadow-xs"
+                      title="Propose a trade with another student"
+                    >
+                      <ArrowRightLeft className="w-4 h-4" />
+                      <span>{t('trade', 'Trade')}</span>
                     </button>
                   </>
                 ) : (
@@ -1231,6 +1675,20 @@ export const StickerShop: React.FC<StickerShopProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Sticker Trade Proposal Modal */}
+      <StickerTradeModal
+        isOpen={isTradeModalOpen}
+        onClose={() => setIsTradeModalOpen(false)}
+        currentUser={user}
+        targetUser={selectedPartnerForTrade}
+        allUsers={allUsers}
+        onNavigateToShop={() => setActiveTab('shop')}
+        onTradeProposed={() => {
+          setShopNotice('🎉 Trade proposal sent! You can track it in the Sticker Trades tab.');
+          setTimeout(() => setShopNotice(null), 4000);
+        }}
+      />
     </div>
   );
 };

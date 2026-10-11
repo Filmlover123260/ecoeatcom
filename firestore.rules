@@ -27,5 +27,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Real-time student sticker trading offers and swaps
+    match /stickerTrades/{tradeId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

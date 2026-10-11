@@ -53,6 +53,14 @@ export interface UserProfile {
   greetingColor: string;
   purchasedStickers?: string[];
   showcaseStickerId?: string;
+  locationName?: string;
+  locationPlaceId?: string;
+  locationMapUri?: string;
+  latitude?: number;
+  longitude?: number;
+  locationAccuracy?: number;
+  locationAddress?: string;
+  locationUpdatedAt?: string;
 }
 
 export interface VitaminDetail {
@@ -181,6 +189,52 @@ export interface LeaderboardUser {
   isCurrentUser?: boolean;
   isOnline?: boolean;
   lastActiveAt?: string;
+  purchasedStickers?: string[];
+  showcaseStickerId?: string;
+  locationName?: string;
+  locationPlaceId?: string;
+  locationMapUri?: string;
+  latitude?: number;
+  longitude?: number;
+  locationAccuracy?: number;
+  locationAddress?: string;
+  locationUpdatedAt?: string;
+}
+
+export interface StickerTradeItem {
+  id: string;
+  senderUid: string;
+  senderName: string;
+  senderAvatar?: string;
+  senderLocationName?: string;
+  offeredStickerId: string;
+  offeredStickerName: string;
+  offeredStickerEmoji: string;
+  offeredStickerRarity: StickerRarity;
+  receiverUid: string;
+  receiverName: string;
+  receiverAvatar?: string;
+  receiverLocationName?: string;
+  requestedStickerId: string;
+  requestedStickerName: string;
+  requestedStickerEmoji: string;
+  requestedStickerRarity: StickerRarity;
+  status: 'pending' | 'accepted' | 'declined' | 'completed' | 'cancelled';
+  message?: string;
+  meetupLocation?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GroundedDiningPlace {
+  title: string;
+  uri: string;
+  address?: string;
+  category?: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  reviewSnippets?: string[];
 }
 
 export interface ClassRankingItem {

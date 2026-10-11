@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { additionalTranslations } from '../data/translationsExtension';
 import { foodTranslationsByLanguage } from '../data/foodTranslations';
+import { completeMissingTranslations } from '../data/completeTranslations';
+import { translateProceduralString } from '../utils/proceduralTranslation';
 
 export type SupportedLanguage = 'English' | 'Bahasa Indonesia' | 'Spanish' | 'French' | 'Mandarin';
 
@@ -1934,6 +1936,9 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   if (foodTranslationsByLanguage[lang]) {
     Object.assign(translations[lang], foodTranslationsByLanguage[lang]);
   }
+  if (completeMissingTranslations[lang]) {
+    Object.assign(translations[lang], completeMissingTranslations[lang]);
+  }
 });
 
 interface LanguageContextType {
@@ -1992,6 +1997,29 @@ export const LanguageProvider: React.FC<{
     }
     if (defaultText && langDict[defaultText]) {
       return langDict[defaultText];
+    }
+    const trimmed = (key || '').trim();
+    if (trimmed && langDict[trimmed]) {
+      return langDict[trimmed];
+    }
+    const lower = trimmed.toLowerCase();
+    if (lower && langDict[lower]) {
+      return langDict[lower];
+    }
+    if (defaultText) {
+      const defTrimmed = defaultText.trim();
+      if (defTrimmed && langDict[defTrimmed]) {
+        return langDict[defTrimmed];
+      }
+      const defLower = defTrimmed.toLowerCase();
+      if (defLower && langDict[defLower]) {
+        return langDict[defLower];
+      }
+    }
+    // Procedural translation for dynamic milestones, weights, and streaks
+    const procedural = translateProceduralString(key, language) || (defaultText ? translateProceduralString(defaultText, language) : null);
+    if (procedural) {
+      return procedural;
     }
     // Fallback to English
     if (translations.English[key]) {

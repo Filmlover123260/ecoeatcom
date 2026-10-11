@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Camera, User, Menu, Leaf, ArrowLeft, Moon, Sun, Palette, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, Camera, User, Menu, Leaf, ArrowLeft, Moon, Sun, Palette, ShoppingBag, MapPin, Compass } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TabType } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -12,6 +12,7 @@ interface NavigationProps {
   onSelectTab: (tab: TabType) => void;
   onOpenDrawer: () => void;
   onOpenThemePicker: () => void;
+  onOpenCampusLocations?: () => void;
   titleOverride?: string;
   showBackArrow?: boolean;
   onBack?: () => void;
@@ -22,6 +23,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onSelectTab,
   onOpenDrawer,
   onOpenThemePicker,
+  onOpenCampusLocations,
   titleOverride,
   showBackArrow = false,
   onBack,
@@ -121,6 +123,23 @@ export const Navigation: React.FC<NavigationProps> = ({
 
         {/* Quick Theme & Dark Mode Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Live Campus Map Radar Button */}
+          {onOpenCampusLocations && (
+            <motion.button
+              id="btn-nav-map-radar"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onOpenCampusLocations}
+              aria-label={t('live_campus_map', 'Real-Time Campus Map')}
+              title={t('live_campus_map', 'Real-Time Campus Map')}
+              className="px-2.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 text-xs font-bold"
+            >
+              <Compass className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+              <span className="hidden sm:inline">{t('map_btn', 'Live Map')}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            </motion.button>
+          )}
+
           {/* Theme Palette Button */}
           <motion.button
             id="btn-nav-theme-picker"

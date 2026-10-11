@@ -17,7 +17,15 @@
         "title": { "type": "string", "description": "Earned Eco title" },
         "streakDays": { "type": "number", "description": "Current consecutive clean plate streak" },
         "foodSavedKg": { "type": "number", "description": "Total kg of food diverted" },
-        "lastActiveAt": { "type": "string", "description": "Timestamp of last action" }
+        "lastActiveAt": { "type": "string", "description": "Timestamp of last action" },
+        "locationName": { "type": "string", "description": "Current campus dining hall or eatery name" },
+        "locationPlaceId": { "type": "string", "description": "Optional Google Maps Place ID" },
+        "locationMapUri": { "type": "string", "description": "Google Maps URI" },
+        "latitude": { "type": "number", "description": "Campus latitude coordinate" },
+        "longitude": { "type": "number", "description": "Campus longitude coordinate" },
+        "locationAccuracy": { "type": "number", "description": "Device GPS accuracy in meters" },
+        "locationAddress": { "type": "string", "description": "Reverse-geocoded physical address" },
+        "locationUpdatedAt": { "type": "string", "description": "Timestamp when location was last recorded" }
       }
     },
     "meals": {
@@ -59,6 +67,33 @@
         "userHomeroom": { "type": "string", "description": "Homeroom label" },
         "avatarUrl": { "type": "string", "description": "Avatar image URL" },
         "joinedAt": { "type": "string", "description": "ISO timestamp when student joined the challenge" }
+      }
+    },
+    "stickerTrades": {
+      "description": "Student sticker trading proposals, offers, and completed swaps",
+      "fields": {
+        "id": { "type": "string", "description": "Unique trade ID" },
+        "senderUid": { "type": "string", "description": "Initiating student user ID" },
+        "senderName": { "type": "string", "description": "Initiating student name" },
+        "senderAvatar": { "type": "string", "description": "Initiating student avatar" },
+        "senderLocationName": { "type": "string", "description": "Initiating student campus location" },
+        "offeredStickerId": { "type": "string", "description": "Sticker ID offered by sender" },
+        "offeredStickerName": { "type": "string", "description": "Sticker name offered" },
+        "offeredStickerEmoji": { "type": "string", "description": "Sticker emoji offered" },
+        "offeredStickerRarity": { "type": "string", "description": "Sticker rarity offered" },
+        "receiverUid": { "type": "string", "description": "Target student user ID" },
+        "receiverName": { "type": "string", "description": "Target student name" },
+        "receiverAvatar": { "type": "string", "description": "Target student avatar" },
+        "receiverLocationName": { "type": "string", "description": "Target student campus location" },
+        "requestedStickerId": { "type": "string", "description": "Sticker ID requested in return" },
+        "requestedStickerName": { "type": "string", "description": "Sticker name requested" },
+        "requestedStickerEmoji": { "type": "string", "description": "Sticker emoji requested" },
+        "requestedStickerRarity": { "type": "string", "description": "Sticker rarity requested" },
+        "status": { "type": "string", "description": "pending | accepted | declined | completed | cancelled" },
+        "message": { "type": "string", "description": "Personalized meetup note or trade message" },
+        "meetupLocation": { "type": "string", "description": "Suggested campus dining meetup spot" },
+        "createdAt": { "type": "string", "description": "Trade creation ISO timestamp" },
+        "updatedAt": { "type": "string", "description": "Trade update ISO timestamp" }
       }
     }
   }

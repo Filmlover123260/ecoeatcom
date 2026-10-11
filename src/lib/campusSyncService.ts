@@ -15,7 +15,16 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { UserProfile, MealRecord, LeaderboardUser, CampusChallengeInfo, ClassRankingItem, ChallengeParticipant } from '../types';
+import {
+  UserProfile,
+  MealRecord,
+  LeaderboardUser,
+  CampusChallengeInfo,
+  ClassRankingItem,
+  ChallengeParticipant,
+  StickerTradeItem,
+  GroundedDiningPlace,
+} from '../types';
 import { getLevelTitle } from '../data/mockData';
 import { getAcademicYearPeriod } from '../data/academicYearChallenge';
 
@@ -80,6 +89,14 @@ export async function syncUserProfileToCloud(user: UserProfile, uid?: string): P
         foodSavedKg: Number(user.foodSavedKg) || 0,
         purchasedStickers: user.purchasedStickers || [],
         showcaseStickerId: user.showcaseStickerId || '',
+        locationName: user.locationName || 'BBS PIK Main Student Dining Hall',
+        locationPlaceId: user.locationPlaceId || '',
+        locationMapUri: user.locationMapUri || 'https://www.google.com/maps/search/?api=1&query=BBS+PIK+Main+Dining+Hall',
+        latitude: typeof user.latitude === 'number' ? user.latitude : -6.1085,
+        longitude: typeof user.longitude === 'number' ? user.longitude : 106.7412,
+        locationAccuracy: typeof user.locationAccuracy === 'number' ? user.locationAccuracy : null,
+        locationAddress: user.locationAddress || '',
+        locationUpdatedAt: user.locationUpdatedAt || new Date().toISOString(),
         isOnline: true,
         lastActiveAt: new Date().toISOString(),
       },
@@ -359,6 +376,16 @@ export function subscribeToLiveLeaderboard(
           isCurrentUser: isCurrent,
           isOnline,
           lastActiveAt: data.lastActiveAt,
+          purchasedStickers: Array.isArray(data.purchasedStickers) ? data.purchasedStickers : [],
+          showcaseStickerId: data.showcaseStickerId || '',
+          locationName: data.locationName || 'BBS PIK Main Student Dining Hall',
+          locationPlaceId: data.locationPlaceId || '',
+          locationMapUri: data.locationMapUri || 'https://www.google.com/maps/search/?api=1&query=BBS+PIK+Main+Dining+Hall',
+          latitude: typeof data.latitude === 'number' ? data.latitude : -6.1085,
+          longitude: typeof data.longitude === 'number' ? data.longitude : 106.7412,
+          locationAccuracy: typeof data.locationAccuracy === 'number' ? data.locationAccuracy : undefined,
+          locationAddress: data.locationAddress || undefined,
+          locationUpdatedAt: data.locationUpdatedAt || data.lastActiveAt,
         });
       });
 
@@ -723,4 +750,227 @@ export async function restartLeaderboard(): Promise<{ success: boolean; resetCou
     console.error('Error restarting leaderboard:', err);
     throw err;
   }
+}
+
+/**
+ * Update the user's campus dining location in Firestore.
+ */
+export async function updateUserCampusLocation(
+  user: UserProfile,
+  location: {
+    locationName: string;
+    latitude?: number;
+    longitude?: number;
+    locationPlaceId?: string;
+    locationMapUri?: string;
+    locationAccuracy?: number;
+    locationAddress?: string;
+  }
+): Promise<void> {
+  const userId = getOrCreateUserId(user);
+  const userRef = doc(db, 'users', userId);
+
+  try {
+    const nowIso = new Date().toISOString();
+    const updatePayload: any = {
+      locationName: location.locationName,
+      locationPlaceId: location.locationPlaceId || '',
+      locationMapUri:
+        location.locationMapUri ||
+        (typeof location.latitude === 'number' && typeof location.longitude === 'number'
+          ? `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
+          : ''),
+      lastActiveAt: nowIso,
+      locationUpdatedAt: nowIso,
+      isOnline: true,
+    };
+
+    if (typeof location.latitude === 'number') {
+      updatePayload.latitude = location.latitude;
+    }
+    if (typeof location.longitude === 'number') {
+      updatePayload.longitude = location.longitude;
+    }
+    if (typeof location.locationAccuracy === 'number') {
+      updatePayload.locationAccuracy = location.locationAccuracy;
+    }
+    if (location.locationAddress) {
+      updatePayload.locationAddress = location.locationAddress;
+    }
+
+    await updateDoc(userRef, updatePayload);
+  } catch (err) {
+    console.warn('Error updating user campus location in Firestore:', err);
+  }
+}
+
+/**
+ * Create a new sticker trade offer in Firestore.
+ */
+export async function createStickerTradeOffer(
+  trade: Omit<StickerTradeItem, 'id' | 'createdAt' | 'updatedAt' | 'status'>
+): Promise<{ success: boolean; tradeId?: string; error?: string }> {
+  try {
+    const tradeId = `trade_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const tradeRef = doc(db, 'stickerTrades', tradeId);
+    const now = new Date().toISOString();
+
+    const tradeDoc: StickerTradeItem = {
+      ...trade,
+      id: tradeId,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await setDoc(tradeRef, tradeDoc);
+    return { success: true, tradeId };
+  } catch (err: any) {
+    console.error('Error creating sticker trade in Firestore:', err);
+    return { success: false, error: err?.message || 'Failed to create trade offer' };
+  }
+}
+
+/**
+ * Respond to a sticker trade offer: accept, decline, or cancel.
+ * When accepted, stickers are swapped between both students' profiles in Firestore!
+ */
+export async function respondToStickerTrade(
+  tradeId: string,
+  response: 'accept' | 'decline' | 'cancel',
+  currentUser: UserProfile
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const tradeRef = doc(db, 'stickerTrades', tradeId);
+    const snap = await getDoc(tradeRef);
+    if (!snap.exists()) {
+      return { success: false, error: 'Trade offer not found' };
+    }
+    const trade = snap.data() as StickerTradeItem;
+
+    if (response === 'decline') {
+      await updateDoc(tradeRef, {
+        status: 'declined',
+        updatedAt: new Date().toISOString(),
+      });
+      return { success: true };
+    }
+
+    if (response === 'cancel') {
+      await updateDoc(tradeRef, {
+        status: 'cancelled',
+        updatedAt: new Date().toISOString(),
+      });
+      return { success: true };
+    }
+
+    if (response === 'accept') {
+      // Execute the sticker swap between sender and receiver!
+      const senderRef = doc(db, 'users', trade.senderUid);
+      const receiverRef = doc(db, 'users', trade.receiverUid);
+
+      const senderSnap = await getDoc(senderRef);
+      const receiverSnap = await getDoc(receiverRef);
+
+      const senderStickers: string[] = senderSnap.exists()
+        ? senderSnap.data()?.purchasedStickers || []
+        : [];
+      const receiverStickers: string[] = receiverSnap.exists()
+        ? receiverSnap.data()?.purchasedStickers || []
+        : currentUser.purchasedStickers || [];
+
+      // Remove offered from sender, add requested
+      const updatedSenderStickers = senderStickers.filter((id) => id !== trade.offeredStickerId);
+      if (!updatedSenderStickers.includes(trade.requestedStickerId)) {
+        updatedSenderStickers.push(trade.requestedStickerId);
+      }
+
+      // Remove requested from receiver, add offered
+      const updatedReceiverStickers = receiverStickers.filter((id) => id !== trade.requestedStickerId);
+      if (!updatedReceiverStickers.includes(trade.offeredStickerId)) {
+        updatedReceiverStickers.push(trade.offeredStickerId);
+      }
+
+      // Update both user profiles in Firestore
+      await updateDoc(senderRef, {
+        purchasedStickers: updatedSenderStickers,
+        lastActiveAt: new Date().toISOString(),
+      }).catch(() => {});
+
+      await updateDoc(receiverRef, {
+        purchasedStickers: updatedReceiverStickers,
+        lastActiveAt: new Date().toISOString(),
+      }).catch(() => {});
+
+      // Mark trade as completed
+      await updateDoc(tradeRef, {
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+      });
+
+      return { success: true };
+    }
+
+    return { success: false, error: 'Invalid response action' };
+  } catch (err: any) {
+    console.error('Error responding to sticker trade:', err);
+    return { success: false, error: err?.message || 'Trade operation failed' };
+  }
+}
+
+/**
+ * Real-time listener for incoming & outgoing trades for a user.
+ */
+export function subscribeToUserTrades(
+  userId: string,
+  onUpdate: (incoming: StickerTradeItem[], outgoing: StickerTradeItem[]) => void
+): Unsubscribe {
+  const tradesRef = collection(db, 'stickerTrades');
+  const q = query(tradesRef, orderBy('createdAt', 'desc'), limit(100));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const incoming: StickerTradeItem[] = [];
+      const outgoing: StickerTradeItem[] = [];
+
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data() as StickerTradeItem;
+        if (item.receiverUid === userId) {
+          incoming.push(item);
+        } else if (item.senderUid === userId) {
+          outgoing.push(item);
+        }
+      });
+
+      onUpdate(incoming, outgoing);
+    },
+    (err) => {
+      console.warn('Trades subscription note:', err.message);
+    }
+  );
+}
+
+/**
+ * Real-time listener for all active / open campus sticker trades.
+ */
+export function subscribeToAllOpenTrades(
+  onUpdate: (trades: StickerTradeItem[]) => void
+): Unsubscribe {
+  const tradesRef = collection(db, 'stickerTrades');
+  const q = query(tradesRef, orderBy('createdAt', 'desc'), limit(60));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const trades: StickerTradeItem[] = [];
+      snapshot.forEach((docSnap) => {
+        trades.push(docSnap.data() as StickerTradeItem);
+      });
+      onUpdate(trades);
+    },
+    (err) => {
+      console.warn('Open trades subscription note:', err.message);
+    }
+  );
 }

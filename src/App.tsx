@@ -9,6 +9,7 @@ import {
   CampusChallengeInfo,
   AppSettings,
   StickerItem,
+  LeaderboardUser,
 } from './types';
 import {
   initialUserProfile,
@@ -29,6 +30,7 @@ import {
   joinCampusChallenge,
   getOrCreateUserId,
   startOnlinePresenceHeartbeat,
+  subscribeToLiveLeaderboard,
 } from './lib/campusSyncService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -40,6 +42,7 @@ import { Profile } from './components/Profile';
 import { SettingsView } from './components/SettingsView';
 import { StickerShop } from './components/StickerShop';
 import { ThemePickerModal } from './components/ThemePickerModal';
+import { CampusLocationModal } from './components/CampusLocationModal';
 import { SignIn } from './components/SignIn';
 import {
   EditProfileModal,
@@ -136,6 +139,11 @@ function AppContent() {
 
   const [challenge, setChallenge] = useState<CampusChallengeInfo>(campusChallenge);
 
+  // Live campus students and location radar state
+  const [campusUsers, setCampusUsers] = useState<LeaderboardUser[]>([]);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [selectedTradePartner, setSelectedTradePartner] = useState<LeaderboardUser | null>(null);
+
   // Modals state
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isGreetingColorOpen, setIsGreetingColorOpen] = useState(false);
@@ -205,6 +213,15 @@ function AppContent() {
     );
     return () => unsubChallenge();
   }, [user.id, user.name]);
+
+  // Subscribe to all live students on campus to track their locations and enable trading
+  useEffect(() => {
+    const currentUid = user.id || localStorage.getItem('ecoeat_user_uid') || '';
+    const unsubLeaderboard = subscribeToLiveLeaderboard(currentUid, (liveUsers) => {
+      setCampusUsers(liveUsers);
+    });
+    return () => unsubLeaderboard();
+  }, [user.id]);
 
   useEffect(() => {
     localStorage.setItem('ecoeat_meals', JSON.stringify(meals));
@@ -574,6 +591,7 @@ function AppContent() {
         onSelectTab={setCurrentTab}
         onOpenDrawer={() => setIsDrawerOpen(true)}
         onOpenThemePicker={() => setIsThemePickerOpen(true)}
+        onOpenCampusLocations={() => setIsLocationModalOpen(true)}
         titleOverride={currentTab === 'settings' ? t('nav_settings', 'Settings') : undefined}
         showBackArrow={currentTab === 'settings' || currentTab === 'capture'}
         onBack={() => setCurrentTab('dashboard')}
@@ -587,6 +605,7 @@ function AppContent() {
         onSelectTab={setCurrentTab}
         onOpenThemePicker={() => setIsThemePickerOpen(true)}
         onSignOut={handleSignOut}
+        onOpenCampusLocations={() => setIsLocationModalOpen(true)}
         user={user}
       />
 
@@ -616,6 +635,21 @@ function AppContent() {
                 onOpenWeeklyImpact={handleOpenWeeklyImpact}
                 onNavigateToShop={() => setCurrentTab('shop')}
                 onJoinChallenge={handleJoinChallenge}
+                allUsers={campusUsers}
+                onOpenCampusLocationRadar={() => setIsLocationModalOpen(true)}
+                onOpenTradeWithUser={(targetUser) => {
+                  setSelectedTradePartner(targetUser);
+                  setCurrentTab('shop');
+                }}
+                onUserLocationUpdated={(locName, locUri) => {
+                  setUser((prev) => {
+                    const updated = { ...prev, locationName: locName, locationMapUri: locUri };
+                    localStorage.setItem('ecoeat_user', JSON.stringify(updated));
+                    syncUserProfileToCloud(updated);
+                    return updated;
+                  });
+                  showToast(`📍 Location updated: ${locName}`);
+                }}
               />
             )}
 
@@ -634,6 +668,19 @@ function AppContent() {
                 onBuySticker={handleBuySticker}
                 onEquipSticker={handleEquipSticker}
                 onNavigateToCapture={() => setCurrentTab('capture')}
+                allUsers={campusUsers}
+                onOpenCampusLocationRadar={() => setIsLocationModalOpen(true)}
+                onUserStickersChanged={(newStickers) => {
+                  setUser((prev) => {
+                    const updated: UserProfile = {
+                      ...prev,
+                      purchasedStickers: newStickers,
+                    };
+                    localStorage.setItem('ecoeat_user', JSON.stringify(updated));
+                    syncUserProfileToCloud(updated);
+                    return updated;
+                  });
+                }}
               />
             )}
 
@@ -763,6 +810,28 @@ function AppContent() {
           content={infoModalData.content}
         />
       )}
+
+      {/* Campus Student Location Radar & Google Maps Grounded Dining Modal */}
+      <CampusLocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        currentUser={user}
+        allUsers={campusUsers}
+        onOpenTradeWithUser={(targetUser) => {
+          setIsLocationModalOpen(false);
+          setSelectedTradePartner(targetUser);
+          setCurrentTab('shop');
+        }}
+        onUserLocationUpdated={(locName, locUri) => {
+          setUser((prev) => {
+            const updated = { ...prev, locationName: locName, locationMapUri: locUri };
+            localStorage.setItem('ecoeat_user', JSON.stringify(updated));
+            syncUserProfileToCloud(updated);
+            return updated;
+          });
+          showToast(`📍 Checked in to ${locName}`);
+        }}
+      />
 
       {/* Floating Toast Notification */}
       {toastMessage && (

@@ -12,6 +12,7 @@ import {
   LogOut,
   ShoppingBag,
   Globe,
+  Compass,
 } from 'lucide-react';
 import { TabType, UserProfile } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -27,6 +28,7 @@ interface SidebarDrawerProps {
   onSelectTab: (tab: TabType) => void;
   onOpenThemePicker?: () => void;
   onSignOut?: () => void;
+  onOpenCampusLocations?: () => void;
   user: UserProfile;
 }
 
@@ -37,6 +39,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   onSelectTab,
   onOpenThemePicker,
   onSignOut,
+  onOpenCampusLocations,
   user,
 }) => {
   const { darkMode, toggleDarkMode, activeTheme } = useTheme();
@@ -153,6 +156,25 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             <ShoppingBag className="w-5 h-5" />
             <span>{t('nav_shop', 'Sticker Shop')}</span>
           </a>
+
+          {onOpenCampusLocations && (
+            <button
+              id="drawer-link-locations"
+              onClick={() => {
+                onOpenCampusLocations();
+                onClose();
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer text-theme-main hover:bg-theme-card-subtle"
+            >
+              <div className="flex items-center gap-3">
+                <Compass className="w-5 h-5 text-theme-primary" />
+                <span>{t('campus_student_locations', 'Student Locations & Radar')}</span>
+              </div>
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                Live
+              </span>
+            </button>
+          )}
 
           <a
             id="drawer-link-profile"
