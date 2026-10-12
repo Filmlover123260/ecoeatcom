@@ -146,18 +146,13 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
         <div className="flex items-center gap-3">
           <EcoEatLogo size="md" />
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-black tracking-tight text-theme-main">EcoEat</span>
-              <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-theme-primary-bg text-theme-primary border border-theme-primary-border">
-                BBS PIK
-              </span>
-            </div>
+            <span className="text-xl font-black tracking-tight text-theme-main">EcoEat</span>
             <p className="text-xs text-theme-muted hidden sm:block">{t('auth_header_subtitle', 'Campus Sustainability & Nutrition Hub')}</p>
           </div>
         </div>
 
         {/* Quick Utility Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Language Selector */}
           <div className="relative flex items-center">
             <select
@@ -165,7 +160,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
               value={language}
               onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
               aria-label={t('auth_select_language', 'Select Language')}
-              className="appearance-none bg-theme-card border border-theme-card rounded-xl py-1.5 pl-7 pr-4 text-xs font-bold text-theme-main cursor-pointer hover:bg-theme-card-subtle focus:outline-none"
+              className="appearance-none bg-theme-card border border-theme-card rounded-full sm:rounded-xl py-0.5 sm:py-1.5 pl-5 sm:pl-7 pr-2.5 sm:pr-4 text-[11px] sm:text-xs font-bold text-theme-main cursor-pointer hover:bg-theme-card-subtle focus:outline-none transition-all shadow-xs"
             >
               {supportedLanguages.map((lang) => (
                 <option key={lang.code} value={lang.name} className="bg-theme-card text-theme-main font-medium">
@@ -173,7 +168,7 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
                 </option>
               ))}
             </select>
-            <Globe className="w-3.5 h-3.5 text-theme-primary absolute left-2.5 pointer-events-none" />
+            <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-theme-primary absolute left-1.5 sm:left-2.5 pointer-events-none" />
           </div>
 
           {/* Theme Picker Trigger */}
@@ -181,9 +176,9 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
             <button
               onClick={onOpenThemePicker}
               title={t('change_color_theme', 'Change Color Theme')}
-              className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-primary hover:bg-theme-card-subtle transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-theme-card border border-theme-card text-theme-primary hover:bg-theme-card-subtle transition-colors cursor-pointer"
             >
-              <Palette className="w-4 h-4" />
+              <Palette className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           )}
 
@@ -191,9 +186,9 @@ export const SignIn: React.FC<SignInProps> = ({ onSignInSuccess, onOpenThemePick
           <button
             onClick={toggleDarkMode}
             title={darkMode ? t('switch_light_mode', 'Switch to Light Mode') : t('switch_dark_mode', 'Switch to Dark Mode')}
-            className="p-2 rounded-xl bg-theme-card border border-theme-card text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-theme-card border border-theme-card text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer"
           >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+            {darkMode ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />}
           </button>
         </div>
       </header>

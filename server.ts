@@ -1099,6 +1099,10 @@ Respond STRICTLY with a valid JSON object matching this schema:
   });
 };
 
+// In-memory cache and circuit breaker for campus dining spots to prevent quota exhaustion
+const diningPlacesCache = new Map<string, { data: any; expiry: number }>();
+let mapsGroundingQuotaCooldownUntil = 0;
+
 // API: Discover campus and nearby sustainable dining locations with Google Maps Grounding
 const nearbyDiningLocationsHandler = async (req: express.Request, res: express.Response) => {
   const { latitude, longitude, query: userQuery } = req.body || {};
@@ -1163,10 +1167,39 @@ const nearbyDiningLocationsHandler = async (req: express.Request, res: express.R
     },
   ];
 
-  if (!apiKey) {
+  // Helper to filter campus registry spots when query is present
+  const getFilteredCampusPlaces = (queryText?: string) => {
+    if (!queryText || !queryText.trim()) return defaultCampusPlaces;
+    const q = queryText.toLowerCase().trim();
+    const filtered = defaultCampusPlaces.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.address.toLowerCase().includes(q)
+    );
+    return filtered.length > 0 ? filtered : defaultCampusPlaces;
+  };
+
+  // Cache key based on query and rounded coordinates
+  const latKey = typeof latitude === 'number' ? latitude.toFixed(2) : 'default';
+  const lngKey = typeof longitude === 'number' ? longitude.toFixed(2) : 'default';
+  const cacheKey = `${(userQuery || '').trim().toLowerCase()}_${latKey}_${lngKey}`;
+
+  // Check in-memory cache
+  const cached = diningPlacesCache.get(cacheKey);
+  if (cached && cached.expiry > Date.now()) {
+    return res.json(cached.data);
+  }
+
+  // If in quota cooldown or no API key, serve verified campus places immediately
+  const isInCooldown = Date.now() < mapsGroundingQuotaCooldownUntil;
+  if (!apiKey || isInCooldown) {
+    const places = getFilteredCampusPlaces(userQuery);
     return res.json({
       success: true,
-      places: defaultCampusPlaces,
+      places,
+      groundedPlaces: [],
       markdownSummary: 'Here are the primary BBS campus dining halls and sustainable food spots where students dine and trade stickers.',
       source: 'campus_registry',
     });
@@ -1197,32 +1230,47 @@ const nearbyDiningLocationsHandler = async (req: express.Request, res: express.R
       };
     }
 
-    const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
     let response: any = null;
-    let lastGenErr: any = null;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: [{ text: searchPrompt }],
+        config,
+      });
+    } catch (genErr: any) {
+      const errStatus = genErr?.status;
+      const errMsg = String(genErr?.message || '');
+      const isQuotaOrBusy =
+        errStatus === 429 ||
+        errStatus === 503 ||
+        errMsg.includes('429') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('rate-limit');
 
-    for (const modelCandidate of modelsToTry) {
-      try {
-        response = await ai.models.generateContent({
-          model: modelCandidate,
-          contents: [{ text: searchPrompt }],
-          config,
-        });
-        if (response) {
-          break;
-        }
-      } catch (mErr: any) {
-        lastGenErr = mErr;
-        console.warn(`[Gemini Maps Grounding] Failed with ${modelCandidate}, trying next:`, mErr?.message || mErr);
+      if (isQuotaOrBusy) {
+        // Activate 5-minute cooldown to avoid spamming the exhausted quota
+        mapsGroundingQuotaCooldownUntil = Date.now() + 5 * 60 * 1000;
+        console.log('[Gemini Maps Grounding] Quota limit encountered. Entering cooldown and serving verified campus dining directory.');
+      } else {
+        console.log('[Gemini Maps Grounding] Transient notice; serving verified campus dining directory.');
       }
+
+      // Seamless fallback to campus registry without throwing
+      const fallbackPlaces = getFilteredCampusPlaces(userQuery);
+      const fallbackPayload = {
+        success: true,
+        places: fallbackPlaces,
+        groundedPlaces: [],
+        markdownSummary: 'Here are the primary BBS campus dining halls and sustainable food spots where students dine and trade stickers.',
+        source: 'campus_registry',
+      };
+      diningPlacesCache.set(cacheKey, { data: fallbackPayload, expiry: Date.now() + 10 * 60 * 1000 });
+      return res.json(fallbackPayload);
     }
 
-    if (!response && lastGenErr) {
-      throw lastGenErr;
-    }
-
-    const markdownSummary = response.text || '';
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const markdownSummary = response?.text || '';
+    const groundingChunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
     const extractedPlaces: any[] = [];
     if (Array.isArray(groundingChunks)) {
@@ -1251,29 +1299,45 @@ const nearbyDiningLocationsHandler = async (req: express.Request, res: express.R
       }
     });
 
-    return res.json({
+    const resultPayload = {
       success: true,
       places: combinedPlaces,
       groundedPlaces: extractedPlaces,
       markdownSummary,
       source: extractedPlaces.length > 0 ? 'google_maps_grounding' : 'campus_registry',
-    });
+    };
+
+    // Store in cache for 15 minutes
+    diningPlacesCache.set(cacheKey, { data: resultPayload, expiry: Date.now() + 15 * 60 * 1000 });
+
+    return res.json(resultPayload);
   } catch (err: any) {
-    console.warn('[Gemini Maps Grounding] query note:', err?.message || err);
+    console.log('[Gemini Maps Grounding] Notice:', err?.message || 'Serving verified campus dining registry');
+    const fallbackPlaces = getFilteredCampusPlaces(userQuery);
     return res.json({
       success: true,
-      places: defaultCampusPlaces,
+      places: fallbackPlaces,
+      groundedPlaces: [],
       markdownSummary: 'Here are the primary BBS campus dining halls and sustainable food spots where students dine and trade stickers.',
       source: 'fallback_campus_registry',
     });
   }
 };
 
+// In-memory cache for reverse-geocoded coordinates
+const reverseGeocodeCache = new Map<string, { data: any; expiry: number }>();
+
 // API: Reverse-geocode coordinates to authentic place name and address (not random)
 const reverseGeocodeHandler = async (req: express.Request, res: express.Response) => {
   const { latitude, longitude } = req.body || {};
   if (typeof latitude !== 'number' || typeof longitude !== 'number') {
     return res.status(400).json({ error: 'Latitude and longitude must be numbers' });
+  }
+
+  const geoKey = `${latitude.toFixed(3)}_${longitude.toFixed(3)}`;
+  const cachedGeo = reverseGeocodeCache.get(geoKey);
+  if (cachedGeo && cachedGeo.expiry > Date.now()) {
+    return res.json(cachedGeo.data);
   }
 
   // 1. Try OpenStreetMap Nominatim reverse geocoding with 4s timeout
@@ -1303,14 +1367,16 @@ const reverseGeocodeHandler = async (req: express.Request, res: express.Response
         ? (road && road !== name ? `${name}, ${road}` : name)
         : (road ? `${road}, ${city}` : (address.split(',').slice(0, 2).join(',') || `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`));
 
-      return res.json({
+      const payload = {
         success: true,
         locationName,
         formattedAddress: address,
         latitude,
         longitude,
         source: 'nominatim',
-      });
+      };
+      reverseGeocodeCache.set(geoKey, { data: payload, expiry: Date.now() + 30 * 60 * 1000 });
+      return res.json(payload);
     }
   } catch (err: any) {
     // Continue to fallback
@@ -1346,24 +1412,28 @@ const reverseGeocodeHandler = async (req: express.Request, res: express.Response
   }
 
   if (minDistance < 350) {
-    return res.json({
+    const proximityPayload = {
       success: true,
       locationName: nearest.name,
       formattedAddress: `${nearest.name} (Campus Zone, ~${Math.round(minDistance)}m away)`,
       latitude,
       longitude,
       source: 'campus_proximity',
-    });
+    };
+    reverseGeocodeCache.set(geoKey, { data: proximityPayload, expiry: Date.now() + 30 * 60 * 1000 });
+    return res.json(proximityPayload);
   }
 
-  return res.json({
+  const fallbackCoordPayload = {
     success: true,
     locationName: `GPS Point (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
     formattedAddress: `Coordinates: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
     latitude,
     longitude,
     source: 'coordinates',
-  });
+  };
+  reverseGeocodeCache.set(geoKey, { data: fallbackCoordPayload, expiry: Date.now() + 30 * 60 * 1000 });
+  return res.json(fallbackCoordPayload);
 };
 
   app.post('/api/analyze-meal', analyzeMealHandler);

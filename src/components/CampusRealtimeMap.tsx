@@ -80,6 +80,14 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
     lng: typeof currentUser.longitude === 'number' ? currentUser.longitude : BBS_CAMPUS_DEFAULT.lng,
   });
 
+  // Track last resolved coordinates to avoid redundant network/database writes
+  const lastResolvedCoordsRef = useRef<{ lat: number; lng: number } | null>(
+    typeof currentUser.latitude === 'number' && typeof currentUser.longitude === 'number'
+      ? { lat: currentUser.latitude, lng: currentUser.longitude }
+      : null
+  );
+  const lastResolveTimeRef = useRef<number>(Date.now());
+
   // Calculate distance in meters between two lat/lng points
   const calculateDistanceMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3;
@@ -96,6 +104,8 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
 
   // Reverse geocode real coordinates to real place name
   const resolveRealLocation = async (lat: number, lng: number, accuracy?: number) => {
+    lastResolvedCoordsRef.current = { lat, lng };
+    lastResolveTimeRef.current = Date.now();
     setIsGeocoding(true);
     try {
       const res = await fetch('/api/reverse-geocode', {
@@ -123,7 +133,7 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
         setLastPingTime(new Date());
       }
     } catch (err) {
-      console.warn('Real reverse geocode note:', err);
+      console.log('Real reverse geocode note:', (err as any)?.message || err);
     } finally {
       setIsGeocoding(false);
     }
@@ -156,12 +166,20 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
         setGpsError(null);
         setLastPingTime(new Date());
 
-        // Reverse-geocode and update Firestore
-        resolveRealLocation(latitude, longitude, Math.round(accuracy));
+        // Check if movement exceeds 12 meters or if 30s elapsed since last sync
+        const lastCoords = lastResolvedCoordsRef.current;
+        const timeSinceLastResolve = Date.now() - lastResolveTimeRef.current;
+        const movedMeters = lastCoords
+          ? calculateDistanceMeters(lastCoords.lat, lastCoords.lng, latitude, longitude)
+          : Infinity;
+
+        if (!lastCoords || movedMeters >= 12 || timeSinceLastResolve >= 30000) {
+          resolveRealLocation(latitude, longitude, Math.round(accuracy));
+        }
       },
       (err) => {
         if (!isSubscribed) return;
-        console.warn('Geolocation watch note:', err.message);
+        console.log('Geolocation watch status:', err.message);
         setGpsError(
           err.code === 1
             ? 'Location permission needed to mark your live position.'
@@ -247,6 +265,27 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
       }
     };
   }, []);
+
+  // Invalidate map size so Leaflet fills full screen without gray gaps on mobile & resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    const t1 = setTimeout(handleResize, 100);
+    const t2 = setTimeout(handleResize, 350);
+    const t3 = setTimeout(handleResize, 800);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [isExpanded]);
 
   // Update map tile layer based on tileStyle
   useEffect(() => {
@@ -519,12 +558,12 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
 
   return (
     <div
-      className={`relative flex flex-col bg-theme-card border border-theme-card rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl ${
-        isExpanded ? 'fixed inset-4 z-50 rounded-3xl' : className
+      className={`relative flex flex-col bg-theme-card border-0 sm:border border-theme-card rounded-none sm:rounded-3xl overflow-hidden shadow-xl h-full flex-1 w-full min-h-0 ${
+        isExpanded ? 'fixed inset-0 sm:inset-4 z-50 rounded-none sm:rounded-3xl' : className
       }`}
     >
-      {/* Top Map Bar */}
-      <div className="p-3 sm:p-4 bg-theme-card-subtle border-b border-theme-card flex flex-wrap items-center justify-between gap-3">
+      {/* Top Map Bar (Desktop only, so mobile is edge-to-edge full screen map) */}
+      <div className="hidden sm:flex p-3 sm:p-4 bg-theme-card-subtle border-b border-theme-card flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-theme-primary/15 border border-theme-primary/30 flex items-center justify-center text-theme-primary">
             <Radio className="w-4 h-4 animate-ping" />
@@ -624,7 +663,7 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
 
       {/* GPS Status / Error Banner */}
       {gpsError && (
-        <div className="px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2">
+        <div className="px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{gpsError}</span>
@@ -638,9 +677,49 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
         </div>
       )}
 
-      {/* Map Interactive Canvas */}
-      <div className="relative w-full h-[360px] sm:h-[420px] md:h-[480px]">
-        <div ref={mapContainerRef} className="w-full h-full z-10" />
+      {/* Map Interactive Canvas (fills 100% of available height on mobile) */}
+      <div className="relative w-full flex-1 h-full min-h-[300px] sm:min-h-[420px]">
+        <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-10" />
+
+        {/* Mobile Floating Action Controls */}
+        <div className="sm:hidden absolute top-3 right-3 z-20 flex items-center gap-1.5 pointer-events-auto">
+          <div className="flex items-center gap-1 bg-theme-card/90 backdrop-blur-md p-1 rounded-2xl border border-theme-card shadow-xl">
+            <button
+              onClick={handleCenterOnMe}
+              className="p-2 rounded-xl text-theme-primary hover:bg-theme-card-subtle transition-colors cursor-pointer"
+              title="Center on my location"
+            >
+              <Crosshair className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleFitAllUsers}
+              className="p-2 rounded-xl text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer"
+              title="Fit all students"
+            >
+              <Users className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                if (tileStyle === 'dark') setTileStyle('streets');
+                else if (tileStyle === 'streets') setTileStyle('satellite');
+                else setTileStyle('dark');
+              }}
+              className="p-2 rounded-xl text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer"
+              title="Change map style"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsWatchActive(!isWatchActive)}
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                isWatchActive ? 'text-emerald-400 bg-emerald-500/20' : 'text-theme-muted'
+              }`}
+              title={isWatchActive ? 'GPS Live Tracking' : 'GPS Paused'}
+            >
+              <Radio className={`w-4 h-4 ${isWatchActive ? 'animate-pulse' : ''}`} />
+            </button>
+          </div>
+        </div>
 
         {/* Map Legend Overlay */}
         <div className="absolute bottom-3 left-3 z-20 bg-theme-card/90 backdrop-blur-md border border-theme-card p-2 rounded-xl text-[11px] space-y-1 shadow-lg pointer-events-auto">
@@ -841,8 +920,8 @@ export const CampusRealtimeMap: React.FC<CampusRealtimeMapProps> = ({
         )}
       </div>
 
-      {/* Footer Status Strip */}
-      <div className="px-4 py-2 bg-theme-card-subtle border-t border-theme-card flex flex-wrap items-center justify-between text-xs text-theme-muted gap-2">
+      {/* Footer Status Strip (Desktop only) */}
+      <div className="hidden sm:flex px-4 py-2 bg-theme-card-subtle border-t border-theme-card flex-wrap items-center justify-between text-xs text-theme-muted gap-2 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <Navigation className="w-3.5 h-3.5 text-theme-primary" />

@@ -95,7 +95,7 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
         }
       }
     } catch (err) {
-      console.warn('Error fetching grounded dining spots:', err);
+      console.log('Notice fetching campus dining spots:', (err as any)?.message || err);
     } finally {
       setIsLoadingGrounded(false);
     }
@@ -124,7 +124,7 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
         setTimeout(() => setLocationStatusMessage(null), 4000);
       },
       (err) => {
-        console.warn('Geolocation prompt result:', err.message);
+        console.log('Geolocation prompt status:', err.message);
         setLocationStatusMessage('Using BBS PIK Campus coordinates (Pantai Indah Kapuk, Jakarta).');
         setTimeout(() => setLocationStatusMessage(null), 3500);
       },
@@ -179,15 +179,15 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-4xl max-h-[92vh] flex flex-col bg-theme-card border border-theme-card rounded-3xl shadow-2xl overflow-hidden text-theme-main transition-colors duration-300"
+        exit={{ opacity: 0, scale: 0.98, y: 10 }}
+        className="w-full h-[100dvh] sm:h-auto max-w-4xl sm:max-h-[92vh] flex flex-col bg-theme-card border-0 sm:border border-theme-card rounded-none sm:rounded-3xl shadow-2xl overflow-hidden text-theme-main transition-colors duration-300"
       >
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-theme-card flex items-center justify-between gap-4 bg-theme-card-subtle">
+        {/* Desktop Header - removed on mobile screen so mobile turns into pure full-screen map */}
+        <div className="hidden sm:flex p-4 sm:p-6 border-b border-theme-card items-center justify-between gap-4 bg-theme-card-subtle shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-theme-primary/15 border border-theme-primary/30 flex items-center justify-center text-theme-primary shadow-sm">
               <Compass className="w-6 h-6 animate-pulse" />
@@ -220,10 +220,10 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
           </button>
         </div>
 
-        {/* Current User Check-in Strip */}
-        <div className="px-4 sm:px-6 py-3 bg-theme-primary/10 border-b border-theme-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-full bg-theme-primary text-black flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+        {/* Current User Check-in Strip ("Your location" part - kept on both mobile and desktop) */}
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3 bg-theme-primary/10 border-b border-theme-card flex items-center justify-between gap-2 text-xs shrink-0 z-20">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-theme-primary text-black flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
               📍
             </div>
             <div className="truncate">
@@ -232,15 +232,16 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={handleDetectDeviceLocation}
               disabled={isUpdatingLocation}
-              className="px-3 py-1.5 rounded-xl bg-theme-card border border-theme-card hover:border-theme-primary text-theme-main font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm text-xs"
+              className="px-2.5 py-1.5 rounded-xl bg-theme-card border border-theme-card hover:border-theme-primary text-theme-main font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-sm text-xs"
               title={t('detect_gps', 'Update with Device GPS')}
             >
               <Navigation className="w-3.5 h-3.5 text-theme-primary" />
-              <span>{t('use_gps', 'Device GPS')}</span>
+              <span className="hidden sm:inline">{t('use_gps', 'Device GPS')}</span>
+              <span className="sm:hidden font-bold">GPS</span>
             </button>
 
             <button
@@ -251,18 +252,28 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGrounded ? 'animate-spin text-theme-primary' : ''}`} />
             </button>
+
+            {/* Close button on mobile directly in the "Your Location" bar */}
+            <button
+              onClick={onClose}
+              aria-label={t('close', 'Close')}
+              className="sm:hidden p-1.5 rounded-xl bg-theme-card border border-theme-card text-theme-muted hover:text-theme-main hover:bg-theme-card-subtle transition-colors cursor-pointer ml-1"
+              title={t('close', 'Close')}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
         {locationStatusMessage && (
-          <div className="px-4 sm:px-6 py-2 bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+          <div className="px-4 sm:px-6 py-1.5 sm:py-2 bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 shrink-0 z-20">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{locationStatusMessage}</span>
           </div>
         )}
 
-        {/* Tab Switcher & Search Bar */}
-        <div className="p-4 sm:px-6 sm:pt-4 sm:pb-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-theme-card/60">
+        {/* Tab Switcher & Search Bar (Desktop only, so mobile is 100% full screen map) */}
+        <div className="hidden sm:flex p-4 sm:px-6 sm:pt-4 sm:pb-2 flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-theme-card/60 shrink-0">
           {/* Tabs */}
           <div className="flex items-center gap-1 bg-theme-card-subtle p-1 rounded-2xl border border-theme-card shrink-0">
             <button
@@ -368,10 +379,10 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
           </div>
         )}
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        {/* Content Area - on mobile turns 100% into the map */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden sm:overflow-y-auto p-0 sm:p-6">
           {activeTab === 'map' ? (
-            <div className="space-y-3">
+            <div className="flex-1 flex flex-col h-full w-full min-h-0">
               <CampusRealtimeMap
                 currentUser={currentUser}
                 allUsers={allUsers}
@@ -382,7 +393,7 @@ export const CampusLocationModal: React.FC<CampusLocationModalProps> = ({
             </div>
           ) : activeTab === 'students' ? (
             /* Student Location Cards */
-            <div className="space-y-3">
+            <div className="p-4 sm:p-0 space-y-3">
               {filteredUsers.length === 0 ? (
                 <div className="p-8 text-center bg-theme-card-subtle rounded-2xl border border-theme-card space-y-2">
                   <div className="text-3xl">📡</div>
