@@ -124,6 +124,7 @@ export async function registerStudentAccount(params: {
   const greeting = normName.split(' ')[0] || normName;
   const uid = generateStudentUid(normEmail);
   const homeroom = `${grade}-${section}`;
+  const nowIso = new Date().toISOString();
 
   // Anti-Copying Verification
   const uniqueness = await checkIsAccountTaken(normEmail, normName);
@@ -152,8 +153,8 @@ export async function registerStudentAccount(params: {
     streakDays: 0,
     purchasedStickers: [],
     showcaseStickerId: '',
-    createdAt: new Date().toISOString(),
-    lastActiveAt: new Date().toISOString(),
+    createdAt: nowIso,
+    lastActiveAt: nowIso,
   };
 
   // 1. Save locally
@@ -330,3 +331,4 @@ export async function authenticateStudentAccount(
     'No registered account found with this email. Please register in the Register tab to create your official BBS PIK account.'
   );
 }
+

@@ -89,14 +89,6 @@ export async function syncUserProfileToCloud(user: UserProfile, uid?: string): P
         foodSavedKg: Number(user.foodSavedKg) || 0,
         purchasedStickers: user.purchasedStickers || [],
         showcaseStickerId: user.showcaseStickerId || '',
-        locationName: user.locationName || 'BBS PIK Main Student Dining Hall',
-        locationPlaceId: user.locationPlaceId || '',
-        locationMapUri: user.locationMapUri || 'https://www.google.com/maps/search/?api=1&query=BBS+PIK+Main+Dining+Hall',
-        latitude: typeof user.latitude === 'number' ? user.latitude : -6.1085,
-        longitude: typeof user.longitude === 'number' ? user.longitude : 106.7412,
-        locationAccuracy: typeof user.locationAccuracy === 'number' ? user.locationAccuracy : null,
-        locationAddress: user.locationAddress || '',
-        locationUpdatedAt: user.locationUpdatedAt || new Date().toISOString(),
         isOnline: true,
         lastActiveAt: new Date().toISOString(),
       },
@@ -378,14 +370,6 @@ export function subscribeToLiveLeaderboard(
           lastActiveAt: data.lastActiveAt,
           purchasedStickers: Array.isArray(data.purchasedStickers) ? data.purchasedStickers : [],
           showcaseStickerId: data.showcaseStickerId || '',
-          locationName: data.locationName || 'BBS PIK Main Student Dining Hall',
-          locationPlaceId: data.locationPlaceId || '',
-          locationMapUri: data.locationMapUri || 'https://www.google.com/maps/search/?api=1&query=BBS+PIK+Main+Dining+Hall',
-          latitude: typeof data.latitude === 'number' ? data.latitude : -6.1085,
-          longitude: typeof data.longitude === 'number' ? data.longitude : 106.7412,
-          locationAccuracy: typeof data.locationAccuracy === 'number' ? data.locationAccuracy : undefined,
-          locationAddress: data.locationAddress || undefined,
-          locationUpdatedAt: data.locationUpdatedAt || data.lastActiveAt,
         });
       });
 
@@ -753,56 +737,26 @@ export async function restartLeaderboard(): Promise<{ success: boolean; resetCou
 }
 
 /**
- * Update the user's campus dining location in Firestore.
+ * Update the user's online activity in Firestore.
  */
-export async function updateUserCampusLocation(
-  user: UserProfile,
-  location: {
-    locationName: string;
-    latitude?: number;
-    longitude?: number;
-    locationPlaceId?: string;
-    locationMapUri?: string;
-    locationAccuracy?: number;
-    locationAddress?: string;
-  }
+export async function updateUserCampusActivity(
+  user: UserProfile
 ): Promise<void> {
   const userId = getOrCreateUserId(user);
   const userRef = doc(db, 'users', userId);
 
   try {
     const nowIso = new Date().toISOString();
-    const updatePayload: any = {
-      locationName: location.locationName,
-      locationPlaceId: location.locationPlaceId || '',
-      locationMapUri:
-        location.locationMapUri ||
-        (typeof location.latitude === 'number' && typeof location.longitude === 'number'
-          ? `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
-          : ''),
+    await updateDoc(userRef, {
       lastActiveAt: nowIso,
-      locationUpdatedAt: nowIso,
       isOnline: true,
-    };
-
-    if (typeof location.latitude === 'number') {
-      updatePayload.latitude = location.latitude;
-    }
-    if (typeof location.longitude === 'number') {
-      updatePayload.longitude = location.longitude;
-    }
-    if (typeof location.locationAccuracy === 'number') {
-      updatePayload.locationAccuracy = location.locationAccuracy;
-    }
-    if (location.locationAddress) {
-      updatePayload.locationAddress = location.locationAddress;
-    }
-
-    await updateDoc(userRef, updatePayload);
+    });
   } catch (err) {
-    console.warn('Error updating user campus location in Firestore:', err);
+    console.warn('Error updating student activity in Firestore:', err);
   }
 }
+
+export const updateUserCampusLocation = updateUserCampusActivity;
 
 /**
  * Create a new sticker trade offer in Firestore.

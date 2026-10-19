@@ -22,16 +22,11 @@ import {
   Crown,
   UserPlus,
   CheckCircle2,
-  MapPin,
-  Compass,
-  Radio,
-  Map as MapIcon,
 } from 'lucide-react';
 import { PortionSize, UserProfile, MealRecord, DailyTipItem, CampusChallengeInfo, LeaderboardUser } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { allWeeklyTips } from '../data/mockData';
 import { getStickerById } from '../data/stickersData';
-import { CampusRealtimeMap } from './CampusRealtimeMap';
 
 interface DashboardProps {
   user: UserProfile;
@@ -48,9 +43,7 @@ interface DashboardProps {
   onNavigateToShop?: () => void;
   onJoinChallenge?: () => void;
   allUsers?: LeaderboardUser[];
-  onOpenCampusLocationRadar?: () => void;
   onOpenTradeWithUser?: (targetUser: LeaderboardUser) => void;
-  onUserLocationUpdated?: (locationName: string, mapUri?: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -68,12 +61,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigateToShop,
   onJoinChallenge,
   allUsers = [],
-  onOpenCampusLocationRadar,
   onOpenTradeWithUser,
-  onUserLocationUpdated,
 }) => {
   const { t } = useLanguage();
-  const [showInlineMap, setShowInlineMap] = useState<boolean>(false);
 
   // Progress calculations
   const levelProgressPercent = Math.min(100, Math.round((user.currentXp / user.nextLevelXp) * 100));
@@ -457,95 +447,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Campus Student Locations & Dining Radar Banner */}
-      <div
-        id="dashboard-campus-location-radar"
-        onClick={onOpenCampusLocationRadar}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onOpenCampusLocationRadar?.();
-          }
-        }}
-        className="bg-theme-card border border-theme-card hover:border-theme-primary/60 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer transition-all duration-300 group relative overflow-hidden"
-      >
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500/20 to-teal-500/20 border border-sky-500/30 flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition-transform text-sky-400">
-            <Compass className="w-6 h-6 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-extrabold text-theme-main group-hover:text-theme-primary transition-colors">
-                {t('dashboard_location_radar_title', "Campus Student Locations & Dining Radar")}
-              </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <Radio className="w-2.5 h-2.5 animate-ping" />
-                <span>{allUsers && allUsers.length > 0 ? `${allUsers.length} Students` : 'Live'}</span>
-              </span>
-            </div>
-            <p className="text-xs text-theme-muted mt-0.5">
-              {user.locationName
-                ? `You're checked in at ${user.locationName}. See classmates' locations & trade stickers!`
-                : "See where other students are dining on campus, check verified Google Maps data, and trade stickers!"}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
-          {/* Avatar stack of active students */}
-          {allUsers && allUsers.length > 0 && (
-            <div className="flex -space-x-2 overflow-hidden items-center">
-              {allUsers.slice(0, 4).map((u, i) => (
-                <img
-                  key={u.uid || i}
-                  src={u.avatar}
-                  alt={u.name}
-                  className="inline-block h-7 w-7 rounded-full ring-2 ring-theme-card object-cover"
-                />
-              ))}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowInlineMap(!showInlineMap);
-            }}
-            className="px-3 py-1.5 rounded-xl bg-theme-card border border-theme-card hover:border-theme-primary text-theme-main font-bold text-xs shadow-sm flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors"
-          >
-            <MapIcon className="w-3.5 h-3.5 text-theme-primary" />
-            <span>{showInlineMap ? t('hide_map', 'Hide Map') : t('show_map', 'Live Map')}</span>
-          </button>
-
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenCampusLocationRadar?.();
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-theme-primary text-black font-extrabold text-xs shadow-sm flex items-center gap-1.5 whitespace-nowrap group-hover:opacity-90 cursor-pointer"
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>{t('radar_hub', 'Radar Hub')}</span>
-            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-          </div>
-        </div>
-      </div>
-
-      {/* Inline Real-Time Campus Map */}
-      {showInlineMap && (
-        <div className="animate-in fade-in slide-in-from-top-3 duration-200">
-          <CampusRealtimeMap
-            currentUser={user}
-            allUsers={allUsers}
-            onOpenTradeWithUser={(target) => onOpenTradeWithUser?.(target)}
-            onUserLocationUpdated={onUserLocationUpdated}
-          />
-        </div>
-      )}
 
       {/* Campus Challenge Card */}
       <div

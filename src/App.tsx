@@ -42,7 +42,6 @@ import { Profile } from './components/Profile';
 import { SettingsView } from './components/SettingsView';
 import { StickerShop } from './components/StickerShop';
 import { ThemePickerModal } from './components/ThemePickerModal';
-import { CampusLocationModal } from './components/CampusLocationModal';
 import { SignIn } from './components/SignIn';
 import {
   EditProfileModal,
@@ -139,9 +138,8 @@ function AppContent() {
 
   const [challenge, setChallenge] = useState<CampusChallengeInfo>(campusChallenge);
 
-  // Live campus students and location radar state
+  // Live campus students state
   const [campusUsers, setCampusUsers] = useState<LeaderboardUser[]>([]);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [selectedTradePartner, setSelectedTradePartner] = useState<LeaderboardUser | null>(null);
 
   // Modals state
@@ -214,7 +212,7 @@ function AppContent() {
     return () => unsubChallenge();
   }, [user.id, user.name]);
 
-  // Subscribe to all live students on campus to track their locations and enable trading
+  // Subscribe to all live students on campus to track active peers and enable sticker trading
   useEffect(() => {
     const currentUid = user.id || localStorage.getItem('ecoeat_user_uid') || '';
     const unsubLeaderboard = subscribeToLiveLeaderboard(currentUid, (liveUsers) => {
@@ -591,7 +589,6 @@ function AppContent() {
         onSelectTab={setCurrentTab}
         onOpenDrawer={() => setIsDrawerOpen(true)}
         onOpenThemePicker={() => setIsThemePickerOpen(true)}
-        onOpenCampusLocations={() => setIsLocationModalOpen(true)}
         titleOverride={currentTab === 'settings' ? t('nav_settings', 'Settings') : undefined}
         showBackArrow={currentTab === 'settings' || currentTab === 'capture'}
         onBack={() => setCurrentTab('dashboard')}
@@ -605,7 +602,6 @@ function AppContent() {
         onSelectTab={setCurrentTab}
         onOpenThemePicker={() => setIsThemePickerOpen(true)}
         onSignOut={handleSignOut}
-        onOpenCampusLocations={() => setIsLocationModalOpen(true)}
         user={user}
       />
 
@@ -636,19 +632,9 @@ function AppContent() {
                 onNavigateToShop={() => setCurrentTab('shop')}
                 onJoinChallenge={handleJoinChallenge}
                 allUsers={campusUsers}
-                onOpenCampusLocationRadar={() => setIsLocationModalOpen(true)}
                 onOpenTradeWithUser={(targetUser) => {
                   setSelectedTradePartner(targetUser);
                   setCurrentTab('shop');
-                }}
-                onUserLocationUpdated={(locName, locUri) => {
-                  setUser((prev) => {
-                    const updated = { ...prev, locationName: locName, locationMapUri: locUri };
-                    localStorage.setItem('ecoeat_user', JSON.stringify(updated));
-                    syncUserProfileToCloud(updated);
-                    return updated;
-                  });
-                  showToast(`📍 Location updated: ${locName}`);
                 }}
               />
             )}
@@ -669,7 +655,6 @@ function AppContent() {
                 onEquipSticker={handleEquipSticker}
                 onNavigateToCapture={() => setCurrentTab('capture')}
                 allUsers={campusUsers}
-                onOpenCampusLocationRadar={() => setIsLocationModalOpen(true)}
                 onUserStickersChanged={(newStickers) => {
                   setUser((prev) => {
                     const updated: UserProfile = {
@@ -810,28 +795,6 @@ function AppContent() {
           content={infoModalData.content}
         />
       )}
-
-      {/* Campus Student Location Radar & Google Maps Grounded Dining Modal */}
-      <CampusLocationModal
-        isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
-        currentUser={user}
-        allUsers={campusUsers}
-        onOpenTradeWithUser={(targetUser) => {
-          setIsLocationModalOpen(false);
-          setSelectedTradePartner(targetUser);
-          setCurrentTab('shop');
-        }}
-        onUserLocationUpdated={(locName, locUri) => {
-          setUser((prev) => {
-            const updated = { ...prev, locationName: locName, locationMapUri: locUri };
-            localStorage.setItem('ecoeat_user', JSON.stringify(updated));
-            syncUserProfileToCloud(updated);
-            return updated;
-          });
-          showToast(`📍 Checked in to ${locName}`);
-        }}
-      />
 
       {/* Floating Toast Notification */}
       {toastMessage && (

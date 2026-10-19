@@ -27,7 +27,6 @@ import {
   Grid,
   Compass,
   ArrowRightLeft,
-  MapPin,
   Send,
   Radio,
   MessageSquare,
@@ -60,7 +59,6 @@ interface StickerShopProps {
   onEquipSticker: (stickerId: string | null) => void;
   onNavigateToCapture: () => void;
   allUsers?: LeaderboardUser[];
-  onOpenCampusLocationRadar?: () => void;
   onUserStickersChanged?: (updatedStickers: string[]) => void;
 }
 type SortOption = 'default' | 'price_asc' | 'price_desc' | 'rarity' | 'name';
@@ -72,7 +70,6 @@ export const StickerShop: React.FC<StickerShopProps> = ({
   onEquipSticker,
   onNavigateToCapture,
   allUsers = [],
-  onOpenCampusLocationRadar,
   onUserStickersChanged,
 }) => {
   const { t } = useLanguage();
@@ -799,17 +796,6 @@ export const StickerShop: React.FC<StickerShopProps> = ({
             </div>
 
             <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
-              {onOpenCampusLocationRadar && (
-                <button
-                  type="button"
-                  onClick={onOpenCampusLocationRadar}
-                  className="px-4 py-2.5 rounded-xl bg-theme-card-subtle border border-theme-card hover:border-theme-primary text-theme-main font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-                >
-                  <MapPin className="w-4 h-4 text-theme-primary" />
-                  <span>{t('view_student_locations', 'Campus Location Radar')}</span>
-                </button>
-              )}
-
               <button
                 type="button"
                 onClick={() => {
@@ -890,9 +876,8 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                             )}
                             <div>
                               <h5 className="text-xs font-bold text-theme-main leading-tight">{trade.senderName}</h5>
-                              <span className="text-[10px] text-theme-muted flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-theme-primary" />
-                                {trade.senderLocationName || 'BBS PIK Campus'}
+                              <span className="text-[10px] text-theme-muted">
+                                BBS PIK Student
                               </span>
                             </div>
                           </div>
@@ -928,15 +913,10 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                           </div>
                         </div>
 
-                        {/* Note & Meetup */}
-                        {(trade.message || trade.meetupLocation) && (
-                          <div className="text-[11px] text-theme-muted bg-theme-card-subtle/50 p-2 rounded-xl border border-theme-card/50 space-y-0.5">
-                            {trade.meetupLocation && (
-                              <p>📍 <strong>Meetup:</strong> {trade.meetupLocation}</p>
-                            )}
-                            {trade.message && (
-                              <p>💬 "{trade.message}"</p>
-                            )}
+                        {/* Note */}
+                        {trade.message && (
+                          <div className="text-[11px] text-theme-muted bg-theme-card-subtle/50 p-2 rounded-xl border border-theme-card/50">
+                            <p>💬 "{trade.message}"</p>
                           </div>
                         )}
 
@@ -1020,25 +1000,15 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                   🏫 {t('campus_student_traders', 'Students on Campus Ready to Trade')}
                 </h4>
                 <p className="text-xs text-theme-muted">
-                  {t('select_student_to_trade_desc', 'Tap any student to view their location and initiate a sticker swap.')}
+                  {t('select_student_to_trade_desc', 'Tap any student to initiate a sticker swap.')}
                 </p>
               </div>
-
-              {onOpenCampusLocationRadar && (
-                <button
-                  type="button"
-                  onClick={onOpenCampusLocationRadar}
-                  className="text-xs font-bold text-theme-primary hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{t('view_all_locations', 'View Locations Map')}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {allUsers
                 .filter((u) => u.uid !== user.id)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                 .map((u) => {
                   return (
                     <div
@@ -1052,7 +1022,7 @@ export const StickerShop: React.FC<StickerShopProps> = ({
                             {u.name}
                           </h5>
                           <span className="text-[10px] text-theme-muted truncate block">
-                            📍 {u.locationName || 'BBS Dining Hall'}
+                            ⭐ {t('level', 'Level')} {u.level || 1} • {u.homeroom || 'BBS PIK'}
                           </span>
                         </div>
                       </div>

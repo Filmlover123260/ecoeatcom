@@ -4,7 +4,6 @@ import {
   X,
   Sparkles,
   ArrowRightLeft,
-  MapPin,
   Check,
   Search,
   MessageSquare,
@@ -51,16 +50,15 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
     (currentUser.purchasedStickers && currentUser.purchasedStickers[0]) || ''
   );
   const [selectedRequestedStickerId, setSelectedRequestedStickerId] = useState<string>('cpl_001');
-  const [meetupSpot, setMeetupSpot] = useState<string>(
-    currentUser.locationName || 'BBS PIK Main Student Dining Hall'
-  );
   const [tradeMessage, setTradeMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // Filter out self from partner list
+  // Filter out self from partner list and sort alphabetically by student name
   const availablePartners = useMemo(() => {
-    return allUsers.filter((u) => u.uid !== currentUser.id);
+    return allUsers
+      .filter((u) => u.uid !== currentUser.id)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [allUsers, currentUser.id]);
 
   // Current selected partner object
@@ -133,7 +131,6 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
         senderUid: currentUser.id || 'stu_me',
         senderName: currentUser.name || 'Student',
         senderAvatar: currentUser.avatarUrl,
-        senderLocationName: currentUser.locationName || 'BBS PIK Campus',
         offeredStickerId: offeredSticker.id,
         offeredStickerName: offeredSticker.name,
         offeredStickerEmoji: offeredSticker.emoji,
@@ -141,13 +138,11 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
         receiverUid: selectedPartner.uid || 'stu_other',
         receiverName: selectedPartner.name,
         receiverAvatar: selectedPartner.avatar,
-        receiverLocationName: selectedPartner.locationName || 'BBS PIK Campus',
         requestedStickerId: requestedSticker.id,
         requestedStickerName: requestedSticker.name,
         requestedStickerEmoji: requestedSticker.emoji,
         requestedStickerRarity: requestedSticker.rarity,
         message: tradeMessage.trim() || undefined,
-        meetupLocation: meetupSpot.trim() || undefined,
       });
 
       if (result.success) {
@@ -163,7 +158,6 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
             senderUid: currentUser.id || 'stu_me',
             senderName: currentUser.name || 'Student',
             senderAvatar: currentUser.avatarUrl,
-            senderLocationName: currentUser.locationName || 'BBS PIK Campus',
             offeredStickerId: offeredSticker.id,
             offeredStickerName: offeredSticker.name,
             offeredStickerEmoji: offeredSticker.emoji,
@@ -171,14 +165,12 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
             receiverUid: selectedPartner.uid || 'stu_other',
             receiverName: selectedPartner.name,
             receiverAvatar: selectedPartner.avatar,
-            receiverLocationName: selectedPartner.locationName || 'BBS PIK Campus',
             requestedStickerId: requestedSticker.id,
             requestedStickerName: requestedSticker.name,
             requestedStickerEmoji: requestedSticker.emoji,
             requestedStickerRarity: requestedSticker.rarity,
             status: 'pending',
             message: tradeMessage.trim(),
-            meetupLocation: meetupSpot.trim(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
@@ -267,7 +259,7 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
                         <div className="truncate">
                           <h4 className="text-xs font-bold text-theme-main truncate">{u.name}</h4>
                           <p className="text-[10px] text-theme-muted truncate">
-                            {u.locationName || 'BBS PIK Campus'}
+                            ⭐ Level {u.level || 1} • {u.homeroom || 'BBS PIK'}
                           </p>
                         </div>
                       </div>
@@ -470,39 +462,21 @@ export const StickerTradeModal: React.FC<StickerTradeModalProps> = ({
             </div>
           </div>
 
-          {/* Step 4: Suggested Meetup Location & Note */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-theme-muted uppercase tracking-wider block">
-                {t('meetup_spot', 'Campus Meetup Dining Spot')}
-              </label>
-              <div className="relative">
-                <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-theme-primary" />
-                <input
-                  type="text"
-                  value={meetupSpot}
-                  onChange={(e) => setMeetupSpot(e.target.value)}
-                  placeholder="e.g. BBS PIK Main Dining Hall Booth 3"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-theme-card-subtle border border-theme-card text-xs text-theme-main focus:outline-none focus:ring-2 focus:ring-theme-primary"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-theme-muted uppercase tracking-wider block">
-                {t('optional_message', 'Optional Note to Student')}
-              </label>
-              <div className="relative">
-                <MessageSquare className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-theme-muted" />
-                <input
-                  type="text"
-                  value={tradeMessage}
-                  onChange={(e) => setTradeMessage(e.target.value)}
-                  placeholder="e.g. Let's trade during lunch break!"
-                  maxLength={120}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-theme-card-subtle border border-theme-card text-xs text-theme-main focus:outline-none focus:ring-2 focus:ring-theme-primary"
-                />
-              </div>
+          {/* Step 4: Optional Note to Student */}
+          <div className="space-y-1.5 pt-1">
+            <label className="text-xs font-bold text-theme-muted uppercase tracking-wider block">
+              {t('optional_message', 'Optional Note to Student')}
+            </label>
+            <div className="relative">
+              <MessageSquare className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-theme-muted" />
+              <input
+                type="text"
+                value={tradeMessage}
+                onChange={(e) => setTradeMessage(e.target.value)}
+                placeholder="e.g. Let's trade during lunch break!"
+                maxLength={120}
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-theme-card-subtle border border-theme-card text-xs text-theme-main focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              />
             </div>
           </div>
 
